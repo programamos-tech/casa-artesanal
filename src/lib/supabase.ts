@@ -8,7 +8,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 // Validar que las variables estén definidas
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Variables de entorno de Supabase no configuradas. Crea .env.local con NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (copia .env.local.example).'
+    'Variables de entorno de Supabase no configuradas. Crea .env.local con NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (plantilla: env.supabase.example).'
   )
 }
 
