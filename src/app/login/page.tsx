@@ -89,11 +89,11 @@ export default function LoginPage() {
       />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col md:flex-row">
         <div className="flex flex-shrink-0 flex-col items-center justify-center px-8 pb-8 pt-12 md:w-[46%] md:pb-16 md:pt-16 lg:w-1/2">
-          <div className="relative flex h-28 w-28 items-center justify-center md:h-[220px] md:w-[220px]">
+          <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-[#0d0d0e] p-3.5 ring-1 ring-zinc-200 drop-shadow-[0_8px_18px_rgba(24,24,27,0.12)] dark:ring-zinc-800 dark:drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] md:h-[190px] md:w-[190px] md:p-7">
             <img
-              src="/logo2.png"
+              src="/logo.ya.png"
               alt="Casa Artesanal"
-              className="h-full w-full object-contain drop-shadow-[0_8px_18px_rgba(24,24,27,0.12)] dark:drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+              className="h-full w-full object-contain"
             />
           </div>
         </div>

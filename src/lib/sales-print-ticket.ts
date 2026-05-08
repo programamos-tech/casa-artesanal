@@ -23,7 +23,7 @@ export async function printSaleTicket(sale: Sale): Promise<void> {
       id: MAIN_STORE_ID,
       name: storeName,
       nit: '',
-      logo: '/logo2.png',
+      logo: '/logo.ya.png',
       address: '',
       city: '',
       isActive: true,
@@ -458,7 +458,7 @@ export async function printSaleTicket(sale: Sale): Promise<void> {
         <body>
           <div class="ticket">
             <div class="header">
-              <img src="${currentStore.logo || '/logo2.png'}" class="logo" alt="${currentStore.name}" />
+              <img src="${currentStore.logo || '/logo.ya.png'}" class="logo" alt="${currentStore.name}" />
               <div class="company-name">${currentStore.name}</div>
               <div class="company-info">
                 ${currentStore.nit ? `<strong>NIT ${currentStore.nit}</strong><br>` : ''}

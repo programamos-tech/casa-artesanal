@@ -97,7 +97,7 @@ function StoreCard({
                     src={store.logo}
                     alt={store.name}
                     fill
-                    className="object-cover"
+                    className="object-contain p-1.5"
                     unoptimized
                   />
                 </div>
@@ -109,17 +109,17 @@ function StoreCard({
                   )}
                 >
                   <Image
-                    src="/logo2.png"
-                    alt="Zona T Logo"
-                    width={44}
-                    height={44}
+                    src="/logo.ya.png"
+                    alt="La Casa Artesanal"
+                    width={40}
+                    height={40}
                     className="object-contain"
                     unoptimized
                   />
                 </div>
               )}
               {isMainStore && (
-                <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-white bg-zinc-900 p-1 text-amber-100 shadow-sm dark:border-zinc-900 dark:bg-amber-500/90 dark:text-zinc-950">
+                <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-white bg-zinc-900 p-1 text-zinc-100 shadow-sm dark:border-zinc-900 dark:bg-zinc-700 dark:text-zinc-100">
                   <Crown className="h-2.5 w-2.5" strokeWidth={2.5} />
                 </div>
               )}

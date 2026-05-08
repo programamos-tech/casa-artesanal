@@ -107,10 +107,10 @@ export default function SelectStorePage() {
         <div className="text-center mb-6 md:mb-8">
           <div className="flex justify-center mb-3 md:mb-4">
             <Image
-              src="/logo2.png"
-              alt="ZONA T Logo"
-              width={80}
-              height={80}
+              src="/logo.ya.png"
+              alt="La Casa Artesanal"
+              width={72}
+              height={72}
               className="object-contain"
             />
           </div>

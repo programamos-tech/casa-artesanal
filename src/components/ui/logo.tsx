@@ -11,9 +11,9 @@ interface LogoProps {
 
 export function Logo({ className, showText = false, size = 'md' }: LogoProps) {
   const logoSize = {
-    sm: 32,
-    md: 48,
-    lg: 64
+    sm: 28,
+    md: 42,
+    lg: 108
   }[size]
 
   return (
@@ -21,7 +21,7 @@ export function Logo({ className, showText = false, size = 'md' }: LogoProps) {
       {/* Logo Image */}
       <div className="relative">
         <Image
-          src="/logo2.png"
+          src="/logo.ya.png"
           alt="La Casa Artesanal"
           width={logoSize}
           height={logoSize}

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     if (app_logo_url?.startsWith('/')) {
       app_logo_url = `${baseClean}${app_logo_url}`
     } else if (!app_logo_url || !app_logo_url.startsWith('http')) {
-      app_logo_url = `${baseClean}/logo2.png`
+      app_logo_url = `${baseClean}/logo.ya.png`
     }
 
     const stores = (storesRes.data ?? []).map(

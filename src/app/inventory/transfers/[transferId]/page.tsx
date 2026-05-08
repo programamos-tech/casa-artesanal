@@ -78,7 +78,7 @@ export default function TransferDetailPage() {
     try {
       toast.loading('Generando PDF...')
       await PDFService.generateTransferPDF(transfer, {
-        logoUrl: '/logo2.png',
+        logoUrl: '/logo.ya.png',
         companyName: transfer.fromStoreName || 'Zona T',
         companyAddress: '',
         companyPhone: '',

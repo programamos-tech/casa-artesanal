@@ -21,11 +21,11 @@ export function TiendaHeader({ showSearch, searchValue = '', onSearchChange }: T
         <div className="flex items-center gap-3">
           <Link href="/tienda" className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
             <Image
-              src="/logo2.png"
+              src="/logo.ya.png"
               alt="ZONA T"
-              width={44}
-              height={44}
-              className="h-11 w-11 shrink-0 object-contain"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 object-contain"
               priority
               unoptimized
             />

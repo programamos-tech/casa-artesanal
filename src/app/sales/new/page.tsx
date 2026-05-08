@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { Sale, SaleItem, Product, Client, SalePayment, User as AppUser } from '@/types'
 import { useClients } from '@/contexts/clients-context'
 import { useProducts } from '@/contexts/products-context'
@@ -1239,10 +1240,13 @@ export default function NewSalePage() {
                         if (!s) return null
                         return (
                           <div className="rounded-lg border border-zinc-200/90 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-800">
-                                <User className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
-                              </div>
+                            <div className="flex items-center gap-3">
+                              <UserAvatar
+                                name={s.name}
+                                seed={s.id}
+                                size="sm"
+                                className="shrink-0 ring-1 ring-zinc-200 dark:ring-zinc-700"
+                              />
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                                   {s.name}

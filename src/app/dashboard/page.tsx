@@ -1944,7 +1944,7 @@ export default function DashboardPage() {
 
                     // Colores adaptativos para modo oscuro
                     const axisColor = isDarkMode ? '#9ca3af' : '#666'
-                    const lineColor = isDarkMode ? '#d2ab87' : '#8b5a3c' // Acento artesanal (sin verde)
+                    const lineColor = isDarkMode ? '#d4d4d8' : '#27272a' // Acento neutro
                     const dotStrokeColor = isDarkMode ? '#18181b' : '#fff'
                     const tooltipBg = isDarkMode ? '#1f2937' : 'white'
                     const tooltipBorder = isDarkMode ? '#374151' : '#e5e7eb'
@@ -2190,7 +2190,7 @@ export default function DashboardPage() {
 
                   // Colores adaptativos para modo oscuro
                   const axisColor = isDarkMode ? '#9ca3af' : '#666'
-                  const lineColor = isDarkMode ? '#d2ab87' : '#8b5a3c' // Acento artesanal (sin verde)
+                  const lineColor = isDarkMode ? '#d4d4d8' : '#27272a' // Acento neutro
                   const dotStrokeColor = isDarkMode ? '#18181b' : '#fff'
                   const tooltipBg = isDarkMode ? '#1f2937' : 'white'
                   const tooltipBorder = isDarkMode ? '#374151' : '#e5e7eb'

@@ -88,7 +88,7 @@ export class CompanyService {
       address: 'Carrera 20 #22-02, Sincelejo, Sucre',
       phone: '3135206736',
       email: 'info@casa-artesanal.com',
-      logo: '/logo2.png',
+      logo: '/logo.ya.png',
       dianResolution: undefined,
       numberingRange: undefined
     }

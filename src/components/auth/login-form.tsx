@@ -87,8 +87,8 @@ export function LoginForm() {
       />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="mb-10 flex justify-center">
-          <div className="relative h-20 w-20 md:h-24 md:w-24">
-            <Image src="/logo2.png" alt="Casa Artesanal" width={96} height={96} className="object-contain" priority />
+          <div className="relative h-[70px] w-[70px] overflow-hidden rounded-full bg-[#0d0d0e] p-2.5 ring-1 ring-zinc-200 dark:ring-zinc-800 md:h-[84px] md:w-[84px] md:p-3">
+            <Image src="/logo.ya.png" alt="Casa Artesanal" width={84} height={84} className="h-full w-full object-contain" priority />
           </div>
         </div>
 

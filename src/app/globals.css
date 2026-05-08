@@ -7,25 +7,29 @@
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Color de marca: cafe/beige moderno para toda la plataforma */
 /* Pie “powered by programamos” en sidebar (Google Fonts: Stack Sans Notch) */
 .font-programamos-brand {
   font-family: "Stack Sans Notch", ui-sans-serif, system-ui, sans-serif;
   font-optical-sizing: auto;
 }
 
+/*
+ * Palette de marca: neutros (zinc) para toda la plataforma.
+ * Antes era café/beige; se neutralizó para un look moderno blanco/negro.
+ * Las utilidades emerald (bg, text, border, ring) siguen funcionando, ahora renderizan grises neutros.
+ */
 @theme {
-  --color-emerald-50: #faf5ef;
-  --color-emerald-100: #f2e4d5;
-  --color-emerald-200: #e4ccb2;
-  --color-emerald-300: #d2ab87;
-  --color-emerald-400: #bd8a5f;
-  --color-emerald-500: #a36f45;
-  --color-emerald-600: #885a37;
-  --color-emerald-700: #6f492e;
-  --color-emerald-800: #5a3b25;
-  --color-emerald-900: #462e1d;
-  --color-emerald-950: #2c1c12;
+  --color-emerald-50: #fafafa;
+  --color-emerald-100: #f4f4f5;
+  --color-emerald-200: #e4e4e7;
+  --color-emerald-300: #d4d4d8;
+  --color-emerald-400: #a1a1aa;
+  --color-emerald-500: #71717a;
+  --color-emerald-600: #52525b;
+  --color-emerald-700: #3f3f46;
+  --color-emerald-800: #27272a;
+  --color-emerald-900: #18181b;
+  --color-emerald-950: #09090b;
 }
 
 /* Force light mode styles */
