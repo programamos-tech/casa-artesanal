@@ -1,0 +1,602 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 aplica dark: con prefers-color-scheme por defecto.
+ * Nosotros gobiernan el tema con class="light" | "dark" en <html>; sin esto,
+ * con el SO en oscuro los dark: siguen activos aunque elijas modo claro en la app.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Color de marca: cafe/beige moderno para toda la plataforma */
+/* Pie “powered by programamos” en sidebar (Google Fonts: Stack Sans Notch) */
+.font-programamos-brand {
+  font-family: "Stack Sans Notch", ui-sans-serif, system-ui, sans-serif;
+  font-optical-sizing: auto;
+}
+
+@theme {
+  --color-emerald-50: #faf5ef;
+  --color-emerald-100: #f2e4d5;
+  --color-emerald-200: #e4ccb2;
+  --color-emerald-300: #d2ab87;
+  --color-emerald-400: #bd8a5f;
+  --color-emerald-500: #a36f45;
+  --color-emerald-600: #885a37;
+  --color-emerald-700: #6f492e;
+  --color-emerald-800: #5a3b25;
+  --color-emerald-900: #462e1d;
+  --color-emerald-950: #2c1c12;
+}
+
+/* Force light mode styles */
+html.light {
+  background-color: #ffffff !important;
+}
+
+html.light body {
+  background-color: #ffffff !important;
+  color: #171717 !important;
+}
+
+/*
+ * Heredar fondo en light mode evita “parches” grises; pero no aplicarlo a controles
+ * interactivos: si no, anulan bg-zinc-900 / bg-emerald y el texto claro queda invisible.
+ */
+html.light
+  body:not(:has(.tienda-storefront)):not(:has([data-auth-page]))
+  *:not(button):not(input):not(select):not(textarea):not([role='button']):not(a):not(
+    .casa-artesanal-card-surface
+  ):not(.casa-artesanal-preserve-surface):not(.casa-artesanal-preserve-surface *) {
+  background-color: inherit !important;
+}
+
+/*
+ * Tarjetas de listas (título + buscador): marco explícito en claro y exclusión de la regla
+ * de herencia evita bordes “cortados” (sobre todo el derecho junto a overflow-auto).
+ */
+html.light .casa-artesanal-card-surface {
+  background-color: #ffffff !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: rgb(228 228 231) !important;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* Dark mode: neutro limpio (sin gradientes ni tonos barro) */
+html.dark {
+  background-color: #09090b !important;
+  background-image: none !important;
+}
+
+html.dark body {
+  background-color: transparent !important;
+  color: #ededed !important;
+}
+
+/* Catálogo público (/tienda): sin herencia forzada de fondo — permite tarjetas y UI claras */
+html.dark:has(.tienda-storefront) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+/*
+ * No forzar background-color: inherit en * en dark: body es transparente (deja ver el gradiente de html)
+ * y eso hacía que modales en portal (createPortal → body) ignoraran bg-zinc-950 / overlays opacos.
+ * Las superficies usan clases Tailwind explícitas en layout (main, cards, etc.).
+ */
+
+/* Default styles */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ocultar scrollbar pero mantener scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Sin barras de scroll visibles en ningún tamaño de viewport (scroll con rueda/trackpad/teclado sigue igual).
+ * Antes solo aplicaba bajo 1280px; en desktop xl aparecían barras claras del sistema.
+ */
+html,
+body,
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Estilos específicos para tablets en la tabla de productos */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tabla de productos - solo tablets, no desktop */
+  .products-table-tablet {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+  
+  .products-table-tablet th,
+  .products-table-tablet td {
+    padding: 0.75rem 0.25rem !important; /* Padding más compacto */
+    font-size: 0.8rem !important;
+  }
+  
+  /* Reducir padding izquierdo de la primera columna */
+  .products-table-tablet th:nth-child(1),
+  .products-table-tablet td:nth-child(1) {
+    padding-left: 0.5rem !important;
+    padding-right: 0.25rem !important;
+  }
+  
+  /* Organización optimizada de columnas para tablets - Compactada */
+  /* Columna # - Ultra compacta */
+  .products-table-tablet th:nth-child(1),
+  .products-table-tablet td:nth-child(1) {
+    width: 2rem !important; /* # */
+    min-width: 2rem;
+    max-width: 2rem;
+  }
+  
+  /* Columna Referencia - Más compacta */
+  .products-table-tablet th:nth-child(2),
+  .products-table-tablet td:nth-child(2) {
+    width: 4rem !important; /* Referencia - reducida */
+    min-width: 4rem;
+    max-width: 4rem;
+  }
+  
+  /* Columna Producto - Más espacio aprovechado */
+  .products-table-tablet th:nth-child(3),
+  .products-table-tablet td:nth-child(3) {
+    width: 12.5rem !important; /* Producto - más espacio */
+    min-width: 12.5rem;
+    max-width: 12.5rem;
+  }
+  
+  /* Forzar truncado agresivo en nombres de productos */
+  .products-table-tablet td:nth-child(3) > div {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+  
+  .products-table-tablet td:nth-child(3) > div > div {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+  
+  /* Columnas numéricas (Bodega, Local, Total) - Compactas */
+  .products-table-tablet th:nth-child(4),
+  .products-table-tablet td:nth-child(4),
+  .products-table-tablet th:nth-child(5),
+  .products-table-tablet td:nth-child(5),
+  .products-table-tablet th:nth-child(6),
+  .products-table-tablet td:nth-child(6) {
+    width: 3.5rem !important; /* Bodega, Local, Total */
+    min-width: 3.5rem;
+    max-width: 3.5rem;
+    text-align: center !important;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+  
+  /* Columna Estado Stock - Optimizada */
+  .products-table-tablet th:nth-child(7),
+  .products-table-tablet td:nth-child(7) {
+    width: 9.5rem !important; /* Estado Stock - espacio optimizado */
+    min-width: 9.5rem;
+    max-width: 9.5rem;
+  }
+  
+  /* Columna Estado - OCULTA en tablets */
+  .products-table-tablet th:nth-child(8),
+  .products-table-tablet td:nth-child(8) {
+    width: 0 !important; /* Estado - oculto */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  /* Columna Acciones - Más espacio */
+  .products-table-tablet th:nth-child(9),
+  .products-table-tablet td:nth-child(9) {
+    width: 7rem !important; /* Acciones - más espacio para iconos */
+    min-width: 7rem;
+    max-width: 7rem;
+    padding-left: 0.5rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  /* Mejorar display de Referencia para evitar truncado excesivo */
+  .products-table-tablet td:nth-child(2) div {
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+  
+  /* Badges sin truncar en tablets - mejor formateo */
+  .products-table-tablet .badge-no-truncate {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    line-height: 1.3 !important;
+    padding: 0.375rem 0.5rem !important;
+    font-size: 0.7rem !important;
+  }
+  
+  /* Producto - forzar truncado */
+  .products-table-tablet td:nth-child(3) div {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+  
+  /* Contenedor de la tabla - sin desbordamiento, alineado a la izquierda */
+  .products-table-tablet-container {
+    overflow-x: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Asegurar que la tabla se ajuste al contenedor sin desbordarse y alineada a la izquierda */
+  .products-table-tablet {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    table-layout: fixed !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Desktop - Resetear estilos de tabla para que funcione correctamente */
+@media (min-width: 1024px) {
+  .products-table-tablet {
+    table-layout: auto !important;
+  }
+  
+  .products-table-tablet-container {
+    overflow-x: visible !important;
+  }
+  
+  /* Resetear todos los anchos fijos para desktop - dejar que la tabla calcule automáticamente */
+  .products-table-tablet th,
+  .products-table-tablet td {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
+    padding: 0.75rem 0.5rem !important;
+  }
+  
+  /* Columna # - Mantener compacta */
+  .products-table-tablet th:nth-child(1),
+  .products-table-tablet td:nth-child(1) {
+    width: 3rem !important;
+  }
+  
+  /* Columna Referencia - Tamaño razonable */
+  .products-table-tablet th:nth-child(2),
+  .products-table-tablet td:nth-child(2) {
+    width: auto !important;
+    min-width: 6rem !important;
+  }
+  
+  /* Columna Producto - Flexible */
+  .products-table-tablet th:nth-child(3),
+  .products-table-tablet td:nth-child(3) {
+    width: auto !important;
+    min-width: 15rem !important;
+  }
+  
+  /* Columnas numéricas - Compactas pero flexibles */
+  .products-table-tablet th:nth-child(4),
+  .products-table-tablet td:nth-child(4),
+  .products-table-tablet th:nth-child(5),
+  .products-table-tablet td:nth-child(5),
+  .products-table-tablet th:nth-child(6),
+  .products-table-tablet td:nth-child(6) {
+    width: auto !important;
+    min-width: 4rem !important;
+    text-align: center !important;
+  }
+  
+  /* Columna Estado Stock - Ancho apropiado */
+  .products-table-tablet th:nth-child(7),
+  .products-table-tablet td:nth-child(7) {
+    width: auto !important;
+    min-width: 10rem !important;
+  }
+  
+  /* Columna Estado - Visible en desktop */
+  .products-table-tablet th:nth-child(8),
+  .products-table-tablet td:nth-child(8) {
+    width: auto !important;
+    min-width: 8rem !important;
+    padding: 0.75rem 0.5rem !important;
+    overflow: visible !important;
+  }
+  
+  /* Columna Acciones - Compacta pero adecuada */
+  .products-table-tablet th:nth-child(9),
+  .products-table-tablet td:nth-child(9) {
+    width: auto !important;
+    min-width: 7rem !important;
+  }
+  
+  /* Permitir que el contenido de Producto no se trunque en desktop */
+  .products-table-tablet td:nth-child(3) > div,
+  .products-table-tablet td:nth-child(3) > div > div {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    max-width: none !important;
+  }
+}
+
+/* Estilos específicos para tablets en la tabla de créditos */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tabla de créditos - solo tablets, no desktop */
+  .credits-table-tablet {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+  
+  .credits-table-tablet th,
+  .credits-table-tablet td {
+    padding: 0.75rem 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Organización optimizada de columnas para tablets */
+  .credits-table-tablet th:nth-child(1),
+  .credits-table-tablet td:nth-child(1) {
+    width: 6rem !important; /* Factura */
+    min-width: 6rem;
+    max-width: 6rem;
+  }
+  
+  .credits-table-tablet th:nth-child(2),
+  .credits-table-tablet td:nth-child(2) {
+    width: 12rem !important; /* Cliente - ancho fijo más compacto */
+    min-width: 12rem;
+    max-width: 12rem;
+  }
+  
+  /* Forzar truncado en nombres de clientes */
+  .credits-table-tablet td:nth-child(2) div {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+  
+  .credits-table-tablet th:nth-child(3),
+  .credits-table-tablet td:nth-child(3) {
+    width: 7rem !important; /* Estado */
+    min-width: 7rem;
+    max-width: 7rem;
+  }
+  
+  .credits-table-tablet th:nth-child(4),
+  .credits-table-tablet td:nth-child(4) {
+    width: 0 !important; /* Total Compra - oculto */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .credits-table-tablet th:nth-child(5),
+  .credits-table-tablet td:nth-child(5) {
+    width: 9rem !important; /* Saldo Pendiente - más espacio */
+    min-width: 9rem;
+    max-width: 9rem;
+  }
+  
+  .credits-table-tablet th:nth-child(6),
+  .credits-table-tablet td:nth-child(6),
+  .credits-table-tablet th:nth-child(7),
+  .credits-table-tablet td:nth-child(7),
+  .credits-table-tablet th:nth-child(8),
+  .credits-table-tablet td:nth-child(8) {
+    width: 0 !important; /* Último Abono, Registrado Por, Fecha Vencimiento - ocultos */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .credits-table-tablet th:nth-child(9),
+  .credits-table-tablet td:nth-child(9) {
+    width: 6.5rem !important; /* Acciones */
+    min-width: 6.5rem;
+    max-width: 6.5rem;
+  }
+  
+  /* Asegurar que la tabla no se desborde */
+  .credits-table-tablet-container {
+    overflow-x: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Estilos específicos para tablets en la tabla de garantías */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tabla de garantías - solo tablets, no desktop */
+  .warranty-table-tablet {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+  
+  .warranty-table-tablet th,
+  .warranty-table-tablet td {
+    padding: 0.75rem 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Organización optimizada de columnas para tablets */
+  .warranty-table-tablet th:nth-child(1),
+  .warranty-table-tablet td:nth-child(1) {
+    width: 7rem !important; /* Garantía */
+    min-width: 7rem;
+    max-width: 7rem;
+  }
+  
+  .warranty-table-tablet th:nth-child(2),
+  .warranty-table-tablet td:nth-child(2) {
+    width: 12rem !important; /* Cliente - ancho fijo más compacto */
+    min-width: 12rem;
+    max-width: 12rem;
+  }
+  
+  /* Forzar truncado en nombres de clientes */
+  .warranty-table-tablet td:nth-child(2) div {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+  
+  .warranty-table-tablet th:nth-child(3),
+  .warranty-table-tablet td:nth-child(3) {
+    width: auto !important; /* Producto - flexible */
+    min-width: 10rem;
+    max-width: 16rem;
+  }
+  
+  .warranty-table-tablet th:nth-child(4),
+  .warranty-table-tablet td:nth-child(4) {
+    width: 0 !important; /* Motivo - oculto */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .warranty-table-tablet th:nth-child(5),
+  .warranty-table-tablet td:nth-child(5) {
+    width: 7rem !important; /* Estado */
+    min-width: 7rem;
+    max-width: 7rem;
+  }
+  
+  .warranty-table-tablet th:nth-child(6),
+  .warranty-table-tablet td:nth-child(6) {
+    width: 0 !important; /* Fecha - oculto */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .warranty-table-tablet th:nth-child(7),
+  .warranty-table-tablet td:nth-child(7) {
+    width: 5.5rem !important; /* Acciones */
+    min-width: 5.5rem;
+    max-width: 5.5rem;
+  }
+  
+  /* Asegurar que la tabla no se desborde */
+  .warranty-table-tablet-container {
+    overflow-x: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* ========== TABLA DE LOGS PARA TABLETS ========== */
+  .logs-table-tablet {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+  
+  .logs-table-tablet th,
+  .logs-table-tablet td {
+    padding: 0.5rem 0.375rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Anchos específicos por columna */
+  .logs-table-tablet th:nth-child(1),
+  .logs-table-tablet td:nth-child(1) {
+    width: 2.5rem !important; /* # */
+    min-width: 2.5rem;
+    max-width: 2.5rem;
+  }
+  
+  .logs-table-tablet th:nth-child(2),
+  .logs-table-tablet td:nth-child(2) {
+    width: 10rem !important; /* Tipo - ajustado para dar espacio a otras columnas */
+    min-width: 10rem;
+    max-width: 10rem;
+  }
+  
+  .logs-table-tablet th:nth-child(3),
+  .logs-table-tablet td:nth-child(3) {
+    width: 6rem !important; /* Acción */
+    min-width: 6rem;
+    max-width: 6rem;
+  }
+  
+  /* Forzar truncado en acción */
+  .logs-table-tablet td:nth-child(3) div {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+  
+  .logs-table-tablet th:nth-child(4),
+  .logs-table-tablet td:nth-child(4) {
+    width: 0 !important; /* Descripción - oculto */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .logs-table-tablet th:nth-child(5),
+  .logs-table-tablet td:nth-child(5) {
+    width: 0 !important; /* Usuario - oculto */
+    min-width: 0;
+    max-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .logs-table-tablet th:nth-child(6),
+  .logs-table-tablet td:nth-child(6) {
+    width: 7rem !important; /* Fecha */
+    min-width: 7rem;
+    max-width: 7rem;
+  }
+  
+  /* Asegurar que la tabla no se desborde */
+  .logs-table-tablet-container {
+    overflow-x: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
