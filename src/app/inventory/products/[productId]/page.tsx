@@ -420,7 +420,7 @@ export default function ProductDetailPage() {
   const getProductStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'active':
-        return 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
+        return 'border-brand-500/20 bg-brand-500/[0.06] text-brand-900 dark:border-brand-500/25 dark:bg-brand-950/40 dark:text-brand-300/90'
       case 'inactive':
         return 'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
       case 'discontinued':
@@ -501,7 +501,7 @@ export default function ProductDetailPage() {
 
     if (store > 0) {
       if (store >= 10) {
-        return 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
+        return 'border-brand-500/20 bg-brand-500/[0.06] text-brand-900 dark:border-brand-500/25 dark:bg-brand-950/40 dark:text-brand-300/90'
       }
       if (store >= 5) {
         return 'border-amber-500/25 bg-amber-500/[0.06] text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300/90'
@@ -612,7 +612,7 @@ export default function ProductDetailPage() {
                       {product.name}
                     </h1>
                     {product.status === 'active' && (
-                      <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+                      <CheckCircle className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" strokeWidth={1.5} />
                     )}
                   </div>
                   <p className="mt-0.5 font-mono text-sm text-zinc-600 dark:text-zinc-300">{product.reference}</p>

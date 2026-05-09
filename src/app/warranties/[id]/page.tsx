@@ -53,11 +53,14 @@ export default function WarrantyDetailPage() {
   const shortId = id ? id.slice(-6) : ''
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
       <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
         <div className="flex w-full min-w-0 items-center justify-between gap-4 px-4 py-4 sm:py-5 md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <Shield className="h-6 w-6 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+            <Shield
+              className="h-6 w-6 shrink-0 text-indigo-600 dark:text-indigo-400"
+              strokeWidth={1.5}
+            />
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
                 Garantía #{shortId}
@@ -85,7 +88,7 @@ export default function WarrantyDetailPage() {
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando garantía…</p>
           </div>
         ) : notFound || !warranty ? (
-          <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+          <div className="rounded-xl border border-solid border-zinc-200 bg-white p-8 text-center shadow-sm outline outline-1 -outline-offset-1 outline-zinc-200/80 dark:border-zinc-800 dark:bg-zinc-900/40 dark:outline-zinc-800/80">
             <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">No se encontró la garantía</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
               Puede que no exista o no tengas permiso para verla.

@@ -70,7 +70,7 @@ const statusLabel: Record<Sale['status'], string> = {
 const statusBadgeClass = (status: Sale['status']) => {
   switch (status) {
     case 'completed':
-      return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300'
+      return 'border-brand-500/25 bg-brand-500/10 text-brand-900 dark:border-brand-500/30 dark:bg-brand-950/40 dark:text-brand-300'
     case 'pending':
       return 'border-amber-500/25 bg-amber-500/10 text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300'
     case 'draft':
@@ -254,7 +254,7 @@ export default function SellerDetailPage() {
                     variant="outline"
                     className={cn(
                       seller.isActive
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                        ? 'border-brand-500/30 bg-brand-500/10 text-brand-800 dark:text-brand-300'
                         : 'border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400'
                     )}
                   >

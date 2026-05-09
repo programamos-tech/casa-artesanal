@@ -218,7 +218,7 @@ export default function CreditsPage() {
 
   return (
     <RoleProtectedRoute module="payments" requiredAction="view">
-      <div className="space-y-6 bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-6 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 max-xl:pb-1">
+      <div className="space-y-4 bg-white py-4 dark:bg-neutral-950 max-xl:pb-1 md:space-y-6 md:py-6">
       <CreditTable
         todayPaymentsTotal={todayPaymentsTotal}
         credits={credits}

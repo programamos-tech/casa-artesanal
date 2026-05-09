@@ -9,7 +9,7 @@ export function TiendaFooter() {
       </p>
       <Link
         href="/login"
-        className="mt-4 inline-block text-sm font-medium text-emerald-700 underline-offset-4 hover:underline"
+        className="mt-4 inline-block text-sm font-medium text-brand-700 underline-offset-4 hover:underline"
       >
         Acceso empresas
       </Link>

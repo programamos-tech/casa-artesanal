@@ -15,6 +15,7 @@ import {
   Phone,
   Trash2,
   User,
+  UserRound,
   FileText,
   Calendar,
   Hash,
@@ -25,6 +26,8 @@ import {
   TrendingDown,
   X,
   Check,
+  CheckCircle,
+  Pause,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -38,8 +41,13 @@ import {
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
+const badgeTint = 'casa-artesanal-preserve-surface'
+
 const panel =
-  'rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50'
+  'casa-artesanal-preserve-surface rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50'
+
+const pageContainerClass =
+  'mx-auto w-full max-w-[min(100%,96rem)] min-w-0 px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16'
 
 const linkOutlineSm = cn(
   'inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-800 shadow-none transition-colors duration-150 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 dark:border-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-900/70 sm:flex-none'
@@ -56,8 +64,8 @@ export type ClientDetailEditDraft = Pick<
 function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">{label}</dt>
-      <dd className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{children}</dd>
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{label}</dt>
+      <dd className="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">{children}</dd>
     </div>
   )
 }
@@ -75,23 +83,56 @@ function getTypeLabel(type: Client['type']) {
   }
 }
 
+/** Misma paleta que lista de clientes / reportes */
 function getTypeBadgeClass(type: Client['type']) {
   switch (type) {
-    case 'minorista':
-      return 'border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300/90'
     case 'mayorista':
-      return 'border-sky-500/25 bg-sky-500/[0.06] text-sky-950 dark:border-sky-500/30 dark:bg-sky-950/40 dark:text-sky-300/90'
+      return 'border-0 bg-violet-100/90 text-violet-950 dark:bg-violet-950/35 dark:text-violet-300/90'
+    case 'minorista':
+      return 'border-0 bg-amber-100/85 text-amber-950 dark:bg-amber-950/25 dark:text-amber-200/90'
     case 'consumidor_final':
-      return 'border-violet-500/25 bg-violet-500/[0.06] text-violet-950 dark:border-violet-500/30 dark:bg-violet-950/40 dark:text-violet-300/90'
+      return 'border-0 bg-sky-100/85 text-sky-950 dark:bg-sky-950/30 dark:text-sky-300/85'
     default:
-      return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
+      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
   }
 }
 
 function getStatusBadgeClass(status: Client['status']) {
   return status === 'active'
-    ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
-    : 'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
+    ? 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
+    : 'border-0 bg-zinc-100/95 text-zinc-600 dark:bg-zinc-900/55 dark:text-zinc-400'
+}
+
+function TypeBadgeIcon({ type }: { type: Client['type'] }) {
+  switch (type) {
+    case 'mayorista':
+      return <Building2 className="h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400" strokeWidth={2} aria-hidden />
+    case 'minorista':
+      return <Building2 className="h-3 w-3 shrink-0 text-amber-700 dark:text-amber-400" strokeWidth={2} aria-hidden />
+    default:
+      return <UserRound className="h-3 w-3 shrink-0 text-sky-700 dark:text-sky-400" strokeWidth={2} aria-hidden />
+  }
+}
+
+function StatusBadgeIcon({ status }: { status: Client['status'] }) {
+  return status === 'active' ? (
+    <CheckCircle className="h-3 w-3 shrink-0 text-green-600 dark:text-green-400" strokeWidth={2} aria-hidden />
+  ) : (
+    <Pause className="h-3 w-3 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={2} aria-hidden />
+  )
+}
+
+function headerTypeIconClass(type: Client['type']) {
+  switch (type) {
+    case 'mayorista':
+      return 'text-violet-600 dark:text-violet-400'
+    case 'minorista':
+      return 'text-amber-600 dark:text-amber-500'
+    case 'consumidor_final':
+      return 'text-sky-600 dark:text-sky-400'
+    default:
+      return 'text-zinc-500 dark:text-zinc-400'
+  }
 }
 
 function storeLabel(storeId?: string) {
@@ -127,25 +168,39 @@ function StatCard({
   icon: Icon,
   label,
   value,
+  accent,
   className,
 }: {
   icon: LucideIcon
   label: string
   value: string
+  accent: 'limit' | 'debt' | 'available'
   className?: string
 }) {
+  const accentBg = {
+    limit: 'bg-indigo-50/50 dark:bg-indigo-950/25',
+    debt: 'bg-rose-50/50 dark:bg-rose-950/25',
+    available: 'bg-emerald-50/50 dark:bg-emerald-950/25',
+  } as const
+  const iconTone = {
+    limit: 'text-indigo-600 dark:text-indigo-400',
+    debt: 'text-rose-600 dark:text-rose-400',
+    available: 'text-emerald-600 dark:text-emerald-400',
+  } as const
+
   return (
     <div
       className={cn(
-        'rounded-xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/40',
+        'rounded-xl border border-zinc-200/80 px-4 py-4 shadow-sm dark:border-zinc-800',
+        accentBg[accent],
         className
       )}
     >
-      <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-        <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
+      <div className="flex items-center gap-2">
+        <Icon className={cn('h-4 w-4 shrink-0', iconTone[accent])} strokeWidth={1.75} />
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{label}</span>
       </div>
-      <p className="mt-2 text-lg font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">{value}</p>
+      <p className="mt-2.5 text-lg font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">{value}</p>
     </div>
   )
 }
@@ -187,7 +242,6 @@ export function ClientDetailPageView({
   const displayType = editing && draft ? draft.type : client.type
   const TypeIcon = displayType === 'consumidor_final' ? User : Building2
   const displayName = editing && draft ? draft.name : client.name
-
   const availableCredit = Math.max(0, client.creditLimit - client.currentDebt)
   const usagePct =
     client.creditLimit > 0 ? Math.min(100, Math.round((client.currentDebt / client.creditLimit) * 100)) : 0
@@ -209,11 +263,18 @@ export function ClientDetailPageView({
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
       <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
-        <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:py-5 md:px-6">
+        <div
+          className={cn(
+            'flex w-full min-w-0 flex-col gap-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:py-5',
+            pageContainerClass
+          )}
+        >
           <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
             <UserAvatar name={displayName || client.name} seed={client.id} size="lg" className="ring-2 ring-zinc-200/80 dark:ring-zinc-700" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Ficha del cliente</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                Ficha del cliente
+              </p>
               {editing && draft ? (
                 <>
                   <div className="mt-2 space-y-2">
@@ -287,17 +348,33 @@ export function ClientDetailPageView({
               ) : (
                 <>
                   <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <TypeIcon className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+                    <TypeIcon className={cn('h-4 w-4 shrink-0', headerTypeIconClass(displayType))} strokeWidth={1.5} aria-hidden />
                     <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
                       {client.name}
                     </h1>
                   </div>
                   <p className="mt-0.5 font-mono text-sm text-zinc-600 dark:text-zinc-300">{client.document}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge variant="outline" className={cn('border px-2 py-0.5 text-[11px] font-normal', getTypeBadgeClass(client.type))}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        badgeTint,
+                        'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
+                        getTypeBadgeClass(client.type)
+                      )}
+                    >
+                      <TypeBadgeIcon type={client.type} />
                       {getTypeLabel(client.type)}
                     </Badge>
-                    <Badge variant="outline" className={cn('border px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(client.status))}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        badgeTint,
+                        'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
+                        getStatusBadgeClass(client.status)
+                      )}
+                    >
+                      <StatusBadgeIcon status={client.status} />
                       {client.status === 'active' ? 'Activo' : 'Inactivo'}
                     </Badge>
                   </div>
@@ -355,27 +432,43 @@ export function ClientDetailPageView({
         </div>
       </div>
 
-      <div className="w-full min-w-0 space-y-4 px-4 py-6 md:space-y-5 md:px-6">
+      <div className={cn('min-w-0 space-y-4 py-6 md:space-y-5', pageContainerClass)}>
         <section className="grid gap-3 sm:grid-cols-3">
-          <StatCard icon={Wallet} label="Cupo de crédito" value={formatCurrency(client.creditLimit)} />
-          <StatCard icon={TrendingDown} label="Saldo adeudado" value={formatCurrency(client.currentDebt)} />
-          <StatCard icon={Receipt} label="Cupo disponible" value={formatCurrency(availableCredit)} />
+          <StatCard icon={Wallet} label="Cupo de crédito" value={formatCurrency(client.creditLimit)} accent="limit" />
+          <StatCard icon={TrendingDown} label="Saldo adeudado" value={formatCurrency(client.currentDebt)} accent="debt" />
+          <StatCard icon={Receipt} label="Cupo disponible" value={formatCurrency(availableCredit)} accent="available" />
         </section>
 
         {client.creditLimit > 0 && (
           <section className={cn(panel, 'p-4 md:px-6 md:py-5')}>
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
-                <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Uso del cupo</h2>
-                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Uso del cupo</h2>
+                <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
                   {usagePct}% del cupo en uso frente al límite configurado
                 </p>
               </div>
-              <span className="text-sm font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">{usagePct}%</span>
+              <span
+                className={cn(
+                  'text-sm font-bold tabular-nums',
+                  usagePct === 0 && 'text-emerald-600 dark:text-emerald-400',
+                  usagePct > 0 && usagePct < 50 && 'text-emerald-700 dark:text-emerald-300',
+                  usagePct >= 50 && usagePct < 85 && 'text-amber-600 dark:text-amber-400',
+                  usagePct >= 85 && 'text-rose-600 dark:text-rose-400'
+                )}
+              >
+                {usagePct}%
+              </span>
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-zinc-200/90 dark:bg-zinc-800">
               <div
-                className="h-full rounded-full bg-zinc-700 transition-[width] dark:bg-zinc-300"
+                className={cn(
+                  'h-full rounded-full transition-[width]',
+                  usagePct === 0 && 'bg-zinc-400 dark:bg-zinc-600',
+                  usagePct > 0 && usagePct < 50 && 'bg-emerald-500',
+                  usagePct >= 50 && usagePct < 85 && 'bg-amber-500',
+                  usagePct >= 85 && 'bg-rose-500'
+                )}
                 style={{ width: `${usagePct}%` }}
               />
             </div>
@@ -383,16 +476,42 @@ export function ClientDetailPageView({
         )}
 
         <section className={cn(panel, 'p-4 md:p-6')}>
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            <Hash className="h-4 w-4 text-zinc-400" strokeWidth={1.5} />
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <Hash className="h-4 w-4 text-slate-600 dark:text-slate-400" strokeWidth={1.75} aria-hidden />
             Identificación
           </h2>
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {!editing && (
               <>
-                <Field label="Documento">{client.document}</Field>
-                <Field label="Tipo">{getTypeLabel(client.type)}</Field>
-                <Field label="Estado en sistema">{client.status === 'active' ? 'Activo' : 'Inactivo'}</Field>
+                <Field label="Documento">
+                  <span className="font-mono text-sm">{client.document}</span>
+                </Field>
+                <Field label="Tipo">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      badgeTint,
+                      'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
+                      getTypeBadgeClass(client.type)
+                    )}
+                  >
+                    <TypeBadgeIcon type={client.type} />
+                    {getTypeLabel(client.type)}
+                  </Badge>
+                </Field>
+                <Field label="Estado en sistema">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      badgeTint,
+                      'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
+                      getStatusBadgeClass(client.status)
+                    )}
+                  >
+                    <StatusBadgeIcon status={client.status} />
+                    {client.status === 'active' ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                </Field>
               </>
             )}
             {editing && (
@@ -402,7 +521,7 @@ export function ClientDetailPageView({
             )}
             <Field label="Tienda asignada">
               <span className="inline-flex items-center gap-1.5">
-                <Store className="h-3.5 w-3.5 shrink-0 text-zinc-400" strokeWidth={1.5} />
+                <Store className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
                 <span>{storeLabel(client.storeId)}</span>
               </span>
               {storeSublabel(client.storeId) && (
@@ -411,7 +530,7 @@ export function ClientDetailPageView({
             </Field>
             <Field label="Alta en el sistema">
               <span className="inline-flex items-center gap-1.5 tabular-nums">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-400" strokeWidth={1.5} />
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} aria-hidden />
                 {formatDateTime(client.createdAt)}
               </span>
             </Field>
@@ -431,7 +550,10 @@ export function ClientDetailPageView({
         </section>
 
         <section className={cn(panel, 'p-4 md:p-6')}>
-          <h2 className="mb-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">Contacto</h2>
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" strokeWidth={1.75} aria-hidden />
+            Contacto
+          </h2>
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Correo">
               {editing && draft ? (
@@ -448,7 +570,7 @@ export function ClientDetailPageView({
                 </>
               ) : (
                 <span className="inline-flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-zinc-400" strokeWidth={1.5} />
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" strokeWidth={1.5} aria-hidden />
                   {client.email ? (
                     <a href={`mailto:${client.email}`} className="text-zinc-700 underline-offset-2 hover:underline dark:text-zinc-200">
                       {client.email}
@@ -470,7 +592,7 @@ export function ClientDetailPageView({
                 />
               ) : (
                 <span className="inline-flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-zinc-400" strokeWidth={1.5} />
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400" strokeWidth={1.5} aria-hidden />
                   {client.phone ? (
                     <a href={`tel:${client.phone.replace(/\s/g, '')}`} className="text-zinc-700 underline-offset-2 hover:underline dark:text-zinc-200">
                       {client.phone}
@@ -485,8 +607,8 @@ export function ClientDetailPageView({
         </section>
 
         <section className={cn(panel, 'p-4 md:p-6')}>
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            <MapPin className="h-4 w-4 text-zinc-400" strokeWidth={1.5} />
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400" strokeWidth={1.75} aria-hidden />
             Ubicación
           </h2>
           <dl className="grid gap-4 sm:grid-cols-2">
@@ -539,9 +661,9 @@ export function ClientDetailPageView({
         </section>
 
         <section className={cn(panel, 'overflow-hidden p-0')}>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/90 px-4 py-4 dark:border-zinc-800 md:px-6">
-            <h2 className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              <FileText className="h-4 w-4 text-zinc-400" strokeWidth={1.5} />
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/90 bg-zinc-50/50 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/30 md:px-6">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} aria-hidden />
               Créditos y facturas
             </h2>
             {!creditsLoading && credits.length > 0 && (

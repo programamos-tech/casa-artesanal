@@ -981,7 +981,7 @@ export default function SaleDetailModal({
                       <div className="pt-2 border-t border-gray-200 dark:border-neutral-600">
                         <div className="flex justify-between items-center font-medium">
                           <span className="text-gray-900 dark:text-white">Total:</span>
-                          <span className="text-emerald-600 dark:text-emerald-400">
+                          <span className="text-brand-600 dark:text-brand-400">
                             ${sale.payments.reduce((sum, payment) => sum + payment.amount, 0).toLocaleString('es-CO')}
                           </span>
                         </div>
@@ -993,7 +993,7 @@ export default function SaleDetailModal({
                 <div className="mt-4 pt-4 border-t border-gray-600">
                   <div className="flex items-center space-x-3">
                     <div className="h-5 w-5 flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+                      <div className="w-3 h-3 rounded-full bg-brand-400"></div>
                     </div>
                     <div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Estado</div>

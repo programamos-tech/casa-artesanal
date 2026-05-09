@@ -16,9 +16,6 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL === 'http://127.0.0.1:54321') {
 } else if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('allvvgbdzalqhuydhgyy')) {
   console.log('🚨 ESTÁS APUNTANDO A PRODUCCIÓN')
   console.log('   ¡CUIDADO! Los cambios afectarán usuarios reales\n')
-} else if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('cpbuodliotqjdqgnaqhk')) {
-  console.log('☁️  ESTÁS APUNTANDO A SUPABASE PRODUCCIÓN (cpbuodliotqjdqgnaqhk)')
-  console.log('   Los datos son los del proyecto actual en la nube.\n')
 } else {
   console.log('❓ URL desconocida\n')
 }

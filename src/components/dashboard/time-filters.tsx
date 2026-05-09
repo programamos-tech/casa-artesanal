@@ -62,7 +62,7 @@ export function TimeFilters({ selectedPeriod, onPeriodChange }: TimeFiltersProps
                     setIsOpen(false)
                   }}
                   className={`w-full flex items-center space-x-3 px-4 py-2 text-sm text-left hover:bg-gray-50 ${
-                    selectedPeriod === period.key ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'
+                    selectedPeriod === period.key ? 'bg-brand-50 text-brand-700' : 'text-gray-700'
                   }`}
                 >
                   <Icon className="h-4 w-4" />

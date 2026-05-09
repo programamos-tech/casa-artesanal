@@ -114,10 +114,10 @@ export function UsersTable({ users, roles, onView, onEdit, onDelete, onCreate }:
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center text-gray-900 dark:text-white">
-            <Users className="h-5 w-5 mr-2 text-emerald-600" />
+            <Users className="h-5 w-5 mr-2 text-brand-600" />
             Gestión de Usuarios
           </CardTitle>
-          <Button onClick={onCreate} className="bg-emerald-700 hover:bg-emerald-800">
+          <Button onClick={onCreate} className="bg-brand-700 hover:bg-brand-800">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Usuario
           </Button>
@@ -133,13 +133,13 @@ export function UsersTable({ users, roles, onView, onEdit, onDelete, onCreate }:
               placeholder="Buscar usuarios..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 bg-white dark:bg-neutral-800"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 bg-white dark:bg-neutral-800"
             />
           </div>
           <select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
+            className="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
           >
             <option value="all">Todos los roles</option>
             <option value="superadmin">Super Admin</option>
@@ -152,7 +152,7 @@ export function UsersTable({ users, roles, onView, onEdit, onDelete, onCreate }:
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
+            className="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
           >
             <option value="all">Todos los estados</option>
             <option value="active">Activo</option>
@@ -185,8 +185,8 @@ export function UsersTable({ users, roles, onView, onEdit, onDelete, onCreate }:
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-3">
-                      <div className="h-8 w-8 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center">
-                        <Users className="h-4 w-4 text-emerald-600" />
+                      <div className="h-8 w-8 bg-brand-100 dark:bg-brand-900/20 rounded-full flex items-center justify-center">
+                        <Users className="h-4 w-4 text-brand-600" />
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -250,7 +250,7 @@ export function UsersTable({ users, roles, onView, onEdit, onDelete, onCreate }:
                         size="sm"
                         variant="ghost"
                         onClick={() => onEdit(user)}
-                        className="h-8 w-8 p-0 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/20"
+                        className="h-8 w-8 p-0 text-brand-500 hover:text-brand-700 hover:bg-brand-100 dark:hover:bg-brand-900/20"
                         title="Editar usuario"
                       >
                         <Edit className="h-4 w-4" />

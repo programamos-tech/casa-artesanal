@@ -24,6 +24,7 @@ export default function WarrantiesPage() {
   const [selectedWarranty, setSelectedWarranty] = useState<Warranty | null>(null)
   const [searchResults, setSearchResults] = useState<Warranty[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [searchActive, setSearchActive] = useState(false)
 
   const handleRefresh = async () => {
     await refreshWarranties()
@@ -66,26 +67,27 @@ export default function WarrantiesPage() {
   const handleSearch = async (searchTerm: string) => {
     if (!searchTerm.trim()) {
       setSearchResults([])
+      setSearchActive(false)
       setIsSearching(false)
       return
     }
 
+    setSearchActive(true)
     setIsSearching(true)
     try {
       const results = await searchWarranties(searchTerm)
       setSearchResults(results)
-    } catch (error) {
-      // Error silencioso en producción
+    } catch {
       setSearchResults([])
     } finally {
       setIsSearching(false)
     }
   }
 
-  const warrantiesToShow = searchResults.length > 0 ? searchResults : warranties
+  const warrantiesToShow = searchActive ? searchResults : warranties
 
   return (
-    <div className="min-h-screen space-y-6 bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-6 pb-24 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
+    <div className="min-h-screen space-y-4 bg-white py-4 pb-24 dark:bg-neutral-950 md:space-y-6 md:py-6 xl:pb-8">
       <WarrantyTable
           warranties={warrantiesToShow}
           loading={loading || isSearching}

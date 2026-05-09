@@ -574,18 +574,18 @@ export default function ClientCreditsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Créditos del cliente</h2>
                 {creditSelectionMode && selectedCredits.length > 0 && (
-                  <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 dark:border-emerald-800/50 dark:bg-emerald-950/35 sm:w-auto sm:justify-end">
+                  <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-brand-200/80 bg-brand-50/90 px-3 py-2 dark:border-brand-800/50 dark:bg-brand-950/35 sm:w-auto sm:justify-end">
                     <span className="text-sm text-zinc-700 dark:text-zinc-300">
                       <span className="font-medium">{selectedCredits.length}</span> seleccionado
                       {selectedCredits.length !== 1 ? 's' : ''} ·{' '}
-                      <span className="font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">
+                      <span className="font-semibold tabular-nums text-brand-800 dark:text-brand-300">
                         {formatCurrency(totalSelectedPending)}
                       </span>
                     </span>
                     <Button
                       type="button"
                       size="sm"
-                      className="shrink-0 !border-emerald-700 !bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!border-emerald-600 dark:!bg-emerald-600 dark:hover:!bg-emerald-500"
+                      className="shrink-0 !border-brand-700 !bg-brand-600 !text-white hover:!bg-brand-700 dark:!border-brand-600 dark:!bg-brand-600 dark:hover:!bg-brand-500"
                       onClick={() => setBulkModalOpen(true)}
                     >
                       <Wallet className="mr-1.5 h-4 w-4 shrink-0 text-white" strokeWidth={1.5} aria-hidden />
@@ -617,7 +617,7 @@ export default function ClientCreditsPage() {
                             checked={selectedCreditIds.has(credit.id)}
                             onChange={() => toggleCreditSelected(credit.id)}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/40"
+                            className="h-4 w-4 rounded border-zinc-300 text-brand-600 focus:ring-brand-500/40"
                             aria-label={`Seleccionar crédito ${credit.invoiceNumber}`}
                           />
                         </label>
@@ -696,7 +696,7 @@ export default function ClientCreditsPage() {
                                 type="checkbox"
                                 checked={payableCredits.every((c) => selectedCreditIds.has(c.id))}
                                 onChange={toggleSelectAllPayable}
-                                className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/40"
+                                className="h-4 w-4 rounded border-zinc-300 text-brand-600 focus:ring-brand-500/40"
                                 title="Seleccionar todos los créditos con saldo"
                                 aria-label="Seleccionar todos los créditos pagables"
                               />
@@ -749,7 +749,7 @@ export default function ClientCreditsPage() {
                                   type="checkbox"
                                   checked={selectedCreditIds.has(credit.id)}
                                   onChange={() => toggleCreditSelected(credit.id)}
-                                  className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/40"
+                                  className="h-4 w-4 rounded border-zinc-300 text-brand-600 focus:ring-brand-500/40"
                                   aria-label={`Seleccionar crédito ${credit.invoiceNumber}`}
                                 />
                               ) : (

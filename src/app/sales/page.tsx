@@ -127,7 +127,7 @@ export default function SalesPage() {
     return (
       <div className="flex min-h-[50dvh] items-center justify-center bg-white py-6 dark:bg-neutral-950">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-500 dark:border-emerald-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-500 dark:border-brand-500 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-300">Cargando ventas...</p>
         </div>
       </div>

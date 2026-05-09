@@ -38,7 +38,9 @@ const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 const MIN_PROFIT_MARGIN = 0.10
 
 const inputClass =
-  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20'
+  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-500/20'
+
+const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 
 export default function NewSalePage() {
   const router = useRouter()
@@ -788,8 +790,8 @@ export default function NewSalePage() {
 
   return (
     <RoleProtectedRoute module="sales" requiredAction="create">
-      <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
-        <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
+      <div className="min-h-screen bg-gradient-to-b from-indigo-50/60 via-white to-violet-50/40 pb-28 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-violet-950/20 xl:pb-8">
+        <header className="sticky top-0 z-40 border-b border-indigo-100/70 bg-gradient-to-r from-white/95 via-indigo-50/40 to-violet-50/50 backdrop-blur-md dark:border-indigo-900/35 dark:from-zinc-950/95 dark:via-indigo-950/25 dark:to-zinc-950/95">
           <div className="flex w-full min-w-0 flex-wrap items-center gap-3 px-4 py-4 md:px-6">
             <Button
               type="button"
@@ -801,7 +803,7 @@ export default function NewSalePage() {
             >
               <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
             </Button>
-            <FileText className="h-6 w-6 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+            <FileText className="h-6 w-6 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
@@ -829,7 +831,7 @@ export default function NewSalePage() {
               <Card className={cardShell}>
                 <CardHeader className="space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    <Package className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300" strokeWidth={1.5} />
+                    <Package className={cn(sectionIconClass)} strokeWidth={1.5} />
                     Productos
                   </CardTitle>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -1052,7 +1054,7 @@ export default function NewSalePage() {
               <Card className={cardShell}>
                 <CardHeader className="space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    <User className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300" strokeWidth={1.5} />
+                    <User className={cn(sectionIconClass, 'text-violet-600 dark:text-violet-400')} strokeWidth={1.5} />
                     Cliente
                   </CardTitle>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Quién recibe la factura.</p>
@@ -1181,7 +1183,7 @@ export default function NewSalePage() {
               <Card className={cn(cardShell, 'relative z-0 overflow-hidden')}>
                 <CardHeader className="space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    <Users className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300" strokeWidth={1.5} />
+                    <Users className={cn(sectionIconClass, 'text-sky-600 dark:text-sky-400')} strokeWidth={1.5} />
                     Vendedor
                   </CardTitle>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -1272,7 +1274,7 @@ export default function NewSalePage() {
               <Card className={cn(cardShell, 'relative z-0 overflow-hidden')}>
                 <CardHeader className="space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    <CreditCard className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300" strokeWidth={1.5} />
+                    <CreditCard className={cn(sectionIconClass, 'text-emerald-600 dark:text-emerald-400')} strokeWidth={1.5} />
                     Método de pago
                   </CardTitle>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Cómo se liquida la venta.</p>
@@ -1385,7 +1387,7 @@ export default function NewSalePage() {
                           className={cn(
                             'rounded-lg border p-3',
                             parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total
-                              ? 'border-emerald-200/80 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/25'
+                              ? 'border-brand-200/80 bg-brand-50/80 dark:border-brand-900/40 dark:bg-brand-950/25'
                               : 'border-red-200/80 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/25'
                           )}
                         >
@@ -1395,7 +1397,7 @@ export default function NewSalePage() {
                               className={cn(
                                 'text-xl font-bold tabular-nums',
                                 parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total
-                                  ? 'text-emerald-700 dark:text-emerald-400'
+                                  ? 'text-brand-700 dark:text-brand-400'
                                   : 'text-red-600 dark:text-red-400'
                               )}
                             >
@@ -1409,7 +1411,7 @@ export default function NewSalePage() {
                             </div>
                           )}
                           {parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total && (
-                            <div className="mt-2 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                            <div className="mt-2 flex items-center gap-2 text-xs text-brand-700 dark:text-brand-400">
                               <CheckCircle className="h-3.5 w-3.5 shrink-0" />
                               <span>Pago completo</span>
                             </div>
@@ -1424,7 +1426,7 @@ export default function NewSalePage() {
               <Card className={cn(cardShell, 'relative z-0 overflow-hidden md:sticky md:top-24')}>
                 <CardHeader className="space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    <DollarSign className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300" strokeWidth={1.5} />
+                    <DollarSign className={cn(sectionIconClass, 'text-amber-600 dark:text-amber-400')} strokeWidth={1.5} />
                     Resumen
                   </CardTitle>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Totales y confirmación.</p>
@@ -1434,7 +1436,7 @@ export default function NewSalePage() {
                     <>
                       {saleBlockingAlert}
                       <div className="py-10 text-center text-zinc-500 dark:text-zinc-400">
-                        <Package className="mx-auto mb-2 h-10 w-10 opacity-40" strokeWidth={1.5} />
+                        <Package className="mx-auto mb-2 h-10 w-10 text-indigo-400/50 dark:text-indigo-400/35" strokeWidth={1.5} />
                         <p className="text-sm">Agrega productos para ver el resumen</p>
                       </div>
                     </>
@@ -1510,7 +1512,7 @@ export default function NewSalePage() {
                         )}
                         <div className="flex justify-between border-t border-zinc-200 pt-2 text-base font-bold dark:border-zinc-800">
                           <span className="text-zinc-900 dark:text-zinc-50">Total</span>
-                          <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{formatCurrency(total)}</span>
+                          <span className="tabular-nums text-brand-700 dark:text-brand-400">{formatCurrency(total)}</span>
                         </div>
                       </div>
 

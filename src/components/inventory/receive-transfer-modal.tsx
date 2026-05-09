@@ -177,7 +177,7 @@ export function ReceiveTransferModal({ isOpen, onClose, onConfirm, transfer }: R
                     className={cn(
                       'mt-1 text-xl font-semibold tabular-nums',
                       totalReceived === totalExpected
-                        ? 'text-emerald-600 dark:text-emerald-400'
+                        ? 'text-brand-600 dark:text-brand-400'
                         : totalReceived < totalExpected
                           ? 'text-amber-600 dark:text-amber-400'
                           : 'text-red-600 dark:text-red-400'

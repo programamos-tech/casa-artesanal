@@ -256,16 +256,16 @@ export function DatePicker({
                   'cursor-not-allowed bg-zinc-100 text-zinc-300 dark:bg-zinc-950 dark:text-zinc-700',
                 !isDisabled &&
                   isSelectedDay &&
-                  'z-[1] bg-emerald-600 font-semibold text-white shadow-[0_0_0_1px_rgba(16,185,129,0.45)] hover:bg-emerald-700 focus-visible:bg-emerald-700 dark:bg-emerald-500 dark:text-white dark:shadow-[0_0_0_1px_rgba(52,211,153,0.5)] dark:hover:bg-emerald-400',
+                  'z-[1] bg-brand-600 font-semibold text-white shadow-[0_0_0_1px_rgba(16,185,129,0.45)] hover:bg-brand-700 focus-visible:bg-brand-700 dark:bg-brand-500 dark:text-white dark:shadow-[0_0_0_1px_rgba(52,211,153,0.5)] dark:hover:bg-brand-400',
                 !isDisabled &&
                   !isSelectedDay &&
                   isCurrentMonth &&
-                  'text-zinc-900 hover:bg-emerald-100/80 dark:text-zinc-100 dark:hover:bg-emerald-900/35',
+                  'text-zinc-900 hover:bg-brand-100/80 dark:text-zinc-100 dark:hover:bg-brand-900/35',
                 !isDisabled && !isSelectedDay && !isCurrentMonth && 'text-zinc-400 dark:text-zinc-600',
                 !isDisabled &&
                   !isSelectedDay &&
                   isCurrentDay &&
-                  'font-semibold text-emerald-700 dark:text-emerald-400'
+                  'font-semibold text-brand-700 dark:text-brand-400'
               )}
             >
               {day}
@@ -289,7 +289,7 @@ export function DatePicker({
               'flex-1 touch-manipulation rounded-lg px-3 py-2 text-xs font-medium transition-colors',
               isDateDisabled(new Date())
                 ? 'cursor-not-allowed bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600'
-                : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
+                : 'bg-brand-100 text-brand-900 hover:bg-brand-200 dark:bg-brand-950/50 dark:text-brand-200 dark:hover:bg-brand-900/40'
             )}
           >
             Hoy

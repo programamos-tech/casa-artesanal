@@ -18,6 +18,13 @@ import { Warranty, Product, Client } from '@/types'
 import { ProductsService } from '@/lib/products-service'
 import { ClientsService } from '@/lib/clients-service'
 import { useAuth } from '@/contexts/auth-context'
+import { cn } from '@/lib/utils'
+import { cardShell as cardShellBase } from '@/lib/card-shell'
+
+const warrantyInputClass =
+  'w-full rounded-lg border border-zinc-200 bg-white text-sm text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-500/20'
+
+const warrantyCardShell = cn(cardShellBase, 'shadow-none')
 
 interface WarrantyModalProps {
   isOpen: boolean
@@ -314,17 +321,19 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
 
   const modal = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-white/70 p-3 backdrop-blur-sm dark:bg-black/60 sm:p-6 sm:py-10 lg:px-12 xl:left-56"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm dark:bg-black/60 sm:p-6 sm:py-10 lg:px-12 xl:left-56"
       style={{
         paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
         paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
       }}
     >
-      <div className="flex max-h-[min(88dvh,880px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900/95 sm:max-h-[min(94vh,900px)] sm:max-w-2xl lg:max-w-5xl">
+      <div className="flex max-h-[min(88dvh,880px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/45 via-white to-zinc-50 shadow-xl dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-900 dark:to-zinc-950 sm:max-h-[min(94vh,900px)] sm:max-w-2xl lg:max-w-5xl">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
-          <div className="flex items-center justify-between gap-3 border-b border-zinc-200/90 px-4 py-3.5 sm:px-5 dark:border-zinc-800">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <Shield className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+          <div className="flex items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/65 px-4 py-3.5 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25 sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
+                <Shield className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
+              </div>
               <div className="min-w-0">
                 <h2 className="line-clamp-2 text-base font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-lg">
                   {warranty ? 'Editar garantía' : 'Nueva garantía'}
@@ -348,10 +357,10 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
         <div className="p-3 sm:p-4 md:p-5">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div className="space-y-3">
-            <Card className="rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+            <Card className={cn(warrantyCardShell)}>
               <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-2">
                 <CardTitle className="flex items-center gap-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
-                    <Package className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                    <Package className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                     Producto defectuoso
                 </CardTitle>
               </CardHeader>
@@ -359,13 +368,13 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                 {!selectedDefectiveProduct ? (
                   <>
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                      <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
                       <input
                         type="text"
                         placeholder="Buscar producto defectuoso..."
                         value={defectiveSearch}
                         onChange={(e) => setDefectiveSearch(e.target.value)}
-                        className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+                        className={cn(warrantyInputClass, 'h-10 pl-9 pr-3')}
                       />
                     </div>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -441,7 +450,7 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                           const value = parseInt(e.target.value) || 1
                           setFormData(prev => ({ ...prev, quantityReceived: Math.max(1, value) }))
                         }}
-                        className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+                        className={cn(warrantyInputClass, 'h-10 px-2.5')}
                       />
                       {errors.quantityReceived && (
                         <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
@@ -455,10 +464,10 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+            <Card className={cn(warrantyCardShell)}>
               <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-2">
                 <CardTitle className="flex items-center gap-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
-                    <Package className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                    <Package className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                     Producto de reemplazo
                 </CardTitle>
               </CardHeader>
@@ -470,13 +479,13 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                 ) : !selectedReplacementProduct ? (
                   <>
                         <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
                           <input
                             type="text"
                             placeholder="Buscar producto de reemplazo..."
                         value={replacementSearch}
                         onChange={(e) => setReplacementSearch(e.target.value)}
-                        className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+                        className={cn(warrantyInputClass, 'h-10 pl-9 pr-3')}
                           />
                         </div>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -569,7 +578,7 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                           const maxStock = getProductStock(selectedReplacementProduct)
                           setFormData(prev => ({ ...prev, quantityDelivered: Math.max(1, Math.min(maxStock, value)) }))
                         }}
-                        className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+                        className={cn(warrantyInputClass, 'h-10 px-2.5')}
                       />
                       {errors.quantityDelivered && (
                         <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
@@ -588,10 +597,10 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
             </div>
 
             <div className="space-y-3">
-            <Card className="rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+            <Card className={cn(warrantyCardShell)}>
               <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-2">
                 <CardTitle className="flex items-center gap-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
-                    <User className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                    <User className="h-5 w-5 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
                     Información del cliente
                 </CardTitle>
               </CardHeader>
@@ -610,7 +619,7 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                       <select
                         value={selectedClientId}
                         onChange={(e) => handleSelectClient(e.target.value)}
-                        className="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+                        className={cn(warrantyInputClass, 'h-11 px-3')}
                       >
                         <option value="">Selecciona un cliente...</option>
                         {filteredClients.map((client) => (
@@ -648,10 +657,10 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                  </CardContent>
                </Card>
 
-              <Card className="rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+              <Card className={cn(warrantyCardShell)}>
                 <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-2">
                   <CardTitle className="flex items-center gap-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
-                    <ClipboardList className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                    <ClipboardList className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
                     Notas adicionales
                   </CardTitle>
                 </CardHeader>
@@ -664,7 +673,7 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder="Notas adicionales sobre la garantía..."
                     rows={3}
-                    className="w-full resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+                    className={cn(warrantyInputClass, 'resize-none px-3 py-2.5')}
                   />
               </CardContent>
             </Card>
@@ -673,7 +682,7 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
         </div>
 
         <div
-          className="flex justify-end gap-2 border-t border-zinc-200/90 bg-white px-3 pb-3 pt-4 dark:border-zinc-800 dark:bg-zinc-950 sm:gap-2.5 sm:px-5"
+          className="flex justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-3 pb-3 pt-4 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:gap-2.5 sm:px-5"
           style={{
             paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0px))'
           }}
@@ -692,7 +701,7 @@ export function WarrantyModal({ isOpen, onClose, onSave, warranty }: WarrantyMod
             onClick={handleSave}
             disabled={loading}
             size="sm"
-            className="h-9 w-full flex-1 touch-manipulation bg-zinc-900 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white sm:w-auto sm:flex-none"
+            className="h-9 w-full flex-1 touch-manipulation bg-brand-700 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-brand-800 disabled:opacity-50 dark:bg-brand-600 dark:hover:bg-brand-500 sm:w-auto sm:flex-none"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

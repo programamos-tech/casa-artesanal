@@ -5,7 +5,7 @@ import { useTheme } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
 
 const btn =
-  'flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50'
+  'flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50'
 
 export function LoginThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme()
@@ -26,7 +26,7 @@ export function LoginThemeToggle({ className }: { className?: string }) {
         className={cn(
           btn,
           theme === 'system'
-            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300'
+            ? 'bg-brand-100 text-brand-900 dark:bg-brand-500/20 dark:text-brand-300'
             : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
         )}
         onClick={() => setTheme('system')}
@@ -40,7 +40,7 @@ export function LoginThemeToggle({ className }: { className?: string }) {
         className={cn(
           btn,
           theme === 'light'
-            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300'
+            ? 'bg-brand-100 text-brand-900 dark:bg-brand-500/20 dark:text-brand-300'
             : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
         )}
         onClick={() => setTheme('light')}
@@ -54,7 +54,7 @@ export function LoginThemeToggle({ className }: { className?: string }) {
         className={cn(
           btn,
           theme === 'dark'
-            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300'
+            ? 'bg-brand-100 text-brand-900 dark:bg-brand-500/20 dark:text-brand-300'
             : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
         )}
         onClick={() => setTheme('dark')}

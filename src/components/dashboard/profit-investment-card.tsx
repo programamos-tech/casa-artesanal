@@ -103,8 +103,8 @@ export function ProfitInvestmentCard({
     <Card className="border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-sm">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center">
-          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mr-3">
-            <PiggyBank className="h-5 w-5 text-emerald-600" />
+          <div className="p-2 rounded-xl bg-brand-50 dark:bg-brand-900/20 mr-3">
+            <PiggyBank className="h-5 w-5 text-brand-600" />
           </div>
           <span className="text-lg font-medium text-gray-800 dark:text-gray-200">Inversión y Ganancias</span>
         </CardTitle>
@@ -114,8 +114,8 @@ export function ProfitInvestmentCard({
           {/* Resumen principal */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-5 rounded-xl bg-white dark:bg-neutral-800/50 shadow-sm">
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-emerald-600" />
+              <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-brand-600" />
               </div>
               <p className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                 {formatCurrency(totalSales)}

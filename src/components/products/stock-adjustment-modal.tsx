@@ -387,7 +387,7 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                 <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Diferencia</span>
                 <div className="flex items-center space-x-2">
                   {getStockDifference() > 0 ? (
-                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+                    <TrendingUp className="h-4 w-4 text-brand-600 dark:text-brand-400" strokeWidth={1.5} />
                   ) : (
                     <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" strokeWidth={1.5} />
                   )}
@@ -395,7 +395,7 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                     className={cn(
                       'text-lg font-semibold tabular-nums',
                       getStockDifference() > 0
-                        ? 'text-emerald-700 dark:text-emerald-400'
+                        ? 'text-brand-700 dark:text-brand-400'
                         : 'text-red-700 dark:text-red-400'
                     )}
                   >

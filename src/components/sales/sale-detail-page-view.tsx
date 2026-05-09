@@ -19,6 +19,7 @@ import {
   DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { cardShell } from '@/lib/card-shell'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Sale, Credit, StoreStockTransfer } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
@@ -29,10 +30,11 @@ import {
   getEffectiveCreditStatus,
 } from '@/lib/credit-status-ui'
 
-const panel =
-  'rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50'
+const badgeTint = 'casa-artesanal-preserve-surface'
 
-const iconMuted = 'shrink-0 text-zinc-500 dark:text-zinc-300'
+const sectionIconClass = 'shrink-0 text-indigo-600 dark:text-indigo-400'
+
+const iconMuted = 'shrink-0 text-zinc-500 dark:text-zinc-400'
 
 function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -46,17 +48,45 @@ function Field({ label, children, className }: { label: string; children: ReactN
 function saleStatusBadgeClass(status: string) {
   switch (status) {
     case 'completed':
-      return 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
+      return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
     case 'pending':
-      return 'border-amber-500/25 bg-amber-500/[0.06] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300/90'
+      return 'border-0 bg-amber-100/90 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
     case 'draft':
-      return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
+      return 'border-0 bg-violet-100/85 text-violet-950/90 dark:bg-violet-950/30 dark:text-violet-200/85'
     case 'cancelled':
-      return 'border-rose-500/30 bg-rose-500/[0.06] text-rose-900 dark:border-zinc-600 dark:bg-rose-950/35 dark:text-rose-200/90'
+      return 'border-0 bg-red-100/90 text-red-900/90 dark:bg-red-950/35 dark:text-red-300/90'
     default:
-      return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
+      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
   }
 }
+
+function paymentMethodBadgeClass(method: string) {
+  switch (method) {
+    case 'cash':
+      return 'border-0 bg-emerald-100/85 text-emerald-950/90 dark:bg-emerald-950/28 dark:text-emerald-200/88'
+    case 'credit':
+      return 'border-0 bg-violet-100/88 text-violet-950/90 dark:bg-violet-950/30 dark:text-violet-200/85'
+    case 'transfer':
+      return 'border-0 bg-sky-100/85 text-sky-950/90 dark:bg-sky-950/30 dark:text-sky-200/85'
+    case 'nequi':
+      return 'border-0 bg-fuchsia-100/80 text-fuchsia-950/90 dark:bg-fuchsia-950/28 dark:text-fuchsia-200/85'
+    case 'bancolombia':
+      return 'border-0 bg-amber-100/88 text-amber-950/90 dark:bg-amber-950/28 dark:text-amber-200/88'
+    case 'card':
+      return 'border-0 bg-indigo-100/88 text-indigo-950/90 dark:bg-indigo-950/30 dark:text-indigo-200/85'
+    case 'warranty':
+      return 'border-0 bg-zinc-200/90 text-zinc-800 dark:bg-zinc-800/55 dark:text-zinc-300'
+    case 'mixed':
+      return 'border-0 bg-teal-100/85 text-teal-950/90 dark:bg-teal-950/28 dark:text-teal-200/85'
+    default:
+      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
+  }
+}
+
+const linkAccentClass =
+  'text-indigo-600 underline-offset-2 hover:text-indigo-700 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300'
+
+const linkAccentStrongClass = cn(linkAccentClass, 'font-semibold')
 
 function saleStatusLabel(status: string) {
   switch (status) {
@@ -251,7 +281,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
       <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
         <div className="flex w-full min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-5 md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <FileText className="h-6 w-6 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+            <FileText className={cn('h-6 w-6 shrink-0', sectionIconClass)} strokeWidth={1.5} />
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
                 Factura {titleInvoice}
@@ -265,7 +295,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                 size="sm"
                 variant="outline"
                 className={cn(
-                  'border-red-500/40 text-red-700 hover:bg-red-500/[0.08] dark:border-red-500/35 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50'
+                  'border-rose-300/80 text-rose-800 hover:bg-rose-500/[0.08] dark:border-rose-500/40 dark:bg-transparent dark:text-rose-300 dark:hover:bg-rose-950/45'
                 )}
                 onClick={handleShowCancelForm}
                 disabled={isCancelling}
@@ -301,7 +331,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
             className={cn(
               'mb-6 rounded-xl border-2 p-4',
               cancelSuccessMessage.includes('exitosamente')
-                ? 'border-emerald-200 bg-emerald-50/90 dark:border-emerald-800 dark:bg-emerald-950/30'
+                ? 'border-emerald-200/90 bg-emerald-50/90 dark:border-emerald-900/50 dark:bg-emerald-950/25'
                 : 'border-red-200 bg-red-50/90 dark:border-red-800 dark:bg-red-950/30'
             )}
           >
@@ -317,13 +347,19 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
 
         <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
           <aside className="w-full min-w-0 shrink-0 lg:sticky lg:top-6 lg:w-80">
-            <div className={panel}>
-              <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Estado de la venta</p>
+            <div className={cardShell}>
+              <div className="border-b border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/35">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+                  Estado de la venta
+                </p>
                 <div className="mt-3">
                   <Badge
                     variant="outline"
-                    className={`inline-flex border px-2.5 py-1 text-sm font-medium ${saleStatusBadgeClass(sale.status)}`}
+                    className={cn(
+                      badgeTint,
+                      'inline-flex px-2.5 py-1 text-sm font-medium',
+                      saleStatusBadgeClass(sale.status)
+                    )}
                   >
                     {saleStatusLabel(sale.status)}
                   </Badge>
@@ -340,7 +376,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                   <>
                     <div className="px-4 py-3">
                       <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pagado (crédito)</dt>
-                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-300/95">
                         {formatCurrency(credit.paidAmount)}
                       </dd>
                     </div>
@@ -350,8 +386,8 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                         className={cn(
                           'mt-1 text-base font-semibold tabular-nums',
                           pendingCredit <= 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-red-600 dark:text-red-400'
+                            ? 'text-zinc-500 dark:text-zinc-500'
+                            : 'text-rose-600 dark:text-rose-400'
                         )}
                       >
                         {formatCurrency(pendingCredit)}
@@ -362,13 +398,13 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                   <>
                     <div className="px-4 py-3">
                       <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Cobrado</dt>
-                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-300/95">
                         {formatCurrency(sale.status === 'cancelled' ? 0 : paidOnCredit)}
                       </dd>
                     </div>
                     <div className="px-4 py-3">
                       <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pendiente</dt>
-                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      <dd className="mt-1 text-base font-semibold tabular-nums text-zinc-500 dark:text-zinc-500">
                         {formatCurrency(0)}
                       </dd>
                     </div>
@@ -405,7 +441,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                       <dd className="mt-1">
                         <Link
                           href={`/payments/${credit.clientId}/credit/${credit.id}`}
-                          className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                          className={cn('inline-flex items-center gap-1 font-mono text-sm', linkAccentStrongClass)}
                         >
                           #{getCreditId(credit)}
                           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -423,7 +459,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                     <Truck className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
                     <div className="min-w-0 flex-1">
                       <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Transferencia</dt>
-                      <dd className="mt-1 font-mono text-sm text-cyan-700 dark:text-cyan-400">
+                      <dd className="mt-1 font-mono text-sm text-sky-700 dark:text-sky-400">
                         {transfer.transferNumber || `#${getTransferId(transfer)}`}
                       </dd>
                     </div>
@@ -434,8 +470,8 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
           </aside>
 
           <div className="min-w-0 flex-1 space-y-6">
-            <div className={panel}>
-              <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <div className={cardShell}>
+              <div className="border-b border-zinc-200/80 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Datos de la venta</h2>
                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cliente, vendedor, método y referencias.</p>
               </div>
@@ -465,7 +501,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                         {sale.sellerId ? (
                           <Link
                             href={`/sellers/${sale.sellerId}`}
-                            className="inline-flex items-center gap-1 text-zinc-900 hover:underline dark:text-zinc-100"
+                            className={cn('inline-flex items-center gap-1', linkAccentClass)}
                           >
                             {sale.sellerName}
                             <ExternalLink className="h-3.5 w-3.5 text-zinc-400" />
@@ -479,7 +515,11 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                     <Field label="Tipo de pago">
                       <Badge
                         variant="outline"
-                        className="mt-1 border-zinc-200/90 bg-zinc-50 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-200"
+                        className={cn(
+                          badgeTint,
+                          'mt-1 px-2 py-0.5 text-[13px] font-normal',
+                          paymentMethodBadgeClass(sale.paymentMethod)
+                        )}
                       >
                         {getPaymentMethodLabel(sale.paymentMethod)}
                       </Badge>
@@ -488,7 +528,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                       <Field label="ID crédito">
                         <Link
                           href={`/payments/${credit.clientId}/credit/${credit.id}`}
-                          className="inline-flex items-center gap-1 font-mono text-sm text-blue-600 hover:underline dark:text-blue-400"
+                          className={cn('inline-flex items-center gap-1 font-mono text-sm', linkAccentStrongClass)}
                         >
                           #{getCreditId(credit)}
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -506,7 +546,10 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                           key={index}
                           className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950/40"
                         >
-                          <Badge variant="outline" className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className={cn(badgeTint, 'border-0 px-2 py-0.5 text-xs font-normal', paymentMethodBadgeClass(payment.paymentType))}
+                          >
                             {getPaymentMethodLabel(payment.paymentType)}
                           </Badge>
                           <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
@@ -531,7 +574,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                 )}
                 {sale.status !== 'cancelled' && transfer && (
                   <div className="px-4 py-5 md:px-6">
-                    <p className="flex items-center gap-2 text-sm text-cyan-700 dark:text-cyan-400">
+                    <p className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300/95">
                       <AlertTriangle className="h-4 w-4 shrink-0" />
                       Esta factura solo puede anularse desde Transferencias.
                     </p>
@@ -541,10 +584,10 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
             </div>
 
             {credit && sale.paymentMethod === 'credit' && (
-              <div className={panel}>
-                <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+              <div className={cardShell}>
+                <div className="border-b border-zinc-200/80 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    <CreditCard className={cn('h-4 w-4', iconMuted)} strokeWidth={1.5} />
+                    <CreditCard className={cn('h-4 w-4', sectionIconClass)} strokeWidth={1.5} />
                     Crédito asociado
                   </h2>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Enlazado a esta factura.</p>
@@ -581,10 +624,10 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
               </div>
             )}
 
-            <div className={panel}>
-              <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <div className={cardShell}>
+              <div className="border-b border-zinc-200/80 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  <DollarSign className={cn('h-4 w-4', iconMuted)} strokeWidth={1.5} />
+                  <DollarSign className={cn('h-4 w-4', sectionIconClass)} strokeWidth={1.5} />
                   Productos vendidos
                 </h2>
                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Líneas facturadas en esta venta.</p>
@@ -593,7 +636,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                 <div className="overflow-x-auto overscroll-contain scrollbar-hide">
                   <table className="w-full min-w-[640px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-zinc-200 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+                      <tr className="border-b border-zinc-200/90 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
                         <th className="pb-2 pr-3">Producto</th>
                         <th className="pb-2 pr-3 text-center">Cant.</th>
                         <th className="pb-2 pr-3 text-right">Precio unit.</th>
@@ -619,7 +662,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                               </div>
                             </td>
                             <td className="py-3 pr-3 text-center align-top">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-200">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-violet-100/75 text-sm font-semibold tabular-nums text-violet-950 ring-1 ring-violet-200/90 dark:bg-violet-950/35 dark:text-violet-200 dark:ring-violet-800/80">
                                 {item.quantity}
                               </span>
                             </td>
@@ -652,7 +695,7 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
             </div>
 
             {showCancelForm && (
-              <div ref={cancelFormRef} className={panel}>
+              <div ref={cancelFormRef} className={cardShell}>
                 <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
                     <AlertTriangle className="h-4 w-4" strokeWidth={1.5} />

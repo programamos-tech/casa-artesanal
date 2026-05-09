@@ -40,7 +40,7 @@ function statusBadgeClassSupplier(status: string) {
     case 'partial':
       return 'border-orange-500/20 bg-orange-500/[0.06] text-orange-900 dark:border-orange-500/25 dark:bg-orange-950/40 dark:text-orange-300/90'
     case 'paid':
-      return 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
+      return 'border-brand-500/20 bg-brand-500/[0.06] text-brand-900 dark:border-brand-500/25 dark:bg-brand-950/40 dark:text-brand-300/90'
     case 'cancelled':
       return 'border-rose-500/30 bg-rose-500/[0.06] text-rose-900 dark:border-zinc-600 dark:bg-rose-950/35 dark:text-rose-200/90'
     default:
@@ -196,7 +196,7 @@ export function SupplierInvoiceDetailView({
             </div>
             <div className="px-4 py-3">
               <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pagado</dt>
-              <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+              <dd className="mt-1 text-base font-semibold tabular-nums text-brand-600 dark:text-brand-400">
                 {formatCurrency(invoice.paidAmount)}
               </dd>
             </div>
@@ -204,7 +204,7 @@ export function SupplierInvoiceDetailView({
               <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pendiente</dt>
               <dd
                 className={`mt-1 text-base font-semibold tabular-nums ${
-                  pending <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                  pending <= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-600 dark:text-red-400'
                 }`}
               >
                 {formatCurrency(pending)}

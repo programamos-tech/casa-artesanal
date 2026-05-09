@@ -58,8 +58,8 @@ export function TopProductsCard({ products, limit = 5 }: TopProductsCardProps) {
     <Card className="border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-sm">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center">
-          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mr-3">
-            <Package className="h-5 w-5 text-emerald-600" />
+          <div className="p-2 rounded-xl bg-brand-50 dark:bg-brand-900/20 mr-3">
+            <Package className="h-5 w-5 text-brand-600" />
           </div>
           <span className="text-lg font-medium text-gray-800 dark:text-gray-200">Productos Más Vendidos</span>
         </CardTitle>
@@ -86,8 +86,8 @@ export function TopProductsCard({ products, limit = 5 }: TopProductsCardProps) {
                 </div>
                 <div className="text-right">
                   <div className="flex items-center space-x-2 mb-1">
-                    <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                      <TrendingUp className="h-3 w-3 text-emerald-600" />
+                    <div className="p-1 rounded-lg bg-brand-50 dark:bg-brand-900/20">
+                      <TrendingUp className="h-3 w-3 text-brand-600" />
                     </div>
                     <span className="font-semibold text-gray-900 dark:text-white">
                       {product.quantitySold}

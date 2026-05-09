@@ -55,14 +55,27 @@ const dashCardBase =
   'casa-artesanal-card-surface max-w-full min-w-0 rounded-xl border border-solid border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 md:p-6'
 
 /** Celda dentro del panel único de métricas (sin card por KPI) */
-const dashMetricTile =
-  'flex w-full min-h-0 flex-col rounded-lg border border-transparent px-3 py-3 text-left transition-colors md:px-3.5 md:py-3.5'
+/** KPI: sin “cuadrito” (borde/sombra); solo tipografía + icono con color */
+const dashKpiCard =
+  'casa-artesanal-preserve-surface flex w-full min-h-0 flex-col rounded-2xl border-0 bg-transparent px-3 py-3 text-left shadow-none ring-0 outline-none md:px-4 md:py-4 dark:bg-transparent'
 const dashMetricTileInteractive =
-  'cursor-pointer hover:border-zinc-200 hover:bg-zinc-50/90 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/35 dark:focus-visible:ring-zinc-500/25'
+  'cursor-pointer transition-colors hover:bg-white/75 dark:hover:bg-zinc-900/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/30 dark:focus-visible:ring-zinc-500/25'
 
-const dashMetricIconEm =
-  'h-4 w-4 shrink-0 text-emerald-600/90 dark:text-emerald-300'
-const dashMetricRow = 'flex min-w-0 items-center gap-2'
+/** Alineación del icono sin “cuadrito” de fondo; el color va solo en el trazo del icono */
+const dashKpiIconWrap = 'flex h-10 w-10 shrink-0 items-center justify-center'
+
+const kpiIconTone = {
+  total: 'text-slate-600 dark:text-slate-400',
+  cash: 'text-green-600 dark:text-green-400',
+  transfer: 'text-violet-600 dark:text-violet-400',
+  cancelled: 'text-rose-600 dark:text-rose-400',
+  credit: 'text-sky-600 dark:text-sky-400',
+  warranties: 'text-amber-600 dark:text-amber-400',
+  profit: 'text-teal-600 dark:text-teal-400',
+  stock: 'text-indigo-600 dark:text-indigo-400',
+} as const
+
+const dashMetricIconEm = 'h-5 w-5 shrink-0'
 const dashMetricLabelClass =
   'min-w-0 text-left text-[11px] font-medium uppercase leading-snug tracking-wide text-zinc-600 dark:text-zinc-400'
 
@@ -71,7 +84,7 @@ const dashFilterSelectClass =
   'block h-10 w-full appearance-none border-0 bg-transparent px-3 pr-9 text-sm font-medium leading-none text-zinc-800 focus:outline-none focus:ring-0 dark:text-zinc-100 md:pr-8'
 
 const dashToolbarButtonClass =
-  'h-9 min-h-9 border-zinc-300/90 bg-white px-2.5 shadow-sm dark:border-emerald-700/70 dark:bg-zinc-900/65 dark:text-emerald-200 dark:hover:border-emerald-600/80 dark:hover:bg-zinc-800'
+  'h-9 min-h-9 border-zinc-300/90 bg-white px-2.5 shadow-sm dark:border-brand-700/70 dark:bg-zinc-900/65 dark:text-brand-200 dark:hover:border-brand-600/80 dark:hover:bg-zinc-800'
 
 /** Debe coincidir con la ventana del gráfico “Últimos N días” (incluye el día de referencia). */
 const INCOME_TREND_CHART_DAYS = 15
@@ -1280,19 +1293,6 @@ export default function DashboardPage() {
     return 'Todos los períodos'
   }, [effectiveDateFilter, specificDate, dateRangeStart, dateRangeEnd])
 
-  // Obtener etiqueta del filtro de fecha
-  const getDateFilterLabel = (filter: DateFilter) => {
-    const labels: { [key: string]: string } = {
-      today: 'Hoy',
-      all: 'Seleccionar Año',
-      specific: specificDate ? specificDate.toLocaleDateString('es-CO') : 'Fecha Específica',
-      range: dateRangeStart && dateRangeEnd
-        ? `${dateRangeStart.toLocaleDateString('es-CO')} - ${dateRangeEnd.toLocaleDateString('es-CO')}`
-        : 'Rango de fechas'
-    }
-    return labels[filter] || filter
-  }
-
   // Función para manejar cambio de filtro con indicador de carga
   const handleFilterChange = async (newFilter: DateFilter) => {
     if (newFilter === 'specific' && !specificDate) {
@@ -1388,7 +1388,7 @@ export default function DashboardPage() {
   if (isInitialLoading && allSales.length === 0) {
     return (
       <RoleProtectedRoute module="dashboard" requiredAction="view">
-        <div className="min-h-screen bg-white py-4 dark:bg-neutral-950 md:py-6">
+        <div className="min-h-screen bg-zinc-50 py-4 dark:bg-neutral-950 md:py-6">
           {/* Header Skeleton */}
           <div className="mb-4 md:mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -1427,7 +1427,7 @@ export default function DashboardPage() {
             <div className="text-center">
               {/* Spinner minimalista */}
               <div className="w-16 h-16 mx-auto mb-6">
-                <div className="h-full w-full animate-spin rounded-full border-2 border-zinc-200 border-t-emerald-600 dark:border-zinc-700 dark:border-t-emerald-500" />
+                <div className="h-full w-full animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-700 dark:border-t-brand-500" />
               </div>
               <p className="mb-1 text-lg font-medium text-zinc-700 dark:text-zinc-300">
                 Cargando reportes...
@@ -1444,14 +1444,14 @@ export default function DashboardPage() {
 
   return (
     <RoleProtectedRoute module="dashboard" requiredAction="view">
-      <div className="relative min-h-screen bg-white py-4 dark:bg-neutral-950 md:py-6">
+      <div className="relative min-h-screen bg-zinc-50 py-4 dark:bg-neutral-950 md:py-6">
         {/* Overlay de carga para actualizaciones */}
         {(isRefreshing || isFiltering) && (
           <div className="absolute inset-0 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="flex flex-col items-center justify-center -mt-[200px]">
               {/* Spinner minimalista */}
               <div className="w-12 h-12 mb-4">
-                <div className="h-full w-full animate-spin rounded-full border-2 border-zinc-200 border-t-emerald-600 dark:border-zinc-700 dark:border-t-emerald-500" />
+                <div className="h-full w-full animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-700 dark:border-t-brand-500" />
               </div>
               <p className="text-base font-medium text-zinc-700 dark:text-zinc-300">
                 {isFiltering ? 'Cargando datos del día...' : 'Actualizando reportes...'}
@@ -1493,23 +1493,37 @@ export default function DashboardPage() {
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                   {isSuperAdmin ? (
                     <>
-                      {/* Selector de período simplificado */}
-                      <div className="relative w-full overflow-hidden rounded-lg border border-zinc-300/90 bg-white shadow-sm transition-colors hover:border-zinc-400/80 focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-950/50 dark:hover:border-zinc-500 dark:focus-within:border-zinc-500 dark:focus-within:ring-zinc-500/25 sm:w-auto sm:min-w-[200px]">
-                        <select
-                          value={dateFilter}
-                          onChange={(e) => handleFilterChange(e.target.value as DateFilter)}
-                          className={dashFilterSelectClass}
-                          aria-label="Período de reportes"
-                        >
-                          {(['today', 'specific', 'range', 'all'] as DateFilter[]).map((filter) => (
-                            <option key={filter} value={filter}>
-                              {getDateFilterLabel(filter)}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 md:pr-2">
-                          <ChevronDown className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
-                        </div>
+                      {/* Período: segmentado (estilo referencia), sin dropdown */}
+                      <div
+                        className="casa-artesanal-preserve-surface flex w-full flex-wrap gap-1 rounded-xl border border-zinc-200 bg-zinc-100/90 p-1 dark:border-zinc-700 dark:bg-zinc-900/55 sm:w-auto"
+                        role="group"
+                        aria-label="Período de reportes"
+                      >
+                        {(['today', 'specific', 'range', 'all'] as DateFilter[]).map((filter) => {
+                          const short =
+                            filter === 'today'
+                              ? 'Hoy'
+                              : filter === 'specific'
+                                ? 'Fecha'
+                                : filter === 'range'
+                                  ? 'Rango'
+                                  : 'Todo'
+                          return (
+                            <button
+                              key={filter}
+                              type="button"
+                              onClick={() => void handleFilterChange(filter)}
+                              className={cn(
+                                'rounded-lg px-3 py-2 text-xs font-medium transition-colors md:text-sm',
+                                dateFilter === filter
+                                  ? 'bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900'
+                                  : 'text-zinc-600 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-800'
+                              )}
+                            >
+                              {short}
+                            </button>
+                          )
+                        })}
                       </div>
 
                       {/* Selector de año cuando "Todo el Tiempo" está seleccionado */}
@@ -1616,62 +1630,74 @@ export default function DashboardPage() {
             </p>
             <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{periodLabelShort}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 sm:gap-2.5 sm:p-3 lg:grid-cols-4 lg:gap-3 lg:p-4">
+          <div className="grid grid-cols-2 gap-3 bg-zinc-50/80 p-3 sm:grid-cols-3 sm:p-4 lg:grid-cols-4 dark:bg-zinc-950/25">
             <button
               type="button"
               onClick={() => router.push('/sales')}
-              className={cn(dashMetricTile, dashMetricTileInteractive)}
+              className={cn(dashKpiCard, dashMetricTileInteractive)}
             >
-              <div className={dashMetricRow}>
-                <BarChart3 className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                <span className={dashMetricLabelClass}>Total ingresos</span>
+              <div className="flex gap-3">
+                <div className={dashKpiIconWrap} aria-hidden>
+                  <BarChart3 className={cn(dashMetricIconEm, kpiIconTone.total)} strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={dashMetricLabelClass}>Total ingresos</span>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                    {formatCurrency(metrics.totalRevenue)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{metrics.totalSales} ventas</p>
+                </div>
               </div>
-              <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                {formatCurrency(metrics.totalRevenue)}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{metrics.totalSales} ventas</p>
             </button>
 
             <button
               type="button"
               onClick={() => router.push('/sales')}
-              className={cn(dashMetricTile, dashMetricTileInteractive)}
+              className={cn(dashKpiCard, dashMetricTileInteractive)}
             >
-              <div className={dashMetricRow}>
-                <DollarSign className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                <span className={dashMetricLabelClass}>Efectivo</span>
+              <div className="flex gap-3">
+                <div className={dashKpiIconWrap} aria-hidden>
+                  <DollarSign className={cn(dashMetricIconEm, kpiIconTone.cash)} strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={dashMetricLabelClass}>Efectivo</span>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                    {formatCurrency(metrics.cashRevenue)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {(metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue) > 0
+                      ? `${((metrics.cashRevenue / (metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue)) * 100).toFixed(1)}% del total`
+                      : '0% del total'}
+                  </p>
+                </div>
               </div>
-              <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                {formatCurrency(metrics.cashRevenue)}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                {(metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue) > 0
-                  ? `${((metrics.cashRevenue / (metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue)) * 100).toFixed(1)}% del total`
-                  : '0% del total'}
-              </p>
             </button>
 
             <button
               ref={transferTileRef}
               type="button"
               onClick={() => setShowTransferBreakdown((prev) => !prev)}
-              className={cn(dashMetricTile, dashMetricTileInteractive)}
+              className={cn(dashKpiCard, dashMetricTileInteractive)}
               aria-haspopup="dialog"
               aria-expanded={showTransferBreakdown}
             >
-              <div className={dashMetricRow}>
-                <TrendingUp className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                <span className={dashMetricLabelClass}>Transferencia</span>
+              <div className="flex gap-3">
+                <div className={dashKpiIconWrap} aria-hidden>
+                  <TrendingUp className={cn(dashMetricIconEm, kpiIconTone.transfer)} strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={dashMetricLabelClass}>Transferencia</span>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                    {formatCurrency(metrics.transferRevenue)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {(metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue) > 0
+                      ? `${((metrics.transferRevenue / (metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue)) * 100).toFixed(1)}% del total`
+                      : '0% del total'}
+                  </p>
+                  <p className="mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Clic para ver desglose</p>
+                </div>
               </div>
-              <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                {formatCurrency(metrics.transferRevenue)}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                {(metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue) > 0
-                  ? `${((metrics.transferRevenue / (metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue)) * 100).toFixed(1)}% del total`
-                  : '0% del total'}
-              </p>
-              <p className="mt-1.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Clic para ver desglose</p>
             </button>
 
             {user && user.role !== 'vendedor' && user.role !== 'Vendedor' ? (
@@ -1679,89 +1705,109 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setShowCancelledModal(true)}
-                  className={cn(dashMetricTile, dashMetricTileInteractive)}
+                  className={cn(dashKpiCard, dashMetricTileInteractive)}
                 >
-                  <div className={dashMetricRow}>
-                    <XCircle className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                    <span className={dashMetricLabelClass}>Facturas anuladas</span>
+                  <div className="flex gap-3">
+                    <div className={dashKpiIconWrap} aria-hidden>
+                      <XCircle className={cn(dashMetricIconEm, kpiIconTone.cancelled)} strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className={dashMetricLabelClass}>Facturas anuladas</span>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                        {metrics.cancelledSales}
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        {metrics.cancelledSales === 1 ? 'Factura anulada' : 'Facturas anuladas'}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {metrics.cancelledSales}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    {metrics.cancelledSales === 1 ? 'Factura anulada' : 'Facturas anuladas'}
-                  </p>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => router.push('/payments')}
-                  className={cn(dashMetricTile, dashMetricTileInteractive)}
+                  className={cn(dashKpiCard, dashMetricTileInteractive)}
                 >
-                  <div className={dashMetricRow}>
-                    <CreditCard className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                    <span className={dashMetricLabelClass}>Crédito</span>
+                  <div className="flex gap-3">
+                    <div className={dashKpiIconWrap} aria-hidden>
+                      <CreditCard className={cn(dashMetricIconEm, kpiIconTone.credit)} strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className={dashMetricLabelClass}>Crédito</span>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                        {formatCurrency(metrics.creditRevenue)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        {
+                          filteredData.credits.filter(
+                            (c: any) =>
+                              (c.status === 'pending' || c.status === 'partial') && (c.pendingAmount || 0) > 0
+                          ).length
+                        }{' '}
+                        créditos pendientes
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.creditRevenue)}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    {
-                      filteredData.credits.filter(
-                        (c: any) =>
-                          (c.status === 'pending' || c.status === 'partial') && (c.pendingAmount || 0) > 0
-                      ).length
-                    }{' '}
-                    créditos pendientes
-                  </p>
                 </button>
               )
             ) : null}
 
             {canViewCredits && !isSuperAdmin && (
-              <button type="button" onClick={goToCredits} className={cn(dashMetricTile, dashMetricTileInteractive)}>
-                <div className={dashMetricRow}>
-                  <CreditCard className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                  <span className={dashMetricLabelClass}>Dinero afuera</span>
+              <button type="button" onClick={goToCredits} className={cn(dashKpiCard, dashMetricTileInteractive)}>
+                <div className="flex gap-3">
+                  <div className={dashKpiIconWrap} aria-hidden>
+                    <CreditCard className={cn(dashMetricIconEm, kpiIconTone.credit)} strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className={dashMetricLabelClass}>Dinero afuera</span>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                      {formatCurrency(metrics.dailyCreditsDebt || 0)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {metrics.dailyCreditsCount || 0} créditos del día
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  {formatCurrency(metrics.dailyCreditsDebt || 0)}
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  {metrics.dailyCreditsCount || 0} créditos del día
-                </p>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => router.push('/warranties')}
-              className={cn(dashMetricTile, dashMetricTileInteractive)}
+              className={cn(dashKpiCard, dashMetricTileInteractive)}
             >
-              <div className={dashMetricRow}>
-                <Shield className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                <span className={dashMetricLabelClass}>Garantías</span>
+              <div className="flex gap-3">
+                <div className={dashKpiIconWrap} aria-hidden>
+                  <Shield className={cn(dashMetricIconEm, kpiIconTone.warranties)} strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={dashMetricLabelClass}>Garantías</span>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                    {metrics.completedWarranties}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Completadas</p>
+                </div>
               </div>
-              <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                {metrics.completedWarranties}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Completadas</p>
             </button>
 
             {isSuperAdmin && (
               <button
                 type="button"
                 onClick={() => router.push('/sales')}
-                className={cn(dashMetricTile, dashMetricTileInteractive)}
+                className={cn(dashKpiCard, dashMetricTileInteractive)}
               >
-                <div className={dashMetricRow}>
-                  <Activity className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                  <span className={dashMetricLabelClass}>Ganancia bruta</span>
+                <div className="flex gap-3">
+                  <div className={dashKpiIconWrap} aria-hidden>
+                    <Activity className={cn(dashMetricIconEm, kpiIconTone.profit)} strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className={dashMetricLabelClass}>Ganancia bruta</span>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                      {formatCurrency(metrics.grossProfit)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Por ventas del período</p>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  {formatCurrency(metrics.grossProfit)}
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Por ventas del período</p>
               </button>
             )}
 
@@ -1769,31 +1815,39 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => router.push('/inventory/products')}
-                className={cn(dashMetricTile, dashMetricTileInteractive)}
+                className={cn(dashKpiCard, dashMetricTileInteractive)}
               >
-                <div className={dashMetricRow}>
-                  <Package className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                  <span className={dashMetricLabelClass}>Stock (inversión)</span>
+                <div className="flex gap-3">
+                  <div className={dashKpiIconWrap} aria-hidden>
+                    <Package className={cn(dashMetricIconEm, kpiIconTone.stock)} strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className={dashMetricLabelClass}>Stock (inversión)</span>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                      {formatCurrency(metrics.totalStockInvestment > 0 ? metrics.totalStockInvestment : metrics.potentialInvestment)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {metrics.totalStockInvestment > 0 ? 'Inversión en stock' : 'Inversión potencial'}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  {formatCurrency(metrics.totalStockInvestment > 0 ? metrics.totalStockInvestment : metrics.potentialInvestment)}
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  {metrics.totalStockInvestment > 0 ? 'Inversión en stock' : 'Inversión potencial'}
-                </p>
               </button>
             )}
 
             {isSuperAdmin ? (
-              <button type="button" onClick={goToCredits} className={cn(dashMetricTile, dashMetricTileInteractive)}>
-                <div className={dashMetricRow}>
-                  <CreditCard className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                  <span className={dashMetricLabelClass}>Créditos</span>
+              <button type="button" onClick={goToCredits} className={cn(dashKpiCard, dashMetricTileInteractive)}>
+                <div className="flex gap-3">
+                  <div className={dashKpiIconWrap} aria-hidden>
+                    <CreditCard className={cn(dashMetricIconEm, kpiIconTone.credit)} strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className={dashMetricLabelClass}>Créditos</span>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                      {formatCurrency(metrics.totalDebt || 0)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Total adeudado</p>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  {formatCurrency(metrics.totalDebt || 0)}
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Total adeudado</p>
               </button>
             ) : (
               <div
@@ -1806,18 +1860,22 @@ export default function DashboardPage() {
                     setShowCancelledModal(true)
                   }
                 }}
-                className={cn(dashMetricTile, dashMetricTileInteractive, 'sm:col-span-2 lg:col-span-2')}
+                className={cn(dashKpiCard, dashMetricTileInteractive, 'sm:col-span-2 lg:col-span-2')}
               >
-                <div className={dashMetricRow}>
-                  <XCircle className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
-                  <span className={dashMetricLabelClass}>Facturas anuladas</span>
+                <div className="flex gap-3">
+                  <div className={dashKpiIconWrap} aria-hidden>
+                    <XCircle className={cn(dashMetricIconEm, kpiIconTone.cancelled)} strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className={dashMetricLabelClass}>Facturas anuladas</span>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                      {metrics.cancelledSales}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {metrics.cancelledSales === 1 ? 'Factura anulada' : 'Facturas anuladas'}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  {metrics.cancelledSales}
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  {metrics.cancelledSales === 1 ? 'Factura anulada' : 'Facturas anuladas'}
-                </p>
                 <div className="mt-3 space-y-1.5 border-t border-zinc-200/90 pt-3 dark:border-zinc-700/90">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-zinc-500 dark:text-zinc-400">Valor anulado</span>
@@ -1844,7 +1902,7 @@ export default function DashboardPage() {
             <div className="w-full min-w-0">
             <div className={cn(dashCardBase, 'w-full')}>
               <div className="mb-4 flex min-w-0 items-start gap-2">
-                <TrendingUp className={dashMetricIconEm} strokeWidth={1.5} aria-hidden />
+                <TrendingUp className={cn(dashMetricIconEm, 'text-zinc-500 dark:text-zinc-400')} strokeWidth={1.5} aria-hidden />
                 <div className="min-w-0">
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 md:text-base">Tendencia de Ingresos</h3>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
@@ -1944,8 +2002,9 @@ export default function DashboardPage() {
 
                     // Colores adaptativos para modo oscuro
                     const axisColor = isDarkMode ? '#9ca3af' : '#666'
-                    const lineColor = isDarkMode ? '#d4d4d8' : '#27272a' // Acento neutro
-                    const dotStrokeColor = isDarkMode ? '#18181b' : '#fff'
+                    const lineStroke = isDarkMode ? '#525252' : '#e4e4e7'
+                    const dotFill = '#22c55e'
+                    const dotStrokeColor = isDarkMode ? '#171717' : '#ffffff'
                     const tooltipBg = isDarkMode ? '#1f2937' : 'white'
                     const tooltipBorder = isDarkMode ? '#374151' : '#e5e7eb'
                     const tooltipText = isDarkMode ? '#f3f4f6' : '#111827'
@@ -1990,10 +2049,10 @@ export default function DashboardPage() {
                           <Line
                             type="monotone"
                             dataKey="amount"
-                            stroke={lineColor}
-                            strokeWidth={3}
-                            dot={{ fill: lineColor, r: 5, strokeWidth: 2, stroke: dotStrokeColor }}
-                            activeDot={{ r: 7, fill: lineColor }}
+                            stroke={lineStroke}
+                            strokeWidth={2.5}
+                            dot={{ fill: dotFill, r: 4, strokeWidth: 2, stroke: dotStrokeColor }}
+                            activeDot={{ r: 6, fill: dotFill }}
                           />
                         </LineChart>
                       </ResponsiveContainer>
@@ -2188,10 +2247,11 @@ export default function DashboardPage() {
                     }
                   })
 
-                  // Colores adaptativos para modo oscuro
+                  // Colores adaptativos para modo oscuro (línea suave + puntos verdes como referencia)
                   const axisColor = isDarkMode ? '#9ca3af' : '#666'
-                  const lineColor = isDarkMode ? '#d4d4d8' : '#27272a' // Acento neutro
-                  const dotStrokeColor = isDarkMode ? '#18181b' : '#fff'
+                  const lineStroke = isDarkMode ? '#525252' : '#e4e4e7'
+                  const dotFill = '#22c55e'
+                  const dotStrokeColor = isDarkMode ? '#171717' : '#ffffff'
                   const tooltipBg = isDarkMode ? '#1f2937' : 'white'
                   const tooltipBorder = isDarkMode ? '#374151' : '#e5e7eb'
                   const tooltipText = isDarkMode ? '#f3f4f6' : '#111827'
@@ -2236,10 +2296,10 @@ export default function DashboardPage() {
                         <Line
                           type="monotone"
                           dataKey="amount"
-                          stroke={lineColor}
-                          strokeWidth={3}
-                          dot={{ fill: lineColor, r: 5, strokeWidth: 2, stroke: dotStrokeColor }}
-                          activeDot={{ r: 7, fill: lineColor }}
+                          stroke={lineStroke}
+                          strokeWidth={2.5}
+                          dot={{ fill: dotFill, r: 4, strokeWidth: 2, stroke: dotStrokeColor }}
+                          activeDot={{ r: 6, fill: dotFill }}
                         />
                       </LineChart>
                     </ResponsiveContainer>

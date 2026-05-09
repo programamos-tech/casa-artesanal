@@ -33,10 +33,10 @@ const panelInner =
   'rounded-xl border border-zinc-200 bg-zinc-50 dark:border-0 dark:bg-zinc-900'
 
 const inputClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-0 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:ring-1 dark:ring-inset dark:ring-white/10 dark:focus:ring-2 dark:focus:ring-emerald-500/35 dark:focus:ring-inset'
+  'w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-0 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:ring-1 dark:ring-inset dark:ring-white/10 dark:focus:ring-2 dark:focus:ring-brand-500/35 dark:focus:ring-inset'
 
 const selectTriggerClass =
-  'h-10 rounded-lg border border-zinc-300 bg-white py-2 pl-3 pr-3 text-sm text-zinc-900 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-400/30 dark:border-0 dark:bg-zinc-950 dark:text-zinc-100 dark:ring-1 dark:ring-inset dark:ring-white/10 dark:focus:ring-2 dark:focus:ring-emerald-500/35 dark:focus:ring-inset'
+  'h-10 rounded-lg border border-zinc-300 bg-white py-2 pl-3 pr-3 text-sm text-zinc-900 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-400/30 dark:border-0 dark:bg-zinc-950 dark:text-zinc-100 dark:ring-1 dark:ring-inset dark:ring-white/10 dark:focus:ring-2 dark:focus:ring-brand-500/35 dark:focus:ring-inset'
 
 /** Tarjeta por producto: en dark sin marco, bloque ligeramente más claro */
 const itemCardClass =
@@ -757,7 +757,7 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
                                 </button>
                               )}
                               {isComplete && (
-                                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-600 dark:text-brand-400" />
                               )}
                               <div className="min-w-0 flex-1">
                                 <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
@@ -1195,7 +1195,7 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
               size="sm"
               onClick={handleSave}
               disabled={isSaving}
-              className="dark:border-emerald-600 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500"
+              className="dark:border-brand-600 dark:bg-brand-600 dark:text-white dark:hover:bg-brand-500"
             >
               {isSaving ? (
                 <span className="flex items-center gap-2">

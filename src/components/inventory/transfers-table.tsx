@@ -47,7 +47,7 @@ function transferStatusBadge(status: string) {
     case 'in_transit':
       return 'border-amber-500/25 bg-amber-500/[0.08] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200'
     case 'received':
-      return 'border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200'
+      return 'border-brand-500/25 bg-brand-500/[0.08] text-brand-900 dark:border-brand-500/30 dark:bg-brand-950/40 dark:text-brand-200'
     case 'partially_received':
       return 'border-orange-500/25 bg-orange-500/[0.08] text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200'
     case 'cancelled':

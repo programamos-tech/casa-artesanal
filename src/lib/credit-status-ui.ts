@@ -72,21 +72,21 @@ const iconSize = {
  */
 export function creditStatusBadgeClass(status: string, credit?: Credit | null): string {
   if (isCreditCancelled(credit)) {
-    return 'border-zinc-300/80 bg-zinc-100/80 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
+    return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/55 dark:text-zinc-400'
   }
   switch (status) {
     case 'completed':
-      return 'border-emerald-500/40 bg-emerald-500/[0.11] text-emerald-900 dark:border-emerald-500/45 dark:bg-emerald-950/50 dark:text-emerald-300'
+      return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
     case 'partial':
-      return 'border-sky-500/40 bg-sky-500/[0.11] text-sky-950 dark:border-sky-400/45 dark:bg-sky-950/45 dark:text-sky-200'
+      return 'border-0 bg-sky-100/85 text-sky-950/90 dark:bg-sky-950/35 dark:text-sky-200/88'
     case 'pending':
-      return 'border-amber-500/45 bg-amber-500/[0.14] text-amber-950 dark:border-amber-400/50 dark:bg-amber-950/40 dark:text-amber-200'
+      return 'border-0 bg-amber-100/90 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
     case 'overdue':
-      return 'border-rose-500/45 bg-rose-500/[0.12] text-rose-950 dark:border-rose-400/50 dark:bg-rose-950/45 dark:text-rose-200'
+      return 'border-0 bg-rose-100/90 text-rose-950/90 dark:bg-rose-950/35 dark:text-rose-300/88'
     case 'cancelled':
-      return 'border-zinc-300/80 bg-zinc-100/80 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
+      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/55 dark:text-zinc-400'
     default:
-      return 'border-zinc-200/90 bg-zinc-50 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-300'
+      return 'border-0 bg-zinc-100/90 text-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400'
   }
 }
 
@@ -99,7 +99,7 @@ export function creditStatusSolidBadgeClass(status: string, credit?: Credit | nu
   }
   switch (status) {
     case 'completed':
-      return 'border-transparent bg-emerald-500/18 text-emerald-950 shadow-none dark:bg-emerald-500/22 dark:text-emerald-100 hover:bg-emerald-500/26 dark:hover:bg-emerald-500/30'
+      return 'border-transparent bg-brand-500/18 text-brand-950 shadow-none dark:bg-brand-500/22 dark:text-brand-100 hover:bg-brand-500/26 dark:hover:bg-brand-500/30'
     case 'partial':
       return 'border-transparent bg-sky-500/18 text-sky-950 shadow-none dark:bg-sky-500/22 dark:text-sky-100 hover:bg-sky-500/26 dark:hover:bg-sky-500/30'
     case 'pending':
@@ -125,7 +125,7 @@ export function creditStatusIconClass(
   }
   switch (status) {
     case 'completed':
-      return `${base} text-emerald-600 dark:text-emerald-400`
+      return `${base} text-brand-600 dark:text-brand-400`
     case 'partial':
       return `${base} text-sky-600 dark:text-sky-400`
     case 'pending':

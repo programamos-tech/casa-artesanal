@@ -39,7 +39,7 @@ import { cardShell as cardShellBase } from '@/lib/card-shell'
 const inputComfort = 'min-h-11 px-3 py-2.5 text-sm'
 
 const inputBase =
-  'rounded-lg border border-zinc-300 bg-white text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/25'
+  'rounded-lg border border-zinc-300 bg-white text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-500/25'
 
 const cardShell = cn(cardShellBase, 'shadow-none')
 
@@ -47,7 +47,7 @@ const cardShell = cn(cardShellBase, 'shadow-none')
 const sectionTitleClass =
   'flex items-center gap-1.5 text-sm font-semibold leading-none text-zinc-900 dark:text-zinc-50'
 
-const iconSection = 'h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300'
+const iconSection = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 
 /** Cabecera: padding solo en bloque interno + regleta full-bleed (cierra con el borde del card) */
 const modalSectionHeaderClass = 'flex flex-col space-y-0 p-0'
@@ -584,10 +584,12 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
   /* Portal + z-[100]: sobre el main; xl:left-56 = no tapar el sidebar fijo (solo ≥ xl, como main xl:ml-56). */
   const modal = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm sm:p-3 xl:left-56">
-      <div className="flex h-[min(92dvh,calc(100dvh-0.75rem))] w-full min-w-0 max-w-[min(1600px,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-50/90 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-950/80 sm:px-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <CreditCard className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-300" strokeWidth={1.5} />
+      <div className="flex h-[min(92dvh,calc(100dvh-0.75rem))] w-full min-w-0 max-w-[min(1600px,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/50 via-white to-zinc-50 shadow-2xl dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-900 dark:to-zinc-950">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/70 px-3 py-2.5 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
+              <CreditCard className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} />
+            </div>
             <div className="min-w-0">
               <h2 className="text-base font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
                 Crear Venta a Crédito
@@ -631,7 +633,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                 <div className="relative z-10 shrink-0">
                   <div className="relative">
                     <Search
-                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500 dark:text-violet-400"
                       aria-hidden
                     />
                     <input
@@ -654,7 +656,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                     <div className="scrollbar-hide absolute left-0 right-0 top-full z-[100] mt-1 max-h-[min(16rem,50dvh)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 md:max-h-80">
                       {isSearchingProducts ? (
                         <div className="p-4 text-center">
-                          <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-emerald-600 dark:border-zinc-600 dark:border-t-emerald-500" />
+                          <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-600 dark:border-t-brand-500" />
                           <div className="text-sm text-zinc-500 dark:text-zinc-400">Buscando productos...</div>
                         </div>
                       ) : visibleProducts.length === 0 ? (
@@ -674,7 +676,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                             'transition-colors duration-150 ease-in-out',
                             hasStock ? 'cursor-pointer' : 'cursor-not-allowed',
                             isHighlighted && hasStock
-                              ? 'border border-emerald-400/35 bg-emerald-500/[0.08] dark:border-emerald-500/35 dark:bg-emerald-500/[0.12]'
+                              ? 'border border-brand-400/35 bg-brand-500/[0.08] dark:border-brand-500/35 dark:bg-brand-500/[0.12]'
                               : hasStock
                                 ? 'bg-white hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80'
                                 : 'border border-red-200/60 bg-red-50 dark:border-red-800/50 dark:bg-red-950/25'
@@ -683,7 +685,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                           const nameClasses = [
                             'font-medium',
                             isHighlighted && hasStock
-                              ? 'text-emerald-900 dark:text-emerald-100'
+                              ? 'text-brand-900 dark:text-brand-100'
                               : hasStock
                                 ? 'text-zinc-900 dark:text-zinc-100'
                                 : 'text-red-800 dark:text-red-200'
@@ -692,7 +694,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                           const detailsClasses = [
                             'mt-0.5 text-sm',
                             isHighlighted && hasStock
-                              ? 'text-emerald-800/90 dark:text-emerald-300/90'
+                              ? 'text-brand-800/90 dark:text-brand-300/90'
                               : hasStock
                                 ? 'text-zinc-600 dark:text-zinc-400'
                                 : 'text-red-600 dark:text-red-400'
@@ -824,7 +826,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                         {item.totalPrice > 0 && (
                           <div className="flex min-w-0 items-center justify-between gap-2 border-t border-zinc-200 pt-1 dark:border-zinc-700">
                             <span className="shrink-0 text-xs text-zinc-600 dark:text-zinc-400">Total:</span>
-                            <span className="min-w-0 break-all text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                            <span className="min-w-0 break-all text-right font-semibold tabular-nums text-brand-700 dark:text-brand-400">
                               ${item.totalPrice.toLocaleString('es-CO')}
                             </span>
                           </div>
@@ -984,7 +986,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                             type="checkbox"
                             checked={includeTax}
                             onChange={(e) => setIncludeTax(e.target.checked)}
-                            className="h-3.5 w-3.5 shrink-0 rounded border-zinc-300 bg-white text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 dark:border-zinc-600 dark:bg-zinc-800"
+                            className="h-3.5 w-3.5 shrink-0 rounded border-zinc-300 bg-white text-brand-600 focus:ring-2 focus:ring-brand-500/40 dark:border-zinc-600 dark:bg-zinc-800"
                           />
                           <span className="text-xs text-zinc-700 dark:text-zinc-300">Incluir IVA (19%)</span>
                         </div>
@@ -998,7 +1000,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                       <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">
                         <div className="flex min-w-0 items-center justify-between gap-2">
                           <span className="shrink-0 text-base font-bold text-zinc-900 dark:text-zinc-50">Total</span>
-                          <span className="min-w-0 break-all text-right text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                          <span className="min-w-0 break-all text-right text-base font-bold tabular-nums text-brand-700 dark:text-brand-400">
                             ${calculateTotal().toLocaleString('es-CO')}
                           </span>
                         </div>
@@ -1012,7 +1014,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
         </div>
 
         <div
-          className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200 bg-zinc-50/90 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-4"
+          className="flex shrink-0 items-center justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-3 py-2.5 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:px-4"
           style={{
             paddingBottom: `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))`
           }}

@@ -47,7 +47,7 @@ export function TiendaHeader({ showSearch, searchValue = '', onSearchChange }: T
                 value={searchValue}
                 onChange={(e) => onSearchChange?.(e.target.value)}
                 placeholder="Buscar productos, referencia, marca…"
-                className="h-11 w-full rounded-full border border-zinc-200 bg-zinc-50 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="h-11 w-full rounded-full border border-zinc-200 bg-zinc-50 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 aria-label="Buscar en catálogo"
               />
             </div>
@@ -58,30 +58,30 @@ export function TiendaHeader({ showSearch, searchValue = '', onSearchChange }: T
             onClick={openDrawer}
             aria-label={itemCount > 0 ? `Carrito, ${itemCount} artículos` : 'Abrir carrito'}
             className={cn(
-              'relative flex h-11 shrink-0 items-center gap-2.5 rounded-full border-2 border-emerald-600 bg-white pl-1.5 pr-4',
-              'shadow-sm shadow-emerald-900/[0.06]',
+              'relative flex h-11 shrink-0 items-center gap-2.5 rounded-full border-2 border-brand-600 bg-white pl-1.5 pr-4',
+              'shadow-sm shadow-brand-900/[0.06]',
               'transition-all duration-200',
-              'hover:border-emerald-700 hover:bg-gradient-to-r hover:from-emerald-50/90 hover:to-yellow-50/70 hover:shadow-md hover:shadow-emerald-600/10',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/35 focus-visible:ring-offset-2'
+              'hover:border-brand-700 hover:bg-gradient-to-r hover:from-brand-50/90 hover:to-yellow-50/70 hover:shadow-md hover:shadow-brand-600/10',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/35 focus-visible:ring-offset-2'
             )}
           >
             <span
               className={cn(
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
                 'bg-gradient-to-br from-yellow-300 via-yellow-300 to-yellow-400',
-                'text-emerald-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]',
+                'text-brand-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]',
                 'ring-1 ring-yellow-500/35'
               )}
               aria-hidden
             >
               <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={2.25} />
             </span>
-            <span className="hidden text-sm font-semibold tracking-tight text-emerald-900 sm:inline">Carrito</span>
+            <span className="hidden text-sm font-semibold tracking-tight text-brand-900 sm:inline">Carrito</span>
             {itemCount > 0 && (
               <span
                 className={cn(
                   'absolute -right-0.5 -top-0.5 flex h-[22px] min-w-[22px] items-center justify-center rounded-full',
-                  'bg-emerald-600 px-1 text-[11px] font-bold tabular-nums text-white',
+                  'bg-brand-600 px-1 text-[11px] font-bold tabular-nums text-white',
                   'ring-[3px] ring-yellow-200 shadow-sm'
                 )}
               >
@@ -103,7 +103,7 @@ export function TiendaHeader({ showSearch, searchValue = '', onSearchChange }: T
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar productos…"
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               aria-label="Buscar en catálogo"
             />
           </div>

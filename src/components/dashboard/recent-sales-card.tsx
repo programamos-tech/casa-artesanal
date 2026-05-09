@@ -116,8 +116,8 @@ export function RecentSalesCard({ sales, limit = 8 }: RecentSalesCardProps) {
     <Card className="border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-sm h-96">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center">
-          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 mr-3">
-            <Receipt className="h-5 w-5 text-emerald-600" />
+          <div className="p-2 rounded-xl bg-brand-50 dark:bg-brand-900/20 mr-3">
+            <Receipt className="h-5 w-5 text-brand-600" />
           </div>
           <span className="text-lg font-medium text-gray-800 dark:text-gray-200">Ventas Recientes</span>
         </CardTitle>

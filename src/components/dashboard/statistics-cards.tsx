@@ -82,9 +82,9 @@ export function StatisticsCards({ stats, previousStats }: StatisticsCardsProps) 
       change: salesChange.change,
       changeType: salesChange.changeType,
       icon: DollarSign,
-      color: 'emerald',
-      bgColor: 'bg-emerald-100 dark:bg-emerald-900/20',
-      iconColor: 'text-emerald-600'
+      color: 'brand',
+      bgColor: 'bg-brand-100 dark:bg-brand-900/20',
+      iconColor: 'text-brand-600'
     },
     {
       title: 'Ganancia Total',
@@ -112,9 +112,9 @@ export function StatisticsCards({ stats, previousStats }: StatisticsCardsProps) 
       change: clientsChange.change,
       changeType: clientsChange.changeType,
       icon: Users,
-      color: 'green',
-      bgColor: 'bg-green-100 dark:bg-green-900/20',
-      iconColor: 'text-green-600'
+      color: 'brand',
+      bgColor: 'bg-brand-100 dark:bg-brand-900/20',
+      iconColor: 'text-brand-600'
     },
     {
       title: 'Margen de Ganancia',
@@ -152,16 +152,16 @@ export function StatisticsCards({ stats, previousStats }: StatisticsCardsProps) 
       change: `${monthlySalesChange.change} transacciones`,
       changeType: monthlySalesChange.changeType,
       icon: ShoppingCart,
-      color: 'emerald',
-      bgColor: 'bg-emerald-100 dark:bg-emerald-900/20',
-      iconColor: 'text-emerald-600'
+      color: 'brand',
+      bgColor: 'bg-brand-100 dark:bg-brand-900/20',
+      iconColor: 'text-brand-600'
     }
   ]
 
   const getChangeColor = (changeType: string) => {
     switch (changeType) {
       case 'positive':
-        return 'text-green-600 dark:text-green-400'
+        return 'text-brand-600 dark:text-brand-400'
       case 'negative':
         return 'text-red-600 dark:text-red-400'
       case 'warning':

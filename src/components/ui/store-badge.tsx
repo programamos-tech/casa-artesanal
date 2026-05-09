@@ -14,7 +14,7 @@ interface StoreBadgeProps {
 
 /** Tienda principal: mismo criterio que Facturas proveedor — verde muy sutil (fondo oscuro + texto verde suave). */
 const mainStoreChipClass =
-  'inline-flex max-w-full items-center gap-1.5 rounded-md border border-emerald-500/15 bg-emerald-500/[0.07] px-2 py-0.5 text-xs font-medium text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-950/55 dark:text-emerald-400/85'
+  'inline-flex max-w-full items-center gap-1.5 rounded-md border border-brand-500/15 bg-brand-500/[0.07] px-2 py-0.5 text-xs font-medium text-brand-800 dark:border-brand-500/20 dark:bg-brand-950/55 dark:text-brand-400/85'
 
 const microBaseLayout =
   'inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium'
@@ -48,7 +48,7 @@ export function StoreBadge({ className = '' }: StoreBadgeProps) {
   if (isMainStoreUser(user)) {
     return (
       <span className={cn(mainStoreChipClass, 'shrink-0', className)}>
-        <Building2 className="h-3 w-3 shrink-0 text-emerald-700/90 dark:text-emerald-400/80" aria-hidden />
+        <Building2 className="h-3 w-3 shrink-0 text-brand-700/90 dark:text-brand-400/80" aria-hidden />
         Tienda principal
       </span>
     )

@@ -1041,7 +1041,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                         </div>
                         {isSearchingProducts ? (
                           <div className="px-4 py-6 text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-2"></div>
                             <div className="text-gray-500 dark:text-gray-400 text-sm">
                               Buscando productos...
                             </div>

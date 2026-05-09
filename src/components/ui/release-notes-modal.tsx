@@ -57,7 +57,7 @@ export function ReleaseNotesModal() {
       >
         <DialogHeader className="space-y-0 border-b border-zinc-200/80 bg-zinc-50/80 px-6 py-5 text-left dark:border-zinc-800 dark:bg-zinc-900/50">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/15 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
               <Sparkles className="h-5 w-5" strokeWidth={1.5} aria-hidden />
             </span>
             <div className="min-w-0 space-y-1 pt-0.5">
@@ -76,7 +76,7 @@ export function ReleaseNotesModal() {
             {releaseNotes.items.map((text, i) => (
               <li key={i} className="flex gap-3">
                 <span
-                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/80 dark:bg-emerald-400/80"
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500/80 dark:bg-brand-400/80"
                   aria-hidden
                 />
                 <span className="leading-relaxed">{text}</span>

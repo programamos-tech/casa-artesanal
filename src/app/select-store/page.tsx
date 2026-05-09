@@ -85,11 +85,11 @@ export default function SelectStorePage() {
     return (
       <div
         data-auth-page
-        className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-emerald-100 dark:from-black dark:via-neutral-950 dark:to-black"
+        className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 via-white to-brand-100 dark:from-black dark:via-neutral-950 dark:to-black"
       >
         <LoginThemeToggle className="absolute right-4 top-4 z-20 md:right-8 md:top-8" />
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-brand-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-300">Cargando tiendas...</p>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function SelectStorePage() {
   return (
     <div
       data-auth-page
-      className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-emerald-100 p-4 dark:from-black dark:via-neutral-950 dark:to-black"
+      className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 via-white to-brand-100 p-4 dark:from-black dark:via-neutral-950 dark:to-black"
     >
       <LoginThemeToggle className="absolute right-4 top-4 z-20 md:right-8 md:top-8" />
       <div className="w-full max-w-4xl">
@@ -126,10 +126,10 @@ export default function SelectStorePage() {
           {mainStore && (
             <Card
               onClick={() => handleSelectStore(mainStore)}
-              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-2 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-neutral-900"
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-2 border-brand-200 dark:border-brand-800 bg-white dark:bg-neutral-900"
             >
               <CardContent className="p-2 md:p-4 flex flex-col items-center text-center">
-                <div className="relative w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800 flex items-center justify-center shadow-md ring-2 ring-emerald-200 dark:ring-emerald-800 mb-1.5 md:mb-2">
+                <div className="relative w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800 flex items-center justify-center shadow-md ring-2 ring-brand-200 dark:ring-brand-800 mb-1.5 md:mb-2">
                   {mainStore.logo ? (
                     <Image
                       src={mainStore.logo}
@@ -194,10 +194,10 @@ export default function SelectStorePage() {
           {mainStore && (
             <Card
               onClick={() => handleSelectStore(mainStore)}
-              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-2 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-neutral-900"
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-2 border-brand-200 dark:border-brand-800 bg-white dark:bg-neutral-900"
             >
               <CardContent className="p-4 md:p-6 flex flex-col items-center text-center">
-                <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800 flex items-center justify-center shadow-md ring-2 ring-emerald-200 dark:ring-emerald-800 mb-2 md:mb-3">
+                <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-neutral-800 flex items-center justify-center shadow-md ring-2 ring-brand-200 dark:ring-brand-800 mb-2 md:mb-3">
                   {mainStore.logo ? (
                     <Image
                       src={mainStore.logo}

@@ -29,7 +29,7 @@ function ProductCard({ product }: { product: PublicCatalogProduct }) {
     <article
       className={cn(
         'group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:rounded-2xl',
-        'transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200/80 hover:shadow-lg hover:shadow-emerald-500/5'
+        'transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200/80 hover:shadow-lg hover:shadow-brand-500/5'
       )}
     >
       <Link
@@ -58,12 +58,12 @@ function ProductCard({ product }: { product: PublicCatalogProduct }) {
 
       <div className="flex flex-1 flex-col gap-1 p-2.5 sm:gap-2 sm:p-4">
         {product.categoryName && (
-          <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-emerald-600 sm:text-[10px] sm:tracking-wider">
+          <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-brand-600 sm:text-[10px] sm:tracking-wider">
             {product.categoryName}
           </p>
         )}
         <Link href={`/tienda/p/${product.id}`}>
-          <h2 className="line-clamp-2 text-xs font-semibold leading-tight text-zinc-900 group-hover:text-emerald-800 sm:min-h-[2.5rem] sm:text-sm sm:leading-snug">
+          <h2 className="line-clamp-2 text-xs font-semibold leading-tight text-zinc-900 group-hover:text-brand-800 sm:min-h-[2.5rem] sm:text-sm sm:leading-snug">
             {product.name}
           </h2>
         </Link>
@@ -81,7 +81,7 @@ function ProductCard({ product }: { product: PublicCatalogProduct }) {
               type="button"
               size="sm"
               disabled={out}
-              className="h-8 flex-1 rounded-full bg-emerald-600 px-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-40 sm:h-9 sm:text-sm"
+              className="h-8 flex-1 rounded-full bg-brand-600 px-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-40 sm:h-9 sm:text-sm"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()

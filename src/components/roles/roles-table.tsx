@@ -112,14 +112,14 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Shield className="h-6 w-6 text-emerald-600" />
+                <Shield className="h-6 w-6 text-brand-600" />
                 Gestión de Roles
               </CardTitle>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
                 Administra los roles y permisos del sistema
               </p>
             </div>
-            <Button onClick={onCreate} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button onClick={onCreate} className="bg-brand-600 hover:bg-brand-700 text-white">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Rol
             </Button>
@@ -138,13 +138,13 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
                 placeholder="Buscar roles..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-neutral-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white dark:bg-neutral-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
+              className="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
             >
               <option value="all">Todos los tipos</option>
               <option value="system">Sistema</option>
@@ -168,7 +168,7 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
               </p>
               <Button 
                 onClick={onCreate}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-brand-600 hover:bg-brand-700 text-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Rol
@@ -214,8 +214,8 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center">
-                              <Shield className="h-4 w-4 text-emerald-600" />
+                            <div className="h-8 w-8 bg-brand-100 dark:bg-brand-900/20 rounded-full flex items-center justify-center">
+                              <Shield className="h-4 w-4 text-brand-600" />
                             </div>
                             <div>
                               <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -288,7 +288,7 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
                               variant="ghost"
                               onClick={() => onEdit(role)}
                               disabled={role.isSystem}
-                              className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-100 disabled:opacity-50 disabled:cursor-not-allowed"
                               title={role.isSystem ? "No se puede editar rol del sistema" : "Editar rol"}
                             >
                               <Edit className="h-4 w-4" />

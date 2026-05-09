@@ -38,13 +38,13 @@ export function SalesPeriodCard({ period, sales, previousSales, label }: SalesPe
       case 'week':
         return <Calendar className="h-5 w-5 text-blue-500" />
       case 'month':
-        return <BarChart3 className="h-5 w-5 text-emerald-500" />
+        return <BarChart3 className="h-5 w-5 text-brand-500" />
       case 'quarter':
         return <TrendingUp className="h-5 w-5 text-purple-500" />
       case 'year':
         return <Target className="h-5 w-5 text-orange-500" />
       default:
-        return <BarChart3 className="h-5 w-5 text-emerald-500" />
+        return <BarChart3 className="h-5 w-5 text-brand-500" />
     }
   }
 
@@ -80,8 +80,8 @@ export function SalesPeriodCard({ period, sales, previousSales, label }: SalesPe
             </div>
             <span className="text-lg font-medium text-gray-800 dark:text-gray-200">{label}</span>
           </div>
-          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
-            <DollarSign className="h-4 w-4 text-emerald-600" />
+          <div className="p-2 rounded-xl bg-brand-50 dark:bg-brand-900/20">
+            <DollarSign className="h-4 w-4 text-brand-600" />
           </div>
         </CardTitle>
       </CardHeader>

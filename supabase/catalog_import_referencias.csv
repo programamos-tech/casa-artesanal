@@ -1,0 +1,235 @@
+referencia,categoria,producto,costo_cop,precio_venta_sugerido_cop
+CA-MOCH-001,Mochila,Diseño pequeña,35000,47250
+CA-MOCH-002,Mochila,Diseño mediana,55000,74250
+CA-MOCH-003,Mochila,Diseño grande,85000,114750
+CA-MOCH-004,Mochila,Unicolor pequeña w,45000,60750
+CA-MOCH-005,Mochila,Unicolor mediana w,65000,87750
+CA-MOCH-006,Mochila,San Jacinto pequeña,39000,52650
+CA-MOCH-007,Mochila,San Jacinto mediana,49000,66150
+CA-MOCH-008,Mochila,San Jacinto Diseño,75000,101250
+CA-MOCH-009,Mochila,mochila tapete,95000,128250
+CA-MOCH-010,Mochila,mochila mono peque,55000,74250
+CA-MOCH-011,Mochila,mochila mono grande,120000,162000
+CA-MOCH-012,Mochila,Rapunzel pequeña,75000,101250
+CA-MOCH-013,Mochila,Rapunzel mediana,95000,128250
+CA-MOCH-014,Mochila,Rapunzel grande,125000,168750
+CA-MOCH-015,Mochila,moch Hilo de seda,135000,182250
+CA-MOCH-016,Mochila,Cola de ratón,85000,114750
+CA-MOCH-017,Mochila,Tapa mini,75000,101250
+CA-MOCH-018,Mochila,Tapa mediana,95000,128250
+CA-MOCH-019,Mochila,tapa grande,115000,155250
+CA-MOCH-020,Mochila,tapa mini decorada,115000,155250
+CA-MOCH-021,Mochila,tapa grande decorada,150000,202500
+CA-MOCH-022,Mochila,Decorada pequeña,120000,162000
+CA-MOCH-023,Mochila,Decorada mediana,220000,297000
+CA-MOCH-024,Mochila,Piedra pequeña,120000,162000
+CA-MOCH-025,Mochila,Piedra mediana,155000,209250
+CA-MOCH-026,Mochila,piedra grande,190000,256500
+CA-MOCH-027,Mochila,Imagen mediana,140000,189000
+CA-MOCH-028,Mochila,Imagen grande,180000,243000
+CA-MOCH-029,Mochila,Contemporánea mini,80000,108000
+CA-MOCH-030,Mochila,Contemporánea mediana,85000,114750
+CA-MOCH-031,Mochila,Kanhama mostacilla,280000,378000
+CA-MOCH-032,Mochila,Kankuama 110k,110000,148500
+CA-MOCH-033,Mochila,Kankuama Cuero,160000,216000
+CA-MOCH-034,Mochila,Tela Economica,85000,114750
+CA-MOCH-035,Mochila,tela Fina,135000,182250
+CA-MOCH-036,Mochila,mochila promoción,25000,33750
+CA-MOCH-037,Mochila,moch Canasto mini,95000,128250
+CA-MOCH-038,Mochila,moch canasto mediano,110000,148500
+CA-MOCH-039,Mochila,moch canasto boca grande,135000,182250
+CA-MOCH-040,Mochila,Araka 220 k,220000,297000
+CA-MOCH-041,Mochila,Araka 240 k,240000,324000
+CA-MOCH-042,Mochila,Araka 260 k,260000,351000
+CA-MOCH-043,Mochila,Araka 280 k,280000,378000
+CA-MOCH-044,Mochila,Araka 320 k,320000,432000
+CA-MOCH-045,Mochila,Araka 340 k,340000,459000
+CA-MOCH-046,Mochila,Sobre wayuu,48000,64800
+CA-MOCH-047,Mochila,empanada wayuu,38000,51300
+CA-BOLS-001,Bolsos,Canasto wayuu peque,65000,87750
+CA-BOLS-002,Bolsos,canasto wayuu mediano,95000,128250
+CA-BOLS-003,Bolsos,canasto wayuu grande,120000,162000
+CA-BOLS-004,Bolsos,Bolso Nailon,65000,87750
+CA-BOLS-005,Bolsos,porta celular wayuu,18000,24300
+CA-BOLS-006,Bolsos,porta celular cierre wayuu,25000,33750
+CA-BOLS-007,Bolsos,Canasto wayuu boca g,140000,189000
+CA-BOLS-008,Bolsos,Bolso C.f grande,120000,162000
+CA-BOLS-009,Bolsos,Bolso C.f mediano,85000,114750
+CA-BOLS-010,Bolsos,Carriel C.f,35000,47250
+CA-BOLS-011,Bolsos,porta celular C.f,35000,47250
+CA-BOLS-012,Bolsos,Carriel C. Fino,65000,87750
+CA-BOLS-013,Bolsos,yoyo mediano,75000,101250
+CA-BOLS-014,Bolsos,yoyo pequeño,65000,87750
+CA-MONE-001,Monedero,monedero C.f,12000,16200
+CA-MONE-002,Monedero,monedero wayuu,12000,16200
+CA-MONE-003,Monedero,monedero totumo,7000,9450
+CA-MONE-004,Monedero,monedero Sincelejo,8000,10800
+CA-MONE-005,Monedero,monedero Cuero 8k,8000,10800
+CA-MONE-006,Monedero,monedero cuero 12 k,12000,16200
+CA-MONE-007,Monedero,monedero wayuu 15 k,6000,8100
+CA-MONE-008,Monedero,monedero cuero 18 k,18000,24300
+CA-MONE-009,Monedero,monedero cuero 22 k,22000,29700
+CA-MONE-010,Monedero,monedero color mini,5000,6750
+CA-MONE-011,Monedero,monedero color mediano,8000,10800
+CA-MONE-012,Monedero,monedero color grande,10000,13500
+CA-MONE-013,Monedero,monedero iraka,12000,16200
+CA-BILL-001,Billetera,Billetera C.f Economica,25000,33750
+CA-BILL-002,Billetera,Billetera C.f 35 k,35000,47250
+CA-BILL-003,Billetera,Billetera C.f Hombre 45k,45000,60750
+CA-BILL-004,Billetera,Billetera C.f Fina pequeña,65000,87750
+CA-BILL-005,Billetera,Billetera C.f Fina Hombre,65000,87750
+CA-BILL-006,Billetera,Billetera C.f Fina grande,95000,128250
+CA-ARET-001,Arete,arete C.f Economico,8000,10800
+CA-ARET-002,Arete,arete C.f Fino,35000,47250
+CA-ARET-003,Arete,arete mostacilla Fino,28000,37800
+CA-ARET-004,Arete,arete totumo,6000,8100
+CA-ARET-005,Arete,arete Hilo,8000,10800
+CA-ARET-006,Arete,arete Dibujo,12000,16200
+CA-ARET-007,Arete,arete mostacilla comun,13000,17550
+CA-ARET-008,Arete,arete Lata,10000,13500
+CA-ARET-009,Arete,Set economico,5000,6750
+CA-ARET-010,Arete,Set Fino,12000,16200
+CA-ARET-011,Arete,collares en mostacilla,150000,202500
+CA-ARET-012,Arete,collares wayuu,22000,29700
+CA-ARET-013,Arete,pañoletas,15000,20250
+CA-ALPA-001,Alpargatas,Alpargata Finas,50000,67500
+CA-ALPA-002,Alpargatas,Alpargatas sencillas,45000,60750
+CA-A150-001,Alpargata 150,Alpargata 150,35000,47250
+CA-ALPA-003,Alpargatas,sandalia,35000,47250
+CA-ALPA-004,Alpargatas,sandalia wayuu,35000,47250
+CA-ALPA-005,Alpargatas,sandalia C.f,45000,60750
+CA-ALPA-006,Alpargatas,Abarca cuero,35000,47250
+CA-ALPA-007,Alpargatas,Abarca economica,35000,47250
+CA-ALPA-008,Alpargatas,Guairena Hombre,35000,47250
+CA-ALPA-009,Alpargatas,Guairena mujer,22000,29700
+CA-ALPA-010,Alpargatas,Abarca de niño,35000,47250
+CA-CORR-001,Correas,Correa Sr Estreg,35000,47250
+CA-CORR-002,Correas,Correa Argentina,120000,162000
+CA-CORR-003,Correas,Correa cuero,35000,47250
+CA-CORR-004,Correas,Correa trenzada,35000,47250
+CA-PONC-001,Ponchos,poncho cuadro,18000,24300
+CA-PONC-002,Ponchos,poncho Raya,18000,24300
+CA-PONC-003,Ponchos,peruano,35000,47250
+CA-PONC-004,Ponchos,costeño,30000,40500
+CA-PONC-005,Ponchos,Sarape,45000,60750
+CA-PONC-006,Ponchos,wayuu,40000,54000
+CA-PONC-007,Ponchos,wayuu estampado,55000,74250
+CA-PONC-008,Ponchos,paleteado,65000,87750
+CA-PONC-009,Ponchos,Artesano,25000,33750
+CA-PONC-010,Ponchos,publicitario,15000,20250
+CA-PONC-011,Ponchos,super poncho,55000,74250
+CA-PONC-012,Ponchos,poncho dorado,55000,74250
+CA-PONC-013,Ponchos,poncho pañuelo,18000,24300
+CA-PONC-014,Ponchos,Colombia,85000,114750
+CA-PONC-015,Ponchos,Sublimado,45000,60750
+CA-MULE-001,Mulera,medio cuadro,12000,16200
+CA-MULE-002,Mulera,medio artesano,15000,20250
+CA-MULE-003,Mulera,medio peruano,25000,33750
+CA-MULE-004,Mulera,pavo real estam,25000,33750
+CA-MULE-005,Mulera,Camisero,25000,33750
+CA-MULE-006,Mulera,publicitario,18000,24300
+CA-MULE-007,Mulera,camisero estampado,25000,33750
+CA-MANI-001,Manilla,manilla azabache,5000,6750
+CA-MANI-002,Manilla,manilla azabache Fino,12000,16200
+CA-MANI-003,Manilla,acero Fina,30000,40500
+CA-MANI-004,Manilla,acero economica,18000,24300
+CA-MANI-005,Manilla,wayuu delgada,7000,9450
+CA-MANI-006,Manilla,wayuu gruesa,8000,10800
+CA-MANI-007,Manilla,wayuu brazalete,12000,16200
+CA-MANI-008,Manilla,cuero delgado,12000,16200
+CA-MANI-009,Manilla,cuero grueso,15000,20250
+CA-MANI-010,Manilla,C.f delgada,3000,4050
+CA-MANI-011,Manilla,C.f gruesa,5000,6750
+CA-MANI-012,Manilla,C.f cuero,12000,16200
+CA-IMAN-001,Imanes,iman Sincelejo,12000,16200
+CA-IMAN-002,Imanes,iman Colombia,12000,16200
+CA-IMAN-003,Imanes,iman encendedor,7000,9450
+CA-IMAN-004,Imanes,iman Sombrero 7k,7000,9450
+CA-IMAN-005,Imanes,iman hilo sombrero,3000,4050
+CA-IMAN-006,Imanes,iman metalico,18000,24300
+CA-IMAN-007,Imanes,bicho paja,12000,16200
+CA-CUCH-001,Cuchara,cuchara mini madera,2000,2700
+CA-CUCH-002,Cuchara,cuchara mediana madera,5000,6750
+CA-CUCH-003,Cuchara,cuchara grande madera,12000,16200
+CA-CUCH-004,Cuchara,Cuchillo,12000,16200
+CA-CUCH-005,Cuchara,cuch pequeña totumo,3000,4050
+CA-CUCH-006,Cuchara,cuch grande totumo,5000,6750
+CA-CUCH-007,Cuchara,cuchara extragrande,22000,29700
+CA-CUCH-008,Cuchara,Totumo pequeña,5000,6750
+CA-CUCH-009,Cuchara,Totumo mediana,10000,13500
+CA-CUCH-010,Cuchara,Totumo grande,15000,20250
+CA-CUCH-011,Cuchara,Jarra de totumo,32000,43200
+CA-CUCH-012,Cuchara,Jarrone de ceramica pe,8000,10800
+CA-CUCH-013,Cuchara,Jarrone de ceramica mediano,13000,17550
+CA-CUCH-014,Cuchara,Jarrone de ceramica gande,25000,33750
+CA-CUCH-015,Cuchara,chancho mini,6000,8100
+CA-CUCH-016,Cuchara,chancho pequeño,8000,10800
+CA-CUCH-017,Cuchara,chancho mediano,12000,16200
+CA-CUCH-018,Cuchara,chancho gande,15000,20250
+CA-CUAD-001,Cuadros,cuadros 3D,45000,60750
+CA-CUAD-002,Cuadros,cuadro sencillo,35000,47250
+CA-CUAD-003,Cuadros,portallave Sincelejo,22000,29700
+CA-CHIV-001,Chivas,Chiva ceramica mini,5000,6750
+CA-CHIV-002,Chivas,Chiva ceramica mediana,12000,16200
+CA-CHIV-003,Chivas,Chiva ceramica gande,15000,20250
+CA-CHIV-004,Chivas,Chiva laser,22000,29700
+CA-CHIV-005,Chivas,Chiva 28 k,28000,37800
+CA-TINT-001,Tinteros,Tinteros pequeño,3000,4050
+CA-TINT-002,Tinteros,Tinteros mediano,5000,6750
+CA-TINT-003,Tinteros,Tinteros grande,10000,13500
+CA-TINT-004,Tinteros,porta lapicero Colombia,28000,37800
+CA-TINT-005,Tinteros,porta lapicero C.f,25000,33750
+CA-TINT-006,Tinteros,porta lapicero acordeon,25000,33750
+CA-TINT-007,Tinteros,porta servilletero y lapicero C.f fino,32000,43200
+CA-ACCE-001,Acceso,Burros y Barcos,35000,47250
+CA-ACCE-002,Acceso,"pareja Silla, dama y burro",12000,16200
+CA-ACCE-003,Acceso,Alcancia Tortuga,30000,40500
+CA-ACCE-004,Acceso,muñeco base blanca,35000,47250
+CA-ACCE-005,Acceso,muñecos totumo,32000,43200
+CA-ACCE-006,Acceso,animal mueve cabeza,13000,17550
+CA-ACCE-007,Acceso,Alcancia madera,60000,81000
+CA-ACCE-008,Acceso,reloj Redondo,90000,121500
+CA-ACCE-009,Acceso,reloj cuadrado,75000,101250
+CA-ACCE-010,Acceso,reloj rectangular,65000,87750
+CA-ACCE-011,Acceso,espejo iraka,120000,162000
+CA-ACCE-012,Acceso,individual iraka,16000,21600
+CA-ACCE-013,Acceso,camino iraka,120000,162000
+CA-ACCE-014,Acceso,Agenda C.f,90000,121500
+CA-ACCE-015,Acceso,libreta Colombia,22000,29700
+CA-ACCE-016,Acceso,memos Colombia,22000,29700
+CA-ACCE-017,Acceso,porta navaja,12000,16200
+CA-ACCE-018,Acceso,porta eledor aveo,25000,33750
+CA-ACCE-019,Acceso,Frutas ceramica,15000,20250
+CA-ABAN-001,Abanicos,Abanico iraka,15000,20250
+CA-ABAN-002,Abanicos,Abanico Concha,8000,10800
+CA-ABAN-003,Abanicos,Abanico Industrial,12000,16200
+CA-HAMA-001,Hamaca,Hamaca industrial,55000,74250
+CA-HAMA-002,Hamaca,Hamaca paletera safico,150000,202500
+CA-HAMA-003,Hamaca,Hamaca paletera meral,280000,378000
+CA-HAMA-004,Hamaca,Hamaca paletera grande,380000,513000
+CA-HAMA-005,Hamaca,Hamaca fina,1200000,1620000
+CA-HAMA-006,Hamaca,Hamaca mediana,55000,74250
+CA-HAMA-007,Hamaca,Hamaca mini,15000,20250
+CA-LLAV-001,Llavero,llavero hilo,2000,2700
+CA-LLAV-002,Llavero,llavero Hamaca,5000,6750
+CA-LLAV-003,Llavero,tambor,8000,10800
+CA-LLAV-004,Llavero,concha,2000,2700
+CA-LLAV-005,Llavero,Taboa,7000,9450
+CA-LLAV-006,Llavero,madera,5000,6750
+CA-LLAV-007,Llavero,Laser,8000,10800
+CA-LLAV-008,Llavero,goma,6000,8100
+CA-LLAV-009,Llavero,metalico,12000,16200
+CA-LLAV-010,Llavero,encendedor,12000,16200
+CA-LLAV-011,Llavero,wayuu,7000,9450
+CA-LLAV-012,Llavero,monedero C.f,7000,9450
+CA-LLAV-013,Llavero,alpargatita,5000,6750
+CA-LLAV-014,Llavero,chancho ceramica eco,12000,16200
+CA-LLAV-015,Llavero,bola fina,6000,8100
+CA-LLAV-016,Llavero,Fleco,5000,6750
+CA-LLAV-017,Llavero,C.f grueso,12000,16200
+CA-LLAV-018,Llavero,C.f delgado,18000,24300
+CA-LLAV-019,Llavero,animal,12000,16200
+CA-LLAV-020,Llavero,hilo hamaca,8000,10800
+CA-GAZA-001,Gazas,Gaza wayuu deg,10000,13500
+CA-GAZA-002,Gazas,Gaza wayuu gruesa,18000,24300
+CA-GAZA-003,Gazas,gaza paleteada,15000,20250

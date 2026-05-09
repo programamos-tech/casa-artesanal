@@ -93,10 +93,10 @@ export default function LogsPage() {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-4 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 max-xl:pb-1 md:py-6">
+      <div className="bg-gradient-to-b from-indigo-50/60 via-white to-violet-50/40 py-4 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-violet-950/20 max-xl:pb-1 md:py-6">
         <div className="flex h-64 items-center justify-center">
           <div
-            className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400"
+            className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-700 dark:border-t-brand-500"
             aria-hidden
           />
         </div>
@@ -105,7 +105,7 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-4 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 max-xl:pb-1 md:py-6">
+    <div className="bg-gradient-to-b from-indigo-50/60 via-white to-violet-50/40 py-4 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-violet-950/20 max-xl:pb-1 md:py-6">
       <LogsTable
         logs={filteredLogs as any}
         searchTerm={searchTerm}

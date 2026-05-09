@@ -25,7 +25,7 @@ function getStatusIcon(status: string) {
   switch (status) {
     case 'paid':
       return (
-        <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400/95" strokeWidth={2} />
+        <CheckCircle className="h-3.5 w-3.5 shrink-0 text-brand-600 dark:text-brand-400/95" strokeWidth={2} />
       )
     case 'partial':
       return (
@@ -54,7 +54,7 @@ function getStatusBadgeClass(status: string) {
     case 'partial':
       return 'border-orange-500/35 bg-orange-500/[0.07] text-orange-950 dark:border-orange-500/28 dark:bg-orange-500/[0.08] dark:text-orange-200/95'
     case 'paid':
-      return 'border-emerald-500/35 bg-emerald-500/[0.07] text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-500/[0.08] dark:text-emerald-200/95'
+      return 'border-brand-500/35 bg-brand-500/[0.07] text-brand-950 dark:border-brand-500/30 dark:bg-brand-500/[0.08] dark:text-brand-200/95'
     case 'cancelled':
       return 'border-rose-500/30 bg-rose-500/[0.06] text-rose-900 dark:border-zinc-600 dark:bg-rose-950/35 dark:text-rose-200/90'
     default:

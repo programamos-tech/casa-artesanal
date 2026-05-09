@@ -76,7 +76,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
 
       <main className="w-full flex-1 px-4 py-6 sm:px-6 sm:py-10 lg:px-8 xl:px-10 2xl:px-14">
         <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-          <Link href="/tienda" className="hover:text-emerald-700">
+          <Link href="/tienda" className="hover:text-brand-700">
             Catálogo
           </Link>
           <span aria-hidden>/</span>
@@ -91,7 +91,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
 
         <Link
           href="/tienda"
-          className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:underline"
+          className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
         >
           <ChevronLeft className="h-4 w-4" />
           Volver al catálogo
@@ -127,7 +127,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
 
           <div className="flex flex-col">
             {product.categoryName && (
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">{product.categoryName}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-brand-600">{product.categoryName}</p>
             )}
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">{product.name}</h1>
             {product.brand?.trim() && <p className="mt-2 text-base text-zinc-500">{product.brand}</p>}
@@ -142,7 +142,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
                 </div>
               </div>
               {!out && locationCount > 0 && (
-                <Badge className="w-fit border-0 bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-600">
+                <Badge className="w-fit border-0 bg-brand-600 px-3 py-1.5 text-white hover:bg-brand-600">
                   En {locationCount} punto{locationCount === 1 ? '' : 's'} de la red
                 </Badge>
               )}
@@ -193,7 +193,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
               <Button
                 type="button"
                 disabled={out}
-                className="h-12 flex-1 rounded-2xl bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:opacity-40 sm:min-w-[240px]"
+                className="h-12 flex-1 rounded-2xl bg-brand-600 text-base font-semibold text-white hover:bg-brand-700 disabled:opacity-40 sm:min-w-[240px]"
                 onClick={() => {
                   if (out) return
                   addLine({
@@ -212,7 +212,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
               </Button>
             </div>
 
-            <p className="mt-6 rounded-xl bg-emerald-50/80 p-4 text-sm leading-relaxed text-emerald-900">
+            <p className="mt-6 rounded-xl bg-brand-50/80 p-4 text-sm leading-relaxed text-brand-900">
               Compra segura: revisa disponibilidad y formas de pago con nuestro equipo en tienda o por canales
               oficiales ZONA T.
             </p>
@@ -223,7 +223,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
           <Card className="border-zinc-200 bg-white shadow-sm dark:border-zinc-200 dark:bg-white">
             <CardHeader className="border-b border-zinc-100 pb-4">
               <CardTitle className="flex items-center gap-2 text-lg text-zinc-900 dark:text-zinc-900">
-                <Warehouse className="h-5 w-5 text-emerald-600" strokeWidth={1.5} />
+                <Warehouse className="h-5 w-5 text-brand-600" strokeWidth={1.5} />
                 Disponibilidad por tienda
               </CardTitle>
               <p className="text-sm font-normal text-zinc-500 dark:text-zinc-500">
@@ -244,7 +244,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
                     <tr className="bg-white">
                       <td className="px-4 py-4">
                         <div className="flex items-start gap-2">
-                          <Store className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" strokeWidth={1.5} />
+                          <Store className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" strokeWidth={1.5} />
                           <div>
                             <p className="font-semibold text-zinc-900">{product.mainStoreName}</p>
                             <p className="text-xs text-zinc-500">Sede principal</p>
@@ -309,7 +309,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
           <Card className="border-zinc-200 bg-white shadow-sm dark:border-zinc-200 dark:bg-white">
             <CardHeader className="border-b border-zinc-100 pb-4">
               <CardTitle className="flex items-center gap-2 text-lg text-zinc-900 dark:text-zinc-900">
-                <MessageCircle className="h-5 w-5 text-emerald-600" strokeWidth={1.5} />
+                <MessageCircle className="h-5 w-5 text-brand-600" strokeWidth={1.5} />
                 Opiniones de clientes
               </CardTitle>
               <p className="text-sm font-normal text-zinc-500 dark:text-zinc-500">
@@ -355,7 +355,7 @@ export function ProductDetailClient({ product }: { product: PublicProductDetail 
                     <div className="flex flex-wrap items-center gap-2">
                       <RatingStars rating={rev.rating} className="scale-90" />
                       {rev.verified && (
-                        <Badge variant="secondary" className="border-emerald-200 bg-emerald-50 text-emerald-800">
+                        <Badge variant="secondary" className="border-brand-200 bg-brand-50 text-brand-800">
                           Compra verificada
                         </Badge>
                       )}

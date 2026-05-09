@@ -15,23 +15,25 @@ import { cn } from '@/lib/utils'
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
 const inputBase =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-600/80 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20'
+  'casa-artesanal-preserve-surface w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-600/80 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/25'
 
 function SectionCard({
   icon: Icon,
   title,
   children,
   description,
+  iconClassName = 'text-indigo-600 dark:text-indigo-400',
 }: {
   icon: LucideIcon
   title: string
   children: React.ReactNode
   description?: string
+  iconClassName?: string
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/50 md:p-5">
+    <div className="rounded-xl border border-indigo-100/90 bg-white p-4 shadow-sm dark:border-indigo-900/40 dark:bg-indigo-950/20 md:p-5">
       <div className="mb-4 flex items-center gap-2">
-        <Icon className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} aria-hidden />
+        <Icon className={cn('h-5 w-5 shrink-0', iconClassName)} strokeWidth={1.75} aria-hidden />
         <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
       </div>
       {description ? <p className="mb-4 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{description}</p> : null}
@@ -130,7 +132,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-zinc-500/45 dark:bg-zinc-700/40 dark:text-zinc-100'
+        return 'border-brand-200 bg-brand-50 text-brand-800 dark:border-zinc-500/45 dark:bg-zinc-700/40 dark:text-zinc-100'
       case 'inactive':
         return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300'
       case 'discontinued':
@@ -294,15 +296,15 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
   const modal = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-3 py-5 backdrop-blur-md dark:bg-black/75 sm:py-8 xl:left-56">
       <div
-        className="casa-artesanal-preserve-surface flex max-h-[calc(100dvh-2.5rem)] w-full max-w-[min(72rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950 sm:max-h-[calc(100dvh-4rem)]"
+        className="casa-artesanal-preserve-surface flex max-h-[calc(100dvh-2.5rem)] w-full max-w-[min(72rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/40 via-zinc-50 to-zinc-50 shadow-2xl dark:border-indigo-900/35 dark:from-indigo-950/25 dark:via-zinc-950 dark:to-zinc-950 sm:max-h-[calc(100dvh-4rem)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-modal-title"
       >
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200 bg-white px-4 py-4 md:px-6 md:py-5 dark:border-zinc-800 dark:bg-zinc-950">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/90 via-white to-violet-50/70 px-4 py-4 md:px-6 md:py-5 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/30">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-600/90 dark:bg-zinc-800/80">
-              <Package className="h-5 w-5 text-zinc-500 dark:text-zinc-300" strokeWidth={1.75} aria-hidden />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
+              <Package className="h-5 w-5 text-indigo-600 dark:text-indigo-400" strokeWidth={1.75} aria-hidden />
             </div>
             <div className="min-w-0">
               <h2 id="product-modal-title" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white md:text-xl">
@@ -323,7 +325,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-50 px-4 py-4 md:px-6 md:py-5 dark:bg-zinc-950">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-50/90 px-4 py-4 md:px-6 md:py-5 dark:bg-zinc-950">
           <form
             id={formId}
             onSubmit={e => {
@@ -423,6 +425,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                   icon={ImageIcon}
                   title="Imagen del catálogo"
                   description="Foto para ficha y listados (máx. 5MB)."
+                  iconClassName="text-sky-600 dark:text-sky-400"
                 >
                   <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700/80 dark:bg-zinc-900/60">
                     {uploadPreview || catalogImageUrl ? (
@@ -472,7 +475,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                   </div>
                 </SectionCard>
 
-                <SectionCard icon={DollarSign} title="Información financiera">
+                <SectionCard icon={DollarSign} title="Información financiera" iconClassName="text-violet-600 dark:text-violet-400">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label htmlFor="product-price" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -517,7 +520,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
               </div>
 
               <div className="space-y-4 lg:space-y-5">
-                <SectionCard icon={BarChart3} title="Control de stock">
+                <SectionCard icon={BarChart3} title="Control de stock" iconClassName="text-teal-600 dark:text-teal-400">
                   {product && (
                     <div className="-mt-2 mb-4 flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700/60 dark:bg-zinc-900/50">
                       <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
@@ -615,7 +618,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                     )}
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700/60 dark:bg-zinc-800/40">
+                  <div className="mt-4 rounded-xl border border-teal-100/90 bg-teal-50/40 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/25">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Stock total</span>
                       <span className="text-lg font-semibold tabular-nums text-zinc-900 dark:text-white">
@@ -628,7 +631,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                   </div>
                 </SectionCard>
 
-                <SectionCard icon={AlertTriangle} title="Estado del producto">
+                <SectionCard icon={AlertTriangle} title="Estado del producto" iconClassName="text-amber-600 dark:text-amber-400">
                   <div className="flex flex-wrap gap-2">
                     {(['active', 'inactive', 'discontinued', 'out_of_stock'] as const).map(status => (
                       <button
@@ -658,7 +661,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         </div>
 
         <footer
-          className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-zinc-200 bg-white px-4 py-4 md:px-6 dark:border-zinc-800 dark:bg-zinc-950"
+          className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-indigo-100/80 bg-white/95 px-4 py-4 backdrop-blur-sm md:px-6 dark:border-indigo-900/40 dark:bg-zinc-950/95"
           style={{ paddingBottom: `max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))` }}
         >
           <button
@@ -671,7 +674,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
           <button
             type="submit"
             form={formId}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
           >
             <Package className="h-4 w-4 shrink-0" strokeWidth={1.75} />
             {isEdit ? 'Guardar cambios' : 'Crear producto'}

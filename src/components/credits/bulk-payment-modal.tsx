@@ -313,7 +313,7 @@ export function BulkPaymentModal({
               </p>
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 Total a pagar{' '}
-                <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{formatCurrency(totalPending)}</span>
+                <span className="tabular-nums text-brand-700 dark:text-brand-400">{formatCurrency(totalPending)}</span>
               </p>
             </div>
 

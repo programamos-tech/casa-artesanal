@@ -42,6 +42,13 @@ const actionIconBtnClass =
 const actionDeleteBtnClass =
   'h-9 w-9 p-0 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400'
 
+/** Evita que globals.css (html.light * { background: inherit }) aplaste los fondos de los badges */
+const badgeTint = 'casa-artesanal-preserve-surface'
+
+/** Acentos como en reportes/dashboard: color solo en el icono */
+const productHeroIconClass = 'text-indigo-600 dark:text-indigo-400'
+const productCategoriesIconClass = 'text-amber-600 dark:text-amber-400'
+
 interface ProductTableProps {
   products: Product[]
   categories: Category[]
@@ -140,18 +147,19 @@ export function ProductTable({
     return category?.name || 'Sin categoría'
   }
 
+  /** Catálogo: Activo en verde suave; otros estados neutros o alerta */
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'active':
-        return 'border-emerald-300/80 bg-emerald-100/75 text-emerald-900 dark:border-emerald-500/35 dark:bg-emerald-950/45 dark:text-emerald-300/95'
+        return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
       case 'inactive':
-        return 'border-zinc-300/90 bg-zinc-100/90 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/55 dark:text-zinc-400'
+        return 'border-0 bg-zinc-100/95 text-zinc-600 dark:bg-zinc-900/55 dark:text-zinc-400'
       case 'discontinued':
-        return 'border-violet-200/90 bg-violet-50/85 text-violet-900 dark:border-violet-900/45 dark:bg-violet-950/35 dark:text-violet-300/90'
+        return 'border-0 bg-zinc-100/80 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
       case 'out_of_stock':
-        return 'border-rose-200/90 bg-rose-50/85 text-rose-900 dark:border-rose-900/45 dark:bg-rose-950/35 dark:text-rose-300/90'
+        return 'border-0 bg-red-100/90 text-red-900/90 dark:bg-red-950/35 dark:text-red-300/90'
       default:
-        return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
+        return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
     }
   }
 
@@ -185,6 +193,21 @@ export function ProductTable({
     }
   }
 
+  const getStatusIconClass = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'text-green-600 dark:text-green-400'
+      case 'inactive':
+        return 'text-zinc-500 dark:text-zinc-400'
+      case 'discontinued':
+        return 'text-zinc-600 dark:text-zinc-400'
+      case 'out_of_stock':
+        return 'text-rose-600 dark:text-rose-400'
+      default:
+        return 'text-zinc-500 dark:text-zinc-400'
+    }
+  }
+
   const getStockStatusLabel = (product: Product) => {
     const { warehouse, store, total } = product.stock
     if (total === 0) return 'Sin Stock'
@@ -201,24 +224,25 @@ export function ProductTable({
     return 'Sin Stock'
   }
 
+  /** Stock: acentos muy suaves; sin saturación fuerte */
   const getStockStatusBadgeClass = (product: Product) => {
     const { warehouse, store, total } = product.stock
     if (total === 0) {
-      return 'border-rose-200/90 bg-rose-50/85 text-rose-900 dark:border-rose-900/45 dark:bg-rose-950/40 dark:text-rose-300/90'
+      return 'border-0 bg-red-100/85 text-red-900/85 dark:bg-red-950/30 dark:text-red-300/85'
     }
     if (store > 0) {
       if (store >= 10) {
-        return 'border-emerald-300/80 bg-emerald-100/75 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/35 dark:text-emerald-300/90'
+        return 'border-0 bg-green-100/80 text-green-900/88 dark:bg-green-950/25 dark:text-green-300/85'
       }
       if (store >= 5) {
-        return 'border-amber-200/90 bg-amber-50/90 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/35 dark:text-amber-200/90'
+        return 'border-0 bg-amber-100/85 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
       }
-      return 'border-orange-200/90 bg-orange-50/90 text-orange-950 dark:border-orange-900/45 dark:bg-orange-950/35 dark:text-orange-300/90'
+      return 'border-0 bg-orange-100/85 text-orange-950/90 dark:bg-orange-950/25 dark:text-orange-300/85'
     }
     if (warehouse > 0) {
-      return 'border-sky-200/90 bg-sky-50/85 text-sky-900 dark:border-sky-900/45 dark:bg-sky-950/35 dark:text-sky-300/90'
+      return 'border-0 bg-sky-100/80 text-sky-950/90 dark:bg-sky-950/30 dark:text-sky-300/85'
     }
-    return 'border-rose-200/90 bg-rose-50/85 text-rose-900 dark:border-rose-900/45 dark:bg-rose-950/40 dark:text-rose-300/90'
+    return 'border-0 bg-red-100/85 text-red-900/85 dark:bg-red-950/30 dark:text-red-300/85'
   }
 
   const stockStatusOptions = [
@@ -237,21 +261,27 @@ export function ProductTable({
   ]
 
   const thClass =
-    'whitespace-nowrap bg-zinc-50/80 px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500'
+    'casa-artesanal-preserve-surface whitespace-nowrap bg-zinc-100/95 px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-600 dark:bg-zinc-900/70 dark:text-zinc-400'
 
   return (
     <TooltipProvider>
       <div className="space-y-4 md:space-y-6">
-        <Card className={cardShell}>
-          <CardHeader className="space-y-0 p-4 md:p-6">
+        <Card className={cn('relative overflow-hidden', cardShell)}>
+          <CardHeader className="space-y-0 border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  <Package className="h-5 w-5 shrink-0 text-emerald-600/85 dark:text-emerald-500/80" strokeWidth={1.5} aria-hidden />
+                  <Package className={cn('h-5 w-5 shrink-0', productHeroIconClass)} strokeWidth={1.5} aria-hidden />
                   <span>Gestión de productos</span>
                   <StoreBadge />
                   {isSearching && (
-                    <Badge variant="outline" className="border-zinc-300 text-[11px] font-normal text-zinc-600 dark:border-zinc-600 dark:text-zinc-400">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        badgeTint,
+                        'border-0 bg-zinc-100/90 text-[11px] font-normal text-zinc-600 dark:bg-zinc-900/45 dark:text-zinc-400'
+                      )}
+                    >
                       Búsqueda activa
                     </Badge>
                   )}
@@ -264,41 +294,59 @@ export function ProductTable({
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                 {canCreate && (
-                  <Button onClick={onCreate} size="sm" className="flex-1 sm:flex-none">
+                  <Button
+                    onClick={onCreate}
+                    size="sm"
+                    className="flex-1 border-transparent bg-brand-700 text-white hover:bg-brand-800 sm:flex-none dark:bg-brand-600 dark:hover:bg-brand-500 [&_svg]:text-white"
+                  >
                     <Plus className="h-3.5 w-3.5 shrink-0" />
                     <span className="hidden sm:inline">Nuevo producto</span>
                     <span className="sm:hidden">Nuevo</span>
                   </Button>
                 )}
                 {!canCreate && hasPermission('products', 'create') && (
-                  <span className="rounded-md border border-amber-200/80 bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+                  <span className="rounded-md border-0 bg-amber-100/90 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/35 dark:text-amber-200">
                     Solo puedes crear en la tienda de Sincelejo
                   </span>
                 )}
                 {isSincelejoStore && canEdit && (
                   <Button onClick={onManageCategories} size="sm" variant="secondary" className="flex-1 sm:flex-none">
-                    <Tag className="h-3.5 w-3.5 shrink-0" />
+                    <Tag className={cn('h-3.5 w-3.5 shrink-0', productCategoriesIconClass)} />
                     <span className="hidden md:inline">Categorías</span>
                   </Button>
                 )}
                 {onRefresh && (
                   <Button onClick={onRefresh} disabled={loading} variant="outline" size="sm" className="flex-1 sm:flex-none">
-                    <RefreshCw className={cn('h-3.5 w-3.5 shrink-0', loading && 'animate-spin')} />
+                    <RefreshCw
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400',
+                        loading && 'animate-spin'
+                      )}
+                      strokeWidth={1.5}
+                    />
                     <span className="hidden md:inline">Actualizar</span>
                   </Button>
                 )}
               </div>
             </div>
           </CardHeader>
-        </Card>
 
-        <Card className={cardShell}>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex min-h-11 flex-nowrap items-stretch overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
+          <div className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/25 md:px-6 md:py-4">
+            <div
+              className={cn(
+                'casa-artesanal-preserve-surface flex min-h-11 flex-nowrap items-stretch overflow-hidden rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90 transition-[box-shadow,border-color,ring-color]',
+                'divide-x divide-zinc-200/85 dark:divide-zinc-600/90 dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
+                'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20'
+              )}
+            >
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 z-10 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-violet-700 dark:text-violet-300"
+                  strokeWidth={2}
+                  aria-hidden
+                />
                 <input
-                  type="text"
+                  type="search"
                   placeholder="Buscar producto..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -308,7 +356,8 @@ export function ProductTable({
                       handleSearch(searchTerm)
                     }
                   }}
-                  className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-20 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-zinc-400/30 dark:text-zinc-100 dark:focus:ring-zinc-500/25"
+                  aria-label="Buscar producto"
+                  className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-10 text-sm font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
                 />
                 {searchTerm ? (
                   <button
@@ -317,27 +366,19 @@ export function ProductTable({
                       setSearchTerm('')
                       handleSearch('')
                     }}
-                    className="absolute right-11 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                    title="Limpiar"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    title="Limpiar búsqueda"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4" strokeWidth={2} />
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => handleSearch(searchTerm)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                  title="Buscar"
-                >
-                  <Search className="h-4 w-4" />
-                </button>
               </div>
-              <div className="relative flex shrink-0 items-stretch border-l border-zinc-200 dark:border-zinc-700">
+              <div className="relative flex shrink-0 items-stretch bg-transparent">
                 <select
                   value={stockFilter}
                   onChange={(e) => onFilterChange(e.target.value as StockFilter)}
                   aria-label="Filtrar por estado de stock"
-                  className="h-11 min-w-[10.25rem] max-w-[46vw] cursor-pointer appearance-none border-0 bg-transparent py-2 pl-3 pr-9 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-zinc-400/30 dark:text-zinc-100 dark:focus:ring-zinc-500/25 sm:min-w-[12.5rem] sm:max-w-none"
+                  className="h-11 min-w-[10.25rem] max-w-[46vw] cursor-pointer appearance-none border-0 bg-transparent py-2 pl-3 pr-9 text-sm font-medium text-zinc-900 focus:outline-none dark:text-zinc-100 sm:min-w-[12.5rem] sm:max-w-none"
                 >
                   {stockStatusOptions.map((s) => (
                     <option key={s.value} value={s.value}>
@@ -346,15 +387,13 @@ export function ProductTable({
                   ))}
                 </select>
                 <ChevronDown
-                  className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
+                  className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600/80 dark:text-teal-400/90"
                   aria-hidden
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className={cn('relative overflow-hidden', cardShell)}>
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-zinc-950/50">
               <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
@@ -363,22 +402,26 @@ export function ProductTable({
           <CardContent className="p-0">
             {products.length === 0 ? (
               <div className="py-16 text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-zinc-300 dark:border-zinc-600">
-                  <Package className="h-5 w-5 text-zinc-400" strokeWidth={1.5} />
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+                  <Package className={cn('h-7 w-7', productHeroIconClass)} strokeWidth={1.5} />
                 </div>
                 <h3 className="text-base font-medium text-zinc-900 dark:text-zinc-100">No hay productos</h3>
                 <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
                   Ajusta filtros o crea uno con <span className="font-medium text-zinc-700 dark:text-zinc-300">Nuevo producto</span>
                 </p>
                 {canCreate && (
-                  <Button onClick={onCreate} size="sm" className="mt-4">
+                  <Button
+                    onClick={onCreate}
+                    size="sm"
+                    className="mt-4 border-transparent bg-brand-900 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
+                  >
                     Nuevo producto
                   </Button>
                 )}
               </div>
             ) : (
               <>
-                <div className="space-y-2 p-3 lg:hidden">
+                <div className="space-y-1 bg-zinc-50/50 p-3 dark:bg-zinc-950/20 lg:hidden">
                   {products.map((product) => {
                     const StatusIcon = getStatusIcon(product.status)
                     return (
@@ -386,7 +429,7 @@ export function ProductTable({
                         key={product.id}
                         role="button"
                         tabIndex={0}
-                        className="cursor-pointer rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-4 text-left transition-colors hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-800/40"
+                        className="casa-artesanal-preserve-surface cursor-pointer rounded-2xl border-0 bg-transparent p-4 text-left shadow-none transition-colors hover:bg-white/75 dark:hover:bg-zinc-900/45"
                         onClick={() => goProduct(product)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -402,9 +445,9 @@ export function ProductTable({
                               <p className="mt-0.5 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">{product.name}</p>
                               <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryName(product.categoryId)}</p>
                             </div>
-                            <Badge variant="outline" className={cn('shrink-0 border px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
+                            <Badge variant="outline" className={cn(badgeTint, 'shrink-0 border-0 px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
                               <span className="flex items-center gap-1">
-                                <StatusIcon className="h-3 w-3" />
+                                <StatusIcon className={cn('h-3 w-3', getStatusIconClass(product.status))} strokeWidth={2} />
                                 {getStatusLabel(product.status)}
                               </span>
                             </Badge>
@@ -429,7 +472,7 @@ export function ProductTable({
                           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
                             <Badge
                               variant="outline"
-                              className={cn('border px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}
+                              className={cn(badgeTint, 'border-0 px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}
                             >
                               {getStockStatusLabel(product)}
                             </Badge>
@@ -479,7 +522,7 @@ export function ProductTable({
                           )}
                           <th className={thClass}>Estado stock</th>
                           <th className={thClass}>Catálogo</th>
-                          <th className="w-[11rem] bg-zinc-50/80 px-2 py-3 dark:bg-zinc-900/50" />
+                          <th className={cn(thClass, 'w-[11rem] px-2')} />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -488,7 +531,7 @@ export function ProductTable({
                           return (
                             <tr
                               key={product.id}
-                              className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-800/25"
+                              className="casa-artesanal-preserve-surface cursor-pointer transition-colors hover:bg-zinc-100/90 dark:hover:bg-zinc-800/40"
                               onClick={() => goProduct(product)}
                             >
                               <td className="max-w-[min(24rem,40vw)] px-4 py-3">
@@ -508,13 +551,13 @@ export function ProductTable({
                                 <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{product.stock.store}</td>
                               )}
                               <td className="px-3 py-3">
-                                <Badge variant="outline" className={cn('inline-flex border px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}>
+                                <Badge variant="outline" className={cn(badgeTint, 'inline-flex border-0 px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}>
                                   {getStockStatusLabel(product)}
                                 </Badge>
                               </td>
                               <td className="px-3 py-3">
-                                <Badge variant="outline" className={cn('inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
-                                  <StatusIcon className="h-3 w-3 shrink-0" />
+                                <Badge variant="outline" className={cn(badgeTint, 'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
+                                  <StatusIcon className={cn('h-3 w-3 shrink-0', getStatusIconClass(product.status))} strokeWidth={2} />
                                   {getStatusLabel(product.status)}
                                 </Badge>
                               </td>
@@ -586,7 +629,7 @@ export function ProductTable({
                   type="button"
                   onClick={() => onPageChange(currentPage - 1)}
                   disabled={currentPage === 1 || loading}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -625,7 +668,7 @@ export function ProductTable({
                   type="button"
                   onClick={() => onPageChange(currentPage + 1)}
                   disabled={!hasMore || loading}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>

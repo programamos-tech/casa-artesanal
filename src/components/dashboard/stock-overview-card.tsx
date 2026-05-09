@@ -103,8 +103,8 @@ export function StockOverviewCard({
             </div>
 
             <div className="text-center p-5 rounded-xl bg-white dark:bg-neutral-800/50 shadow-sm">
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <Store className="h-6 w-6 text-emerald-600" />
+              <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <Store className="h-6 w-6 text-brand-600" />
               </div>
               <p className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                 {localStock.toLocaleString()}
@@ -158,7 +158,7 @@ export function StockOverviewCard({
               </div>
               <div className="w-full bg-gray-200 dark:bg-neutral-800 rounded-full h-2">
                 <div 
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-brand-500 to-brand-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${totalStock > 0 ? (localStock / totalStock) * 100 : 0}%` }}
                 ></div>
               </div>

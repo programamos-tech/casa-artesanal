@@ -4,7 +4,17 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, Receipt, Printer, RefreshCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Search,
+  Plus,
+  Receipt,
+  Printer,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  X,
+} from 'lucide-react'
 import { Sale, Credit, StoreStockTransfer } from '@/types'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -13,6 +23,14 @@ import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { cn } from '@/lib/utils'
 import { SALES_PAGE_SIZE } from '@/lib/sales-service'
 import { cardShell } from '@/lib/card-shell'
+
+const badgeTint = 'casa-artesanal-preserve-surface'
+
+/** Acento como en productos/dashboard */
+const salesHeroIconClass = 'text-indigo-600 dark:text-indigo-400'
+
+const thClass =
+  'casa-artesanal-preserve-surface whitespace-nowrap bg-zinc-100/95 px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-600 dark:bg-zinc-900/70 dark:text-zinc-400'
 
 interface SalesTableProps {
   sales: Sale[]
@@ -182,14 +200,6 @@ export function SalesTable({
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-  }
-
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
     const dateStr = date.toLocaleDateString('es-CO', {
@@ -217,15 +227,15 @@ export function SalesTable({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 hover:text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-400 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-300'
+        return 'border-0 bg-amber-100/90 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
       case 'cancelled':
-        return 'bg-red-100 text-red-800 hover:bg-red-200 hover:text-red-900 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
+        return 'border-0 bg-red-100/90 text-red-900/90 dark:bg-red-950/35 dark:text-red-300/90'
       case 'draft':
-        return 'bg-purple-100 text-purple-800 hover:bg-purple-200 hover:text-purple-900 dark:bg-purple-900/20 dark:text-purple-400 dark:hover:bg-purple-900/30 dark:hover:text-purple-300'
+        return 'border-0 bg-violet-100/85 text-violet-950/90 dark:bg-violet-950/30 dark:text-violet-200/85'
       default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 hover:text-gray-900 dark:bg-neutral-800 dark:text-gray-300 dark:hover:bg-neutral-700 dark:hover:text-gray-200'
+        return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
     }
   }
 
@@ -280,10 +290,10 @@ export function SalesTable({
   const getEffectiveStatusColor = (sale: Sale): string => {
     const effectiveStatus = getEffectiveStatus(sale)
     if (sale.paymentMethod === 'credit' && (effectiveStatus === 'pending' || effectiveStatus === 'partial')) {
-      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 hover:text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-400 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-300'
+      return 'border-0 bg-amber-100/90 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
     }
     if (sale.paymentMethod === 'credit' && effectiveStatus === 'overdue') {
-      return 'bg-red-100 text-red-800 hover:bg-red-200 hover:text-red-900 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
+      return 'border-0 bg-red-100/90 text-red-900/90 dark:bg-red-950/35 dark:text-red-300/90'
     }
     return getStatusColor(effectiveStatus)
   }
@@ -291,21 +301,23 @@ export function SalesTable({
   const getPaymentMethodColor = (method: string) => {
     switch (method) {
       case 'cash':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-emerald-100/85 text-emerald-950/90 dark:bg-emerald-950/28 dark:text-emerald-200/88'
       case 'credit':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-violet-100/88 text-violet-950/90 dark:bg-violet-950/30 dark:text-violet-200/85'
       case 'transfer':
+        return 'border-0 bg-sky-100/85 text-sky-950/90 dark:bg-sky-950/30 dark:text-sky-200/85'
       case 'nequi':
+        return 'border-0 bg-fuchsia-100/80 text-fuchsia-950/90 dark:bg-fuchsia-950/28 dark:text-fuchsia-200/85'
       case 'bancolombia':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-amber-100/88 text-amber-950/90 dark:bg-amber-950/28 dark:text-amber-200/88'
       case 'card':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-indigo-100/88 text-indigo-950/90 dark:bg-indigo-950/30 dark:text-indigo-200/85'
       case 'warranty':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-zinc-200/90 text-zinc-800 dark:bg-zinc-800/55 dark:text-zinc-300'
       case 'mixed':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300'
+        return 'border-0 bg-teal-100/85 text-teal-950/90 dark:bg-teal-950/28 dark:text-teal-200/85'
       default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 hover:text-gray-900 dark:bg-neutral-800 dark:text-gray-300 dark:hover:bg-neutral-700 dark:hover:text-gray-200'
+        return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
     }
   }
 
@@ -363,38 +375,57 @@ export function SalesTable({
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header — mismos patrones que Gestión de créditos (payment-table) */}
-      <Card className={cardShell}>
-        <CardHeader className="space-y-0 p-4 md:p-6">
+      <Card className={cn('relative overflow-hidden', cardShell)}>
+        <CardHeader className="space-y-0 border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1 space-y-1.5">
               <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                <Receipt
-                  className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500"
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
+                <Receipt className={cn('h-5 w-5 shrink-0', salesHeroIconClass)} strokeWidth={1.5} aria-hidden />
                 <span>Gestión de Ventas</span>
                 <StoreBadge />
+                {searchTerm.trim() ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      badgeTint,
+                      'border-0 bg-zinc-100/90 text-[11px] font-normal text-zinc-600 dark:bg-zinc-900/45 dark:text-zinc-400'
+                    )}
+                  >
+                    Búsqueda activa
+                  </Badge>
+                ) : null}
               </CardTitle>
               <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                Administra tus ventas y genera facturas
+                {searchTerm.trim()
+                  ? 'Filtra resultados o limpia la búsqueda para ver el listado completo'
+                  : 'Administra tus ventas y genera facturas'}
               </p>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               {onRefresh && (
                 <Button
                   onClick={onRefresh}
+                  disabled={loading}
                   variant="outline"
                   size="sm"
                   className="flex-1 sm:flex-none"
                 >
-                  <RefreshCcw className="h-3.5 w-3.5 shrink-0" />
+                  <RefreshCw
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400',
+                      loading && 'animate-spin'
+                    )}
+                    strokeWidth={1.5}
+                  />
                   <span className="hidden md:inline">Actualizar</span>
                 </Button>
               )}
               {(canCreateSales || isVendedorRole) && (
-                <Button onClick={onCreate} size="sm" className="flex-1 sm:flex-none">
+                <Button
+                  onClick={onCreate}
+                  size="sm"
+                  className="flex-1 border-transparent bg-brand-700 text-white hover:bg-brand-800 sm:flex-none dark:bg-brand-600 dark:hover:bg-brand-500 [&_svg]:text-white"
+                >
                   <Plus className="h-3.5 w-3.5 shrink-0" />
                   <span className="hidden sm:inline">Nueva Venta</span>
                   <span className="sm:hidden">Nueva</span>
@@ -403,67 +434,95 @@ export function SalesTable({
             </div>
           </div>
         </CardHeader>
-      </Card>
 
-      {/* Search and Filters */}
-      <Card className={cardShell}>
-        <CardContent className="p-3 md:p-4">
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 md:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/25 md:px-6 md:py-4">
+          <div
+            className={cn(
+              'casa-artesanal-preserve-surface flex min-h-11 flex-nowrap items-stretch overflow-hidden rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90 transition-[box-shadow,border-color,ring-color]',
+              'divide-x divide-zinc-200/85 dark:divide-zinc-600/90 dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
+              'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20'
+            )}
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 z-10 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-violet-700 dark:text-violet-300"
+                strokeWidth={2}
+                aria-hidden
+              />
               <input
-                type="text"
-                placeholder={isSearching ? "Buscando..." : "Buscar factura o cliente..."}
+                type="search"
+                placeholder={isSearching ? 'Buscando...' : 'Buscar factura o cliente...'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 md:pl-10 pr-10 md:pr-4 py-2 md:py-2.5 text-sm border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-neutral-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                aria-label="Buscar ventas"
+                className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-10 text-sm font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
               />
-              {isSearching && (
-                <div className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+              {isSearching ? (
+                <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 border-t-violet-600 dark:border-zinc-600 dark:border-t-violet-400" />
                 </div>
-              )}
+              ) : searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" strokeWidth={2} />
+                </button>
+              ) : null}
             </div>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full sm:w-auto sm:min-w-[200px] px-3 py-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
-            >
-              {statuses.map(status => (
-                <option key={status} value={status}>
-                  {status === 'all' ? 'Todos los estados' : 
-                   status === 'pending' ? 'Pendientes (Créditos abiertos)' :
-                   status === 'cancelled' ? 'Anuladas' :
-                   getStatusLabel(status)}
-                </option>
-              ))}
-            </select>
+            <div className="relative flex shrink-0 items-stretch bg-transparent">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                aria-label="Filtrar por estado de venta"
+                className="h-11 min-w-[10.25rem] max-w-[46vw] cursor-pointer appearance-none border-0 bg-transparent py-2 pl-3 pr-9 text-sm font-medium text-zinc-900 focus:outline-none dark:text-zinc-100 sm:min-w-[14rem] sm:max-w-none"
+              >
+                {statuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status === 'all'
+                      ? 'Todos los estados'
+                      : status === 'pending'
+                        ? 'Pendientes (Créditos abiertos)'
+                        : status === 'cancelled'
+                          ? 'Anuladas'
+                          : getStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600/80 dark:text-teal-400/90"
+                aria-hidden
+              />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Table */}
-      <Card className={cn('overflow-hidden', cardShell)}>
         <CardContent className="p-0">
           {isSearching ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
               <p className="text-gray-500 dark:text-gray-400">Buscando ventas...</p>
             </div>
           ) : filteredSales.length === 0 ? (
-            <div className="text-center py-12">
-              <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <div className="py-16 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+                <Receipt className={cn('h-7 w-7', salesHeroIconClass)} strokeWidth={1.5} />
+              </div>
+              <h3 className="text-base font-medium text-zinc-900 dark:text-zinc-100">
                 {searchTerm.trim() ? 'No se encontraron ventas' : 'No hay ventas registradas'}
               </h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                {searchTerm.trim() ? 'Intenta con otros criterios de búsqueda' : 'Comienza creando una nueva venta'}
+              <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+                {searchTerm.trim()
+                  ? 'Prueba otra factura, cliente o limpia la búsqueda'
+                  : 'Comienza creando una nueva venta'}
               </p>
             </div>
           ) : (
             <>
               {/* Móvil y tablet: lista compacta; tabla ancha solo desde lg (evita paginación lejos del bottom nav) */}
-              <div className="space-y-2 p-3 lg:hidden">
+              <div className="space-y-1 bg-zinc-50/50 p-3 dark:bg-zinc-950/20 lg:hidden">
                 {filteredSales.map(sale => {
                   const { date, time } = formatDateTime(sale.createdAt)
                   return (
@@ -471,7 +530,7 @@ export function SalesTable({
                       key={sale.id}
                       role="button"
                       tabIndex={0}
-                      className="w-full cursor-pointer rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-4 text-left transition-colors hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-800/40"
+                      className="casa-artesanal-preserve-surface w-full cursor-pointer rounded-2xl border-0 bg-transparent p-4 text-left shadow-none transition-colors hover:bg-white/75 dark:hover:bg-zinc-900/45"
                       onClick={() => onView(sale)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -510,10 +569,16 @@ export function SalesTable({
                             </div>
                           </dl>
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                            <Badge className={`${getPaymentMethodColor(sale.paymentMethod)} shrink-0`}>
+                            <Badge
+                              variant="outline"
+                              className={cn(badgeTint, 'shrink-0 border-0 px-2 py-0.5 text-[11px] font-normal', getPaymentMethodColor(sale.paymentMethod))}
+                            >
                               {getPaymentMethodLabel(sale.paymentMethod)}
                             </Badge>
-                            <Badge className={`${getEffectiveStatusColor(sale)} shrink-0`}>
+                            <Badge
+                              variant="outline"
+                              className={cn(badgeTint, 'shrink-0 border-0 px-2 py-0.5 text-[11px] font-normal', getEffectiveStatusColor(sale))}
+                            >
                               {getEffectiveStatusLabel(sale)}
                             </Badge>
                           </div>
@@ -544,25 +609,13 @@ export function SalesTable({
                   <table className="w-full min-w-[880px] border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Factura
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Cliente
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-right text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Total
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Método
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Estado
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Fecha
-                        </th>
-                        <th className="w-12 bg-zinc-50/80 px-2 py-3 dark:bg-zinc-900/50" />
+                        <th className={cn(thClass, 'pl-4')}>Factura</th>
+                        <th className={thClass}>Cliente</th>
+                        <th className={cn(thClass, 'text-right')}>Total</th>
+                        <th className={cn(thClass, 'text-center')}>Método</th>
+                        <th className={cn(thClass, 'text-center')}>Estado</th>
+                        <th className={thClass}>Fecha</th>
+                        <th className={cn(thClass, 'w-12 px-2')} />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -571,7 +624,7 @@ export function SalesTable({
                         return (
                           <tr
                             key={sale.id}
-                            className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-800/25"
+                            className="casa-artesanal-preserve-surface cursor-pointer transition-colors hover:bg-zinc-100/90 dark:hover:bg-zinc-800/40"
                             onClick={() => onView(sale)}
                           >
                             <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium text-zinc-900 dark:text-zinc-100">
@@ -599,13 +652,25 @@ export function SalesTable({
                             </td>
                             <td className="px-4 py-3 text-center">
                               <Badge
-                                className={`${getPaymentMethodColor(sale.paymentMethod)} inline-flex w-fit max-w-full items-center justify-center text-[11px] whitespace-normal`}
+                                variant="outline"
+                                className={cn(
+                                  badgeTint,
+                                  'inline-flex w-fit max-w-full items-center justify-center border-0 px-2 py-0.5 text-[11px] font-normal whitespace-normal',
+                                  getPaymentMethodColor(sale.paymentMethod)
+                                )}
                               >
                                 {getPaymentMethodLabel(sale.paymentMethod)}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <Badge className={`${getEffectiveStatusColor(sale)} inline-flex w-fit items-center justify-center text-[11px]`}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  badgeTint,
+                                  'inline-flex w-fit items-center justify-center border-0 px-2 py-0.5 text-[11px] font-normal',
+                                  getEffectiveStatusColor(sale)
+                                )}
+                              >
                                 {getEffectiveStatusLabel(sale)}
                               </Badge>
                             </td>
@@ -637,53 +702,57 @@ export function SalesTable({
 
               {/* Paginación - solo mostrar si no hay búsqueda activa */}
               {!searchTerm.trim() && (
-                <div className="flex items-center justify-center gap-1 px-4 py-3 border-t border-gray-200 dark:border-neutral-700">
-                    <button
-                      onClick={() => onPageChange(currentPage - 1)}
-                      disabled={currentPage === 1 || loading}
-                    className="h-7 w-7 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-200 dark:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    </button>
-                    
+                <div className="flex items-center justify-center gap-1 border-t border-zinc-200 px-4 py-4 dark:border-zinc-800 md:px-6">
+                  <button
+                    type="button"
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
                   <div className="flex items-center gap-0.5">
-                      {Array.from({ length: Math.ceil(totalSales / SALES_PAGE_SIZE) }, (_, i) => i + 1)
-                        .filter(page => {
-                          return page === 1 || 
-                                 page === Math.ceil(totalSales / SALES_PAGE_SIZE) || 
-                                 Math.abs(page - currentPage) <= 2
-                        })
-                        .map((page, index, array) => {
-                          const showEllipsis = index > 0 && page - array[index - 1] > 1
-                          
-                          return (
-                            <div key={page} className="flex items-center">
-                              {showEllipsis && (
-                              <span className="px-1 text-gray-400 text-xs">...</span>
+                    {Array.from({ length: Math.ceil(totalSales / SALES_PAGE_SIZE) }, (_, i) => i + 1)
+                      .filter((page) => {
+                        return (
+                          page === 1 ||
+                          page === Math.ceil(totalSales / SALES_PAGE_SIZE) ||
+                          Math.abs(page - currentPage) <= 2
+                        )
+                      })
+                      .map((page, index, array) => {
+                        const showEllipsis = index > 0 && page - array[index - 1] > 1
+
+                        return (
+                          <div key={page} className="flex items-center">
+                            {showEllipsis && <span className="px-1 text-xs text-zinc-400">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => onPageChange(page)}
+                              disabled={loading}
+                              className={cn(
+                                'flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors',
+                                page === currentPage
+                                  ? 'bg-zinc-900 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900'
+                                  : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
                               )}
-                              <button
-                                onClick={() => onPageChange(page)}
-                                disabled={loading}
-                              className={`h-7 min-w-[28px] px-2 text-xs rounded border transition-colors ${
-                                  page === currentPage 
-                                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 font-medium" 
-                                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-100 dark:border-neutral-600"
-                                }`}
-                              >
-                                {page}
-                              </button>
-                            </div>
-                          )
-                        })}
-                    </div>
-                    
-                    <button
-                      onClick={() => onPageChange(currentPage + 1)}
-                      disabled={currentPage >= Math.ceil(totalSales / SALES_PAGE_SIZE) || loading}
-                    className="h-7 w-7 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-200 dark:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
+                            >
+                              {page}
+                            </button>
+                          </div>
+                        )
+                      })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage >= Math.ceil(totalSales / SALES_PAGE_SIZE) || loading}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               )}
             </>

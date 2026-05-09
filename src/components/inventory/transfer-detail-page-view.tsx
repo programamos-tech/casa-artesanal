@@ -45,7 +45,7 @@ function transferStatusBadgeClass(status: string) {
     case 'in_transit':
       return 'border-amber-500/25 bg-amber-500/[0.06] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300/90'
     case 'received':
-      return 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
+      return 'border-brand-500/20 bg-brand-500/[0.06] text-brand-900 dark:border-brand-500/25 dark:bg-brand-950/40 dark:text-brand-300/90'
     case 'partially_received':
       return 'border-orange-500/25 bg-orange-500/[0.08] text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200'
     case 'cancelled':
@@ -446,7 +446,7 @@ export function TransferDetailPageView({
                                     <span
                                       className={cn(
                                         'font-semibold tabular-nums',
-                                        partial ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-400'
+                                        partial ? 'text-amber-700 dark:text-amber-300' : 'text-brand-700 dark:text-brand-400'
                                       )}
                                     >
                                       {qtyRec}
@@ -471,7 +471,7 @@ export function TransferDetailPageView({
                                           ? 'border-rose-500/30 bg-rose-500/[0.06] text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/35 dark:text-rose-200/90'
                                           : partial
                                             ? 'border-orange-500/25 bg-orange-500/[0.08] text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200'
-                                            : 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-300/90'
+                                            : 'border-brand-500/20 bg-brand-500/[0.06] text-brand-900 dark:border-brand-500/25 dark:bg-brand-950/40 dark:text-brand-300/90'
                                       )}
                                     >
                                       {noneReceived ? 'No recibida' : partial ? 'Parcial' : 'Completa'}

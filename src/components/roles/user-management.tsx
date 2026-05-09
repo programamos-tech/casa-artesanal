@@ -101,14 +101,14 @@ const roleDescriptions = {
 
 // Estilos compartidos — alineados al formulario "Nueva venta" / "Nuevo producto"
 const formInputClass =
-  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20'
+  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-500/20'
 const formLabelClass =
   'mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400'
 const sectionHeaderClass =
-  'space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800'
+  'space-y-0 border-b border-indigo-100/90 p-4 dark:border-indigo-900/40'
 const sectionTitleClass =
   'flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50'
-const sectionIconClass = 'h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-300'
+const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 const sectionContentClass = 'space-y-3 p-4 md:p-6 md:pt-4'
 
 /** Mismo patrón que facturador / búsqueda unificada (select nativo + chevron) */
@@ -484,7 +484,7 @@ export function UserManagement() {
     return (
       <div className="flex h-64 items-center justify-center">
         <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-emerald-500 dark:border-zinc-700 dark:border-t-emerald-500"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-brand-500 dark:border-zinc-700 dark:border-t-brand-500"
           aria-hidden
         />
       </div>
@@ -500,7 +500,7 @@ export function UserManagement() {
             <div className="min-w-0 flex-1">
               <CardTitle className="flex flex-wrap items-center gap-2.5 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
                 <Users
-                  className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
                   strokeWidth={1.5}
                   aria-hidden
                 />
@@ -515,7 +515,7 @@ export function UserManagement() {
               variant="default"
               size="sm"
               onClick={openCreateModal}
-              className="h-9 shrink-0 gap-2 rounded-lg border-0 bg-emerald-600 px-4 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-emerald-700 hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 dark:hover:bg-emerald-500 [&_svg]:text-white"
+              className="h-9 shrink-0 gap-2 rounded-lg border-0 bg-brand-600 px-4 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-brand-700 hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:hover:bg-brand-500 [&_svg]:text-white"
             >
               <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
               <span className="hidden sm:inline">Nuevo usuario</span>
@@ -538,10 +538,12 @@ export function UserManagement() {
                 paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
               }}
             >
-              <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl ring-1 ring-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-white/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl">
-                <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+              <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/40 via-white to-zinc-50 shadow-2xl ring-1 ring-indigo-950/5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-zinc-950 dark:ring-white/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl">
+                <div className="flex items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/70 px-5 py-4 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25">
                   <div className="flex min-w-0 items-center gap-3">
-                    <UserCheck className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
+                      <UserCheck className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
+                    </div>
                     <div className="min-w-0">
                       <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
                         Nuevo usuario
@@ -702,7 +704,6 @@ export function UserManagement() {
                               id="createIsActive"
                               checked={formData.isActive}
                               onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                              className="data-[state=checked]:bg-zinc-900 dark:data-[state=checked]:bg-zinc-100"
                             />
                           </label>
                         </CardContent>
@@ -761,7 +762,7 @@ export function UserManagement() {
                 </div>
 
                 <div
-                  className="flex flex-col-reverse justify-end gap-2 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row"
+                  className="flex flex-col-reverse justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-5 py-3 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:flex-row"
                   style={{
                     paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
                   }}
@@ -782,7 +783,7 @@ export function UserManagement() {
                     type="button"
                     size="sm"
                     onClick={handleCreateUser}
-                    className="h-10 w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white sm:w-auto"
+                    className="h-10 w-full bg-brand-700 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 sm:w-auto"
                   >
                     <UserCheck className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
                     Crear usuario
@@ -801,7 +802,7 @@ export function UserManagement() {
             <div className="group relative min-w-0 flex-1">
               <span className="sr-only">Buscar usuario</span>
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-emerald-600 dark:group-focus-within:text-emerald-400"
+                className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-violet-500 transition-colors group-focus-within:text-violet-600 dark:text-violet-400 dark:group-focus-within:text-violet-300"
                 strokeWidth={1.5}
                 aria-hidden
               />
@@ -812,7 +813,7 @@ export function UserManagement() {
                 placeholder="Buscar usuario..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-11 w-full min-w-0 rounded-lg border border-zinc-200/90 bg-white py-2 pl-10 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500/45 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:rounded-none md:border-0 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-emerald-500/25 dark:md:bg-transparent dark:md:focus-visible:ring-emerald-500/20"
+                className="h-11 w-full min-w-0 rounded-lg border border-zinc-200/90 bg-white py-2 pl-10 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:rounded-none md:border-0 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-violet-500/30 dark:md:bg-transparent dark:md:focus-visible:ring-violet-500/25"
               />
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:contents">
@@ -820,7 +821,7 @@ export function UserManagement() {
                 id="roleFilter"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-zinc-200/90 bg-white px-3 py-2 pr-9 text-sm text-zinc-900 focus:border-emerald-500/45 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:w-[min(18rem,32vw)] md:min-w-[14rem] md:shrink-0 md:rounded-none md:border-0 md:border-l md:border-zinc-200 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-emerald-500/25 dark:md:border-zinc-700 dark:md:bg-zinc-950 dark:md:focus-visible:ring-emerald-500/20"
+                className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-zinc-200/90 bg-white px-3 py-2 pr-9 text-sm text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:w-[min(18rem,32vw)] md:min-w-[14rem] md:shrink-0 md:rounded-none md:border-0 md:border-l md:border-zinc-200 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-violet-500/30 dark:md:border-zinc-700 dark:md:bg-zinc-950 dark:md:focus-visible:ring-violet-500/25"
                 style={nativeSelectChevronStyle}
                 aria-label="Filtrar por rol"
               >
@@ -835,7 +836,7 @@ export function UserManagement() {
                 id="statusFilter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-zinc-200/90 bg-white px-3 py-2 pr-9 text-sm text-zinc-900 focus:border-emerald-500/45 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:w-44 md:shrink-0 md:rounded-none md:border-0 md:border-l md:border-zinc-200 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-emerald-500/25 dark:md:border-zinc-700 dark:md:bg-zinc-950 dark:md:focus-visible:ring-emerald-500/20"
+                className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-zinc-200/90 bg-white px-3 py-2 pr-9 text-sm text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:w-44 md:shrink-0 md:rounded-none md:border-0 md:border-l md:border-zinc-200 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-violet-500/30 dark:md:border-zinc-700 dark:md:bg-zinc-950 dark:md:focus-visible:ring-violet-500/25"
                 style={nativeSelectChevronStyle}
                 aria-label="Filtrar por estado"
               >
@@ -853,7 +854,7 @@ export function UserManagement() {
         <CardContent className="p-0">
           {filteredUsers.length === 0 ? (
             <div className="px-4 py-14 text-center md:px-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200/80 bg-zinc-50/80 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/60">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-indigo-200/90 bg-indigo-50/80 text-indigo-600 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-400">
                 <Users className="h-6 w-6" strokeWidth={1.5} aria-hidden />
               </div>
               <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -867,7 +868,7 @@ export function UserManagement() {
                 variant="default"
                 size="sm"
                 onClick={openCreateModal}
-                className="mt-4 h-9 gap-2 rounded-lg border-0 bg-emerald-600 px-4 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-emerald-700 hover:shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 dark:hover:bg-emerald-500 [&_svg]:text-white"
+                className="mt-4 h-9 gap-2 rounded-lg border-0 bg-brand-600 px-4 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-brand-700 hover:shadow-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:hover:bg-brand-500 [&_svg]:text-white"
               >
                 <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 Nuevo usuario
@@ -892,7 +893,7 @@ export function UserManagement() {
                   return (
                     <div
                       key={user.id}
-                      className="space-y-3 rounded-xl border border-solid border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-900/30"
+                      className="space-y-3 rounded-xl border border-solid border-indigo-100/90 bg-indigo-50/35 p-3 dark:border-indigo-900/35 dark:bg-indigo-950/20"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -923,7 +924,7 @@ export function UserManagement() {
                         <span
                           className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium ${
                             user.isActive
-                              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                              ? 'border-brand-500/35 bg-brand-500/10 text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300'
                               : 'border-zinc-600 bg-zinc-800/60 text-zinc-400 dark:border-zinc-600'
                           }`}
                         >
@@ -982,7 +983,7 @@ export function UserManagement() {
                             size="sm"
                             variant="ghost"
                             onClick={() => openEditModal(user)}
-                            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-emerald-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+                            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-brand-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-brand-400"
                           >
                             <Edit className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                           </Button>
@@ -1025,7 +1026,7 @@ export function UserManagement() {
                             <span
                               className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${
                                 user.isActive
-                                  ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                  ? 'border-brand-500/35 bg-brand-500/10 text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300'
                                   : 'border-zinc-600 bg-zinc-800/60 text-zinc-400 dark:border-zinc-600'
                               }`}
                             >
@@ -1067,7 +1068,7 @@ export function UserManagement() {
                           variant="ghost"
                           size="sm"
                           onClick={() => openEditModal(user)}
-                          className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-emerald-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+                          className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-brand-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-brand-400"
                         >
                           <Edit className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                         </Button>
@@ -1106,10 +1107,12 @@ export function UserManagement() {
                 paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
               }}
             >
-              <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl ring-1 ring-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-white/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl">
-                <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+              <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/40 via-white to-zinc-50 shadow-2xl ring-1 ring-indigo-950/5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-zinc-950 dark:ring-white/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl">
+                <div className="flex items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/70 px-5 py-4 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25">
                   <div className="flex min-w-0 items-center gap-3">
-                    <Edit className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
+                      <Edit className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
+                    </div>
                     <div className="min-w-0">
                       <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
                         Editar usuario
@@ -1276,7 +1279,6 @@ export function UserManagement() {
                               id="editIsActive"
                               checked={formData.isActive}
                               onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                              className="data-[state=checked]:bg-zinc-900 dark:data-[state=checked]:bg-zinc-100"
                             />
                           </label>
                         </CardContent>
@@ -1335,7 +1337,7 @@ export function UserManagement() {
                 </div>
 
                 <div
-                  className="flex flex-col-reverse justify-end gap-2 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row"
+                  className="flex flex-col-reverse justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-5 py-3 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:flex-row"
                   style={{
                     paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
                   }}
@@ -1353,7 +1355,7 @@ export function UserManagement() {
                     type="button"
                     size="sm"
                     onClick={handleUpdateUser}
-                    className="h-10 w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white sm:w-auto"
+                    className="h-10 w-full bg-brand-700 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 sm:w-auto"
                   >
                     <Edit className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
                     Guardar cambios

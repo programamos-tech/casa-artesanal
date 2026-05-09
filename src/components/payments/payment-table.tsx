@@ -15,9 +15,11 @@ import {
   Clock,
   AlertCircle,
   XCircle,
-  RefreshCcw,
+  RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  X,
 } from 'lucide-react'
 import { Credit } from '@/types'
 import { StoreBadge } from '@/components/ui/store-badge'
@@ -31,6 +33,13 @@ import {
   getConsolidatedCreditDisplayStatus,
   isCreditCancelled,
 } from '@/lib/credit-status-ui'
+
+const badgeTint = 'casa-artesanal-preserve-surface'
+
+const heroIconClass = 'text-indigo-600 dark:text-indigo-400'
+
+const thClass =
+  'casa-artesanal-preserve-surface whitespace-nowrap bg-zinc-100/95 px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-600 dark:bg-zinc-900/70 dark:text-zinc-400'
 
 const getStatusIcon = (status: string, credit?: Credit) => {
   const cls = creditStatusIconClass(status, credit)
@@ -133,33 +142,42 @@ export function CreditTable({
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <Card className={cardShell}>
-        <CardHeader className="space-y-0 p-4 md:p-6">
+      <Card className={cn('relative overflow-hidden', cardShell)}>
+        <CardHeader className="space-y-0 border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="min-w-0 flex-1 space-y-2">
               <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                <CreditCard
-                  className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500"
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
+                <CreditCard className={cn('h-5 w-5 shrink-0', heroIconClass)} strokeWidth={1.5} aria-hidden />
                 <span>Gestión de créditos</span>
                 <StoreBadge />
+                {searchTerm.trim() ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      badgeTint,
+                      'border-0 bg-zinc-100/90 text-[11px] font-normal text-zinc-600 dark:bg-zinc-900/45 dark:text-zinc-400'
+                    )}
+                  >
+                    Búsqueda activa
+                  </Badge>
+                ) : null}
               </CardTitle>
               <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                Administra créditos y pagos pendientes por cliente
+                {searchTerm.trim()
+                  ? 'Resultados filtrados por búsqueda o estado'
+                  : 'Administra créditos y pagos pendientes por cliente'}
               </p>
-              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 pt-1 text-sm">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-0.5 text-sm">
                 <span className="text-zinc-500 dark:text-zinc-400">
-                  Deuda total:{' '}
-                  <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  Deuda total{' '}
+                  <span className="font-semibold tabular-nums text-rose-700 dark:text-rose-300/95">
                     {formatCurrency(totalDebt)}
                   </span>
                 </span>
                 {todayPaymentsTotal !== undefined && (
                   <span className="text-zinc-500 dark:text-zinc-400">
-                    Otorgado hoy:{' '}
-                    <span className="font-medium tabular-nums text-zinc-800 dark:text-zinc-200">
+                    Otorgado hoy{' '}
+                    <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300/95">
                       {formatCurrency(todayPaymentsTotal)}
                     </span>
                   </span>
@@ -170,15 +188,26 @@ export function CreditTable({
               {onRefresh && (
                 <Button
                   onClick={onRefresh}
+                  disabled={isLoading}
                   variant="outline"
                   size="sm"
                   className="flex-1 sm:flex-none"
                 >
-                  <RefreshCcw className="h-3.5 w-3.5 shrink-0" />
+                  <RefreshCw
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400',
+                      isLoading && 'animate-spin'
+                    )}
+                    strokeWidth={1.5}
+                  />
                   <span className="hidden md:inline">Actualizar</span>
                 </Button>
               )}
-              <Button onClick={onCreate} size="sm" className="flex-1 sm:flex-none">
+              <Button
+                onClick={onCreate}
+                size="sm"
+                className="flex-1 border-transparent bg-brand-700 text-white hover:bg-brand-800 sm:flex-none dark:bg-brand-600 dark:hover:bg-brand-500 [&_svg]:text-white"
+              >
                 <Plus className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline">Nuevo crédito</span>
                 <span className="sm:hidden">Nuevo</span>
@@ -186,44 +215,71 @@ export function CreditTable({
             </div>
           </div>
         </CardHeader>
-      </Card>
 
-      <Card className={cardShell}>
-        <CardContent className="p-3 md:p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-4">
-            <div className="relative flex-1 md:h-11 md:min-h-[2.75rem] md:overflow-hidden md:rounded-xl md:border md:border-zinc-200 md:bg-white md:shadow-sm dark:md:border-zinc-700 dark:md:bg-zinc-950">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-zinc-400 md:left-3" />
+        <div className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/25 md:px-6 md:py-4">
+          <div
+            className={cn(
+              'casa-artesanal-preserve-surface flex min-h-11 flex-nowrap items-stretch overflow-hidden rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90 transition-[box-shadow,border-color,ring-color]',
+              'divide-x divide-zinc-200/85 dark:divide-zinc-600/90 dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
+              'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20'
+            )}
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 z-10 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-violet-700 dark:text-violet-300"
+                strokeWidth={2}
+                aria-hidden
+              />
               <input
-                type="text"
+                type="search"
                 placeholder="Buscar por cliente o factura…"
                 value={searchTerm}
-                onChange={e => {
+                onChange={(e) => {
                   setSearchTerm(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="h-11 w-full min-w-0 rounded-lg border border-zinc-200 bg-white py-2 pl-10 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20 md:h-full md:rounded-none md:border-0 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-zinc-400/35 dark:md:bg-transparent dark:md:focus-visible:ring-zinc-500/30"
+                aria-label="Buscar créditos"
+                className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-10 text-sm font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('')
+                    setCurrentPage(1)
+                  }}
+                  className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
+            <div className="relative flex shrink-0 items-stretch bg-transparent">
+              <select
+                value={filterStatus}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value)
+                  setCurrentPage(1)
+                }}
+                aria-label="Filtrar por estado del crédito"
+                className="h-11 min-w-[10.25rem] max-w-[46vw] cursor-pointer appearance-none border-0 bg-transparent py-2 pl-3 pr-9 text-sm font-medium text-zinc-900 focus:outline-none dark:text-zinc-100 sm:min-w-[12.5rem] sm:max-w-none"
+              >
+                <option value="all">Todos los estados</option>
+                <option value="pending">Pendiente</option>
+                <option value="partial">Parcial</option>
+                <option value="completed">Completado</option>
+                <option value="overdue">Vencido</option>
+                <option value="cancelled">Anulado</option>
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600/80 dark:text-teal-400/90"
+                aria-hidden
               />
             </div>
-            <select
-              value={filterStatus}
-              onChange={e => {
-                setFilterStatus(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="h-11 shrink-0 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-zinc-500/20 md:w-52"
-            >
-              <option value="all">Todos los estados</option>
-              <option value="pending">Pendiente</option>
-              <option value="partial">Parcial</option>
-              <option value="completed">Completado</option>
-              <option value="overdue">Vencido</option>
-              <option value="cancelled">Anulado</option>
-            </select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card className={cn('overflow-hidden', cardShell)}>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
@@ -232,8 +288,8 @@ export function CreditTable({
             </div>
           ) : filteredCredits.length === 0 ? (
             <div className="py-16 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-zinc-300 dark:border-zinc-600">
-                <CreditCard className="h-5 w-5 text-zinc-400" strokeWidth={1.5} />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+                <CreditCard className={cn('h-7 w-7', heroIconClass)} strokeWidth={1.5} />
               </div>
               <h3 className="text-base font-medium text-zinc-900 dark:text-zinc-100">
                 No hay créditos que coincidan
@@ -245,7 +301,7 @@ export function CreditTable({
             </div>
           ) : (
             <>
-              <div className="space-y-2 p-3 lg:hidden">
+              <div className="space-y-1 bg-zinc-50/50 p-3 dark:bg-zinc-950/20 lg:hidden">
                 {paginatedCredits.map((credit, index) => {
                   const displayStatus = getConsolidatedCreditDisplayStatus(credit)
                   const globalIndex = startIndex + index
@@ -254,7 +310,7 @@ export function CreditTable({
                       key={credit.id}
                       role="button"
                       tabIndex={0}
-                      className="w-full cursor-pointer rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-4 text-left transition-colors hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-800/40"
+                      className="casa-artesanal-preserve-surface w-full cursor-pointer rounded-2xl border-0 bg-transparent p-4 text-left shadow-none transition-colors hover:bg-white/75 dark:hover:bg-zinc-900/45"
                       onClick={() => openClient(credit)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -286,7 +342,8 @@ export function CreditTable({
                         <Badge
                           variant="outline"
                           className={cn(
-                            'shrink-0 border px-2 py-0.5 text-[11px] font-normal',
+                            badgeTint,
+                            'shrink-0 border-0 px-2 py-0.5 text-[11px] font-normal',
                             creditStatusBadgeClass(displayStatus, credit)
                           )}
                         >
@@ -352,25 +409,13 @@ export function CreditTable({
                   <table className="w-full min-w-[880px] border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Cliente
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Facturas
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-right text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Total
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-right text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Pendiente
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Estado
-                        </th>
-                        <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                          Vencimiento
-                        </th>
-                        <th className="w-12 bg-zinc-50/80 px-2 py-3 dark:bg-zinc-900/50" />
+                        <th className={cn(thClass, 'pl-4')}>Cliente</th>
+                        <th className={thClass}>Facturas</th>
+                        <th className={cn(thClass, 'text-right')}>Total</th>
+                        <th className={cn(thClass, 'text-right')}>Pendiente</th>
+                        <th className={cn(thClass, 'text-center')}>Estado</th>
+                        <th className={thClass}>Vencimiento</th>
+                        <th className={cn(thClass, 'w-12 px-2')} />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -379,7 +424,7 @@ export function CreditTable({
                         return (
                         <tr
                           key={credit.id}
-                          className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-800/25"
+                          className="casa-artesanal-preserve-surface cursor-pointer transition-colors hover:bg-zinc-100/90 dark:hover:bg-zinc-800/40"
                           onClick={() => openClient(credit)}
                         >
                           <td className="max-w-[16rem] px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
@@ -413,7 +458,8 @@ export function CreditTable({
                             <Badge
                               variant="outline"
                               className={cn(
-                                'inline-flex border px-2 py-0.5 text-[11px] font-normal',
+                                badgeTint,
+                                'inline-flex border-0 px-2 py-0.5 text-[11px] font-normal',
                                 creditStatusBadgeClass(displayStatus, credit)
                               )}
                             >
@@ -450,11 +496,11 @@ export function CreditTable({
               </div>
 
               {totalPages > 1 && (
-                <div className="flex flex-wrap items-center justify-center gap-3 border-t border-zinc-100 px-3 py-4 dark:border-zinc-800">
+                <div className="flex flex-wrap items-center justify-center gap-3 border-t border-zinc-200 px-3 py-4 dark:border-zinc-800 md:px-6">
                   <button
                     type="button"
                     onClick={() => goToPage(currentPage - 1)}
-                    disabled={currentPage === 1}
+                    disabled={currentPage === 1 || isLoading}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     aria-label="Página anterior"
                   >
@@ -466,7 +512,7 @@ export function CreditTable({
                   <button
                     type="button"
                     onClick={() => goToPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === totalPages || isLoading}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     aria-label="Página siguiente"
                   >

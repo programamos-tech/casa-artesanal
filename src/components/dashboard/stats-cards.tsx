@@ -38,10 +38,10 @@ export function StatsCards({ stats, period = 'month' }: StatsCardsProps) {
       title: 'Ventas Totales',
       value: formatCurrency(stats.totalSales),
       icon: DollarSign,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-100',
+      color: 'text-brand-600',
+      bgColor: 'bg-brand-100',
       change: changes.sales,
-      changeColor: 'text-emerald-600'
+      changeColor: 'text-brand-600'
     },
     {
       title: 'Inversión Total',
@@ -83,10 +83,10 @@ export function StatsCards({ stats, period = 'month' }: StatsCardsProps) {
       title: 'Clientes Activos',
       value: stats.totalClients.toString(),
       icon: Users,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-100',
+      color: 'text-brand-600',
+      bgColor: 'bg-brand-100',
       change: changes.clients,
-      changeColor: 'text-emerald-600'
+      changeColor: 'text-brand-600'
     },
     {
       title: 'Pagos Pendientes',

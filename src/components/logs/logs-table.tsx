@@ -196,12 +196,12 @@ export function LogsTable({
   return (
     <div className="space-y-4 md:space-y-6">
       <Card className={cardShell}>
-        <CardHeader className="space-y-0 p-4 md:p-6">
+        <CardHeader className="space-y-0 border-b border-indigo-100/70 bg-gradient-to-r from-indigo-50/80 via-white to-violet-50/60 p-4 dark:border-indigo-900/35 dark:from-indigo-950/40 dark:via-zinc-950 dark:to-violet-950/25 md:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-1.5">
               <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
                 <Activity
-                  className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500"
+                  className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
                   strokeWidth={1.5}
                   aria-hidden
                 />
@@ -218,9 +218,9 @@ export function LogsTable({
                 onClick={onRefresh}
                 variant="outline"
                 size="sm"
-                className="h-9 shrink-0 gap-2 border border-zinc-300 bg-white text-sm font-medium text-zinc-700 shadow-none hover:translate-y-0 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="h-9 shrink-0 gap-2 border border-sky-200/90 bg-sky-50/90 text-sm font-medium text-sky-800 shadow-none hover:translate-y-0 hover:bg-sky-100/90 dark:border-sky-800/50 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:bg-sky-950/60"
               >
-                <RefreshCw className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                <RefreshCw className="h-3.5 w-3.5 shrink-0 text-sky-700 dark:text-sky-300" strokeWidth={1.5} aria-hidden />
                 Actualizar
               </Button>
             )}
@@ -230,11 +230,11 @@ export function LogsTable({
 
       <Card className={cardShell}>
         <CardContent className="p-4 md:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:overflow-hidden sm:rounded-xl sm:border sm:border-solid sm:border-zinc-200 sm:bg-white sm:dark:border-zinc-800 sm:dark:bg-zinc-950/40">
+          <div className="flex flex-col gap-2 sm:flex-row sm:overflow-hidden sm:rounded-xl sm:border sm:border-solid sm:border-indigo-100/90 sm:bg-white sm:dark:border-indigo-900/40 sm:dark:bg-zinc-950/40">
             <label className="group relative flex min-h-10 flex-1 sm:min-h-11">
               <span className="sr-only">Buscar registro</span>
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300"
+                className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-violet-500 transition-colors group-focus-within:text-violet-600 dark:text-violet-400 dark:group-focus-within:text-violet-300"
                 strokeWidth={1.5}
                 aria-hidden
               />
@@ -247,10 +247,10 @@ export function LogsTable({
                   if (onSearchChange) onSearchChange(value)
                   else setLocalSearchTerm(value)
                 }}
-                className="h-10 w-full rounded-xl border border-zinc-200/90 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-100 sm:h-11 sm:rounded-none sm:border-0 sm:focus:ring-0"
+                className="h-10 w-full rounded-xl border border-zinc-200/90 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-100 sm:h-11 sm:rounded-none sm:border-0 sm:focus:ring-2 sm:focus:ring-violet-500/25"
               />
             </label>
-            <div className="hidden w-px shrink-0 bg-zinc-200/80 dark:bg-zinc-800 sm:block" aria-hidden />
+            <div className="hidden w-px shrink-0 bg-indigo-100/80 dark:bg-indigo-900/50 sm:block" aria-hidden />
             <label className="relative flex min-h-10 sm:min-h-11 sm:min-w-[220px] sm:max-w-[280px]">
               <span className="sr-only">Filtrar por módulo</span>
               <select
@@ -260,7 +260,7 @@ export function LogsTable({
                   if (onModuleFilterChange) onModuleFilterChange(value)
                   else setLocalFilterModule(value)
                 }}
-                className="h-10 w-full cursor-pointer appearance-none rounded-xl border border-zinc-200/90 bg-white py-2 pl-3 pr-10 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-100 sm:h-11 sm:rounded-none sm:border-0 sm:focus:ring-0"
+                className="h-10 w-full cursor-pointer appearance-none rounded-xl border border-zinc-200/90 bg-white py-2 pl-3 pr-10 text-sm text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-100 sm:h-11 sm:rounded-none sm:border-0 sm:focus:ring-2 sm:focus:ring-violet-500/25"
               >
                 {modules.map(module => (
                   <option key={module.value} value={module.value}>
@@ -269,7 +269,7 @@ export function LogsTable({
                 ))}
               </select>
               <ChevronDown
-                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500 dark:text-violet-400"
                 strokeWidth={1.5}
                 aria-hidden
               />
@@ -282,7 +282,7 @@ export function LogsTable({
         <CardContent className="p-0">
           {filteredLogs.length === 0 ? (
             <div className="px-4 py-14 text-center md:px-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200/80 bg-zinc-50/80 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/60">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-indigo-200/90 bg-indigo-50/80 text-indigo-600 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-400">
                 <Users className="h-6 w-6" strokeWidth={1.5} />
               </div>
               <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -308,7 +308,7 @@ export function LogsTable({
                     <button
                       type="button"
                       onClick={() => onLogClick?.(log)}
-                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-800/50 md:gap-4 md:px-6 md:py-4"
+                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-indigo-50/60 dark:hover:bg-indigo-950/25 md:gap-4 md:px-6 md:py-4"
                     >
                       <UserAvatar
                         name={userName}
@@ -329,7 +329,7 @@ export function LogsTable({
                             ·
                           </span>
                           <span className="inline-flex items-center gap-1">
-                            <TypeIcon className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
+                            <TypeIcon className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} />
                             {labelForLogType(logType)}
                           </span>
                           <span className="text-zinc-300 dark:text-zinc-600" aria-hidden>
@@ -374,7 +374,7 @@ export function LogsTable({
 
       {totalLogs > 20 && (
         <div
-          className={`flex flex-col gap-3 rounded-xl border border-solid border-zinc-200 bg-white px-4 py-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:items-center sm:justify-between md:px-6`}
+          className={`flex flex-col gap-3 rounded-xl border border-solid border-indigo-100/90 bg-white px-4 py-4 shadow-sm dark:border-indigo-900/40 dark:bg-zinc-900/40 sm:flex-row sm:items-center sm:justify-between md:px-6`}
         >
           <div className="text-center text-xs text-zinc-500 dark:text-zinc-400 sm:text-left sm:text-sm">
             <span className="hidden sm:inline">Mostrando </span>
@@ -423,8 +423,8 @@ export function LogsTable({
                         disabled={loading}
                         className={`min-w-[28px] rounded-md px-2 py-1.5 text-xs transition-colors sm:min-w-[32px] sm:text-sm ${
                           page === currentPage
-                            ? 'bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                            : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                            ? 'bg-indigo-100 font-medium text-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-100'
+                            : 'text-zinc-600 hover:bg-indigo-50 hover:text-indigo-900 dark:text-zinc-400 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-100'
                         }`}
                       >
                         {page}

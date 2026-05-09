@@ -48,7 +48,7 @@ export function CartDrawer() {
       >
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
           <div className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-emerald-600" strokeWidth={1.5} />
+            <ShoppingBag className="h-5 w-5 text-brand-600" strokeWidth={1.5} />
             <h2 id="tienda-cart-title" className="text-lg font-semibold text-zinc-900">
               Tu carrito
             </h2>
@@ -145,7 +145,7 @@ export function CartDrawer() {
             </p>
             <div className="mt-4 flex flex-col gap-2">
               <Button
-                className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                className="h-11 w-full bg-brand-600 text-white hover:bg-brand-700"
                 onClick={() => {
                   clearCart()
                   closeDrawer()
