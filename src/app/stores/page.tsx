@@ -130,9 +130,9 @@ export default function StoresPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-gradient-to-b from-indigo-50/50 via-white to-violet-50/40 dark:from-indigo-950/25 dark:via-zinc-950 dark:to-violet-950/20">
+      <div className="flex min-h-[50vh] items-center justify-center bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
         <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-700 dark:border-t-brand-500"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400"
           aria-hidden
         />
       </div>
@@ -141,7 +141,7 @@ export default function StoresPage() {
 
   return (
     <RoleProtectedRoute module="roles" requiredAction="view">
-      <div className="min-h-screen space-y-4 bg-gradient-to-b from-indigo-50/60 via-white to-violet-50/40 py-4 pb-20 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-violet-950/20 md:space-y-6 md:py-6 lg:pb-6">
+      <div className="min-h-screen space-y-4 bg-gradient-to-b from-zinc-50/80 via-white to-zinc-50/70 py-4 pb-20 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 md:space-y-6 md:py-6 lg:pb-6">
         <StoreTable
           stores={stores}
           salesByStore={salesByStore}

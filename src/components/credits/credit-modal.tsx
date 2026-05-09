@@ -584,12 +584,10 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
   /* Portal + z-[100]: sobre el main; xl:left-56 = no tapar el sidebar fijo (solo ≥ xl, como main xl:ml-56). */
   const modal = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm sm:p-3 xl:left-56">
-      <div className="flex h-[min(92dvh,calc(100dvh-0.75rem))] w-full min-w-0 max-w-[min(1600px,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/50 via-white to-zinc-50 shadow-2xl dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-900 dark:to-zinc-950">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/70 px-3 py-2.5 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25 sm:px-4">
+      <div className="flex h-[min(92dvh,calc(100dvh-0.75rem))] w-full min-w-0 max-w-[min(1600px,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900/95">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200/90 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
-              <CreditCard className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} />
-            </div>
+            <CreditCard className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
             <div className="min-w-0">
               <h2 className="text-base font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
                 Crear Venta a Crédito
@@ -1014,7 +1012,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
         </div>
 
         <div
-          className="flex shrink-0 items-center justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-3 py-2.5 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:px-4"
+          className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200/90 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950 sm:px-4"
           style={{
             paddingBottom: `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))`
           }}

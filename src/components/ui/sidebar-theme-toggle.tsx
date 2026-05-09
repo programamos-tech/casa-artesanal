@@ -5,12 +5,12 @@ import { useTheme } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
 
 const btn =
-  'flex h-9 min-w-0 flex-1 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/30'
+  'flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20'
 
 const selected =
-  'bg-zinc-100 text-zinc-900 shadow-sm ring-1 ring-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:ring-zinc-600'
+  'bg-white/[0.15] text-white shadow-[0_1px_6px_rgba(0,0,0,0.3)] ring-1 ring-inset ring-white/[0.12]'
 const idle =
-  'text-zinc-400 hover:bg-[#222226] hover:text-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+  'text-white/35 hover:bg-white/[0.06] hover:text-white/70'
 
 /**
  * Claro / oscuro fijos o según `prefers-color-scheme` (localStorage `light` | `dark` | `system`).
@@ -21,7 +21,7 @@ export function SidebarThemeToggle({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex gap-1 rounded-lg border border-[#1f1f22] bg-[#17171a] p-1 dark:border-zinc-800 dark:bg-zinc-900',
+        'flex gap-1 rounded-xl border border-white/[0.07] bg-white/[0.04] p-1',
         className
       )}
       role="group"

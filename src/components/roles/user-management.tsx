@@ -16,6 +16,7 @@ import { StoresService } from '@/lib/stores-service'
 import { canAccessAllStores } from '@/lib/store-helper'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { cardShell } from '@/lib/card-shell'
+import { appModalOverlayClass, appModalPanelClass, modalCardShellClass } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
 
 const roleOptions = [
@@ -105,11 +106,28 @@ const formInputClass =
 const formLabelClass =
   'mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400'
 const sectionHeaderClass =
-  'space-y-0 border-b border-indigo-100/90 p-4 dark:border-indigo-900/40'
+  'space-y-0 border-b border-zinc-200/90 p-4 dark:border-zinc-800'
 const sectionTitleClass =
   'flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50'
 const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 const sectionContentClass = 'space-y-3 p-4 md:p-6 md:pt-4'
+
+/** Sin glow azul de marca: mismo criterio que ventas / créditos */
+const headerPrimaryButtonClass =
+  'h-9 shrink-0 gap-2 rounded-lg border-0 bg-zinc-900 px-4 text-sm font-medium text-white shadow-none hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/35 dark:border-0 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:focus-visible:ring-zinc-500/35 [&_svg]:text-inherit'
+const primarySubmitButtonClass =
+  'border-0 bg-zinc-900 text-white hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-zinc-400/35 dark:border-0 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:focus-visible:ring-zinc-500/35'
+const activeUserBadgeClass =
+  'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/[0.12] dark:text-emerald-300'
+const inactiveUserBadgeClass =
+  'border-zinc-600 bg-zinc-800/60 text-zinc-400 dark:border-zinc-600'
+
+const userModalHeaderClass =
+  'flex items-center justify-between gap-3 border-b border-white/35 bg-white/25 px-5 py-4 backdrop-blur-md dark:border-zinc-600/45 dark:bg-zinc-950/35'
+const userModalFooterClass =
+  'flex flex-col-reverse justify-end gap-2 border-t border-white/35 bg-white/25 px-5 py-3 backdrop-blur-md dark:border-zinc-600/45 dark:bg-zinc-950/35 sm:flex-row'
+const userModalBodyClass =
+  'min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide bg-white/15 px-4 py-5 backdrop-blur-sm dark:bg-zinc-950/20 md:px-6'
 
 /** Mismo patrón que facturador / búsqueda unificada (select nativo + chevron) */
 const nativeSelectChevronStyle = {
@@ -484,7 +502,7 @@ export function UserManagement() {
     return (
       <div className="flex h-64 items-center justify-center">
         <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-brand-500 dark:border-zinc-700 dark:border-t-brand-500"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300"
           aria-hidden
         />
       </div>
@@ -515,7 +533,7 @@ export function UserManagement() {
               variant="default"
               size="sm"
               onClick={openCreateModal}
-              className="h-9 shrink-0 gap-2 rounded-lg border-0 bg-brand-600 px-4 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-brand-700 hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:hover:bg-brand-500 [&_svg]:text-white"
+              className={headerPrimaryButtonClass}
             >
               <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
               <span className="hidden sm:inline">Nuevo usuario</span>
@@ -532,18 +550,20 @@ export function UserManagement() {
         createPortal(
           (
             <div
-              className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/[0.18] p-3 backdrop-blur-[3px] dark:bg-black/45 sm:p-6 sm:py-10 xl:left-60"
+              className={appModalOverlayClass}
               style={{
                 paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
                 paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
               }}
             >
-              <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/40 via-white to-zinc-50 shadow-2xl ring-1 ring-indigo-950/5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-zinc-950 dark:ring-white/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl">
-                <div className="flex items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/70 px-5 py-4 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25">
+              <div className={appModalPanelClass}>
+                <div className={userModalHeaderClass}>
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
-                      <UserCheck className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
-                    </div>
+                    <UserCheck
+                      className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
                     <div className="min-w-0">
                       <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
                         Nuevo usuario
@@ -568,11 +588,11 @@ export function UserManagement() {
                   </Button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide bg-gradient-to-b from-zinc-50/60 via-white to-white px-4 py-5 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 md:px-6">
+                <div className={userModalBodyClass}>
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
                     {/* Columna izquierda — datos + rol/estado */}
                     <div className="space-y-4 lg:col-span-2">
-                      <Card className={cardShell}>
+                      <Card className={modalCardShellClass}>
                         <CardHeader className={sectionHeaderClass}>
                           <CardTitle className={sectionTitleClass}>
                             <UserIcon className={sectionIconClass} strokeWidth={1.5} aria-hidden />
@@ -621,7 +641,7 @@ export function UserManagement() {
                         </CardContent>
                       </Card>
 
-                      <Card className={cardShell}>
+                      <Card className={modalCardShellClass}>
                         <CardHeader className={sectionHeaderClass}>
                           <CardTitle className={sectionTitleClass}>
                             <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
@@ -712,7 +732,7 @@ export function UserManagement() {
 
                     {/* Columna derecha — permisos */}
                     <div className="space-y-4">
-                      <Card className={cardShell}>
+                      <Card className={modalCardShellClass}>
                         <CardHeader className={sectionHeaderClass}>
                           <CardTitle className={sectionTitleClass}>
                             <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
@@ -762,7 +782,7 @@ export function UserManagement() {
                 </div>
 
                 <div
-                  className="flex flex-col-reverse justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-5 py-3 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:flex-row"
+                  className={userModalFooterClass}
                   style={{
                     paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
                   }}
@@ -783,7 +803,7 @@ export function UserManagement() {
                     type="button"
                     size="sm"
                     onClick={handleCreateUser}
-                    className="h-10 w-full bg-brand-700 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 sm:w-auto"
+                    className={cn('h-10 w-full sm:w-auto', primarySubmitButtonClass)}
                   >
                     <UserCheck className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
                     Crear usuario
@@ -854,7 +874,7 @@ export function UserManagement() {
         <CardContent className="p-0">
           {filteredUsers.length === 0 ? (
             <div className="px-4 py-14 text-center md:px-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-indigo-200/90 bg-indigo-50/80 text-indigo-600 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-400">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
                 <Users className="h-6 w-6" strokeWidth={1.5} aria-hidden />
               </div>
               <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -868,7 +888,7 @@ export function UserManagement() {
                 variant="default"
                 size="sm"
                 onClick={openCreateModal}
-                className="mt-4 h-9 gap-2 rounded-lg border-0 bg-brand-600 px-4 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-brand-700 hover:shadow-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:hover:bg-brand-500 [&_svg]:text-white"
+                className={cn('mt-4', headerPrimaryButtonClass)}
               >
                 <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 Nuevo usuario
@@ -893,7 +913,7 @@ export function UserManagement() {
                   return (
                     <div
                       key={user.id}
-                      className="space-y-3 rounded-xl border border-solid border-indigo-100/90 bg-indigo-50/35 p-3 dark:border-indigo-900/35 dark:bg-indigo-950/20"
+                      className="space-y-3 rounded-xl border border-solid border-zinc-200/90 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/50"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -922,11 +942,10 @@ export function UserManagement() {
                           </div>
                         </div>
                         <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium ${
-                            user.isActive
-                              ? 'border-brand-500/35 bg-brand-500/10 text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300'
-                              : 'border-zinc-600 bg-zinc-800/60 text-zinc-400 dark:border-zinc-600'
-                          }`}
+                          className={cn(
+                            'inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium',
+                            user.isActive ? activeUserBadgeClass : inactiveUserBadgeClass
+                          )}
                         >
                           <UserCheck className="h-3 w-3" strokeWidth={1.5} aria-hidden />
                           {user.isActive ? 'Activo' : 'Inactivo'}
@@ -983,7 +1002,7 @@ export function UserManagement() {
                             size="sm"
                             variant="ghost"
                             onClick={() => openEditModal(user)}
-                            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-brand-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-brand-400"
+                            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                           >
                             <Edit className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                           </Button>
@@ -1024,11 +1043,10 @@ export function UserManagement() {
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">{user.name}</h3>
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${
-                                user.isActive
-                                  ? 'border-brand-500/35 bg-brand-500/10 text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300'
-                                  : 'border-zinc-600 bg-zinc-800/60 text-zinc-400 dark:border-zinc-600'
-                              }`}
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium',
+                                user.isActive ? activeUserBadgeClass : inactiveUserBadgeClass
+                              )}
                             >
                               {user.isActive ? (
                                 <UserCheck className="h-3 w-3" strokeWidth={1.5} aria-hidden />
@@ -1068,7 +1086,7 @@ export function UserManagement() {
                           variant="ghost"
                           size="sm"
                           onClick={() => openEditModal(user)}
-                          className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-brand-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-brand-400"
+                          className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                         >
                           <Edit className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                         </Button>
@@ -1101,18 +1119,20 @@ export function UserManagement() {
         createPortal(
           (
             <div
-              className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/[0.18] p-3 backdrop-blur-[3px] dark:bg-black/45 sm:p-6 sm:py-10 xl:left-60"
+              className={appModalOverlayClass}
               style={{
                 paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
                 paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
               }}
             >
-              <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/40 via-white to-zinc-50 shadow-2xl ring-1 ring-indigo-950/5 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-zinc-950 dark:ring-white/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl">
-                <div className="flex items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/95 via-white to-violet-50/70 px-5 py-4 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/25">
+              <div className={appModalPanelClass}>
+                <div className={userModalHeaderClass}>
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
-                      <Edit className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
-                    </div>
+                    <Edit
+                      className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
                     <div className="min-w-0">
                       <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
                         Editar usuario
@@ -1134,11 +1154,11 @@ export function UserManagement() {
                   </Button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide bg-gradient-to-b from-zinc-50/60 via-white to-white px-4 py-5 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 md:px-6">
+                <div className={userModalBodyClass}>
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
                     {/* Columna izquierda — datos + rol/estado */}
                     <div className="space-y-4 lg:col-span-2">
-                      <Card className={cardShell}>
+                      <Card className={modalCardShellClass}>
                         <CardHeader className={sectionHeaderClass}>
                           <CardTitle className={sectionTitleClass}>
                             <UserIcon className={sectionIconClass} strokeWidth={1.5} aria-hidden />
@@ -1190,7 +1210,7 @@ export function UserManagement() {
                         </CardContent>
                       </Card>
 
-                      <Card className={cardShell}>
+                      <Card className={modalCardShellClass}>
                         <CardHeader className={sectionHeaderClass}>
                           <CardTitle className={sectionTitleClass}>
                             <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
@@ -1287,7 +1307,7 @@ export function UserManagement() {
 
                     {/* Columna derecha — permisos */}
                     <div className="space-y-4">
-                      <Card className={cardShell}>
+                      <Card className={modalCardShellClass}>
                         <CardHeader className={sectionHeaderClass}>
                           <CardTitle className={sectionTitleClass}>
                             <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
@@ -1337,7 +1357,7 @@ export function UserManagement() {
                 </div>
 
                 <div
-                  className="flex flex-col-reverse justify-end gap-2 border-t border-indigo-100/80 bg-white/95 px-5 py-3 backdrop-blur-sm dark:border-indigo-900/40 dark:bg-zinc-950/95 sm:flex-row"
+                  className={userModalFooterClass}
                   style={{
                     paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
                   }}
@@ -1355,7 +1375,7 @@ export function UserManagement() {
                     type="button"
                     size="sm"
                     onClick={handleUpdateUser}
-                    className="h-10 w-full bg-brand-700 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 sm:w-auto"
+                    className={cn('h-10 w-full sm:w-auto', primarySubmitButtonClass)}
                   >
                     <Edit className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
                     Guardar cambios

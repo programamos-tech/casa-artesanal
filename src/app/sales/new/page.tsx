@@ -790,8 +790,8 @@ export default function NewSalePage() {
 
   return (
     <RoleProtectedRoute module="sales" requiredAction="create">
-      <div className="min-h-screen bg-gradient-to-b from-indigo-50/60 via-white to-violet-50/40 pb-28 dark:from-indigo-950/30 dark:via-zinc-950 dark:to-violet-950/20 xl:pb-8">
-        <header className="sticky top-0 z-40 border-b border-indigo-100/70 bg-gradient-to-r from-white/95 via-indigo-50/40 to-violet-50/50 backdrop-blur-md dark:border-indigo-900/35 dark:from-zinc-950/95 dark:via-indigo-950/25 dark:to-zinc-950/95">
+      <div className="min-h-screen bg-zinc-50 pb-28 dark:bg-zinc-950 xl:pb-8">
+        <header className="sticky top-0 z-40 border-b border-zinc-200/90 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95">
           <div className="flex w-full min-w-0 flex-wrap items-center gap-3 px-4 py-4 md:px-6">
             <Button
               type="button"

@@ -6,8 +6,34 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X, Store as StoreIcon, Upload } from 'lucide-react'
+import {
+  X,
+  Store as StoreIcon,
+  Upload,
+  ClipboardList,
+  Image as ImageIcon,
+  Type,
+  Hash,
+  MapPin,
+  Phone,
+  MapPinned
+} from 'lucide-react'
 import { Store } from '@/types'
+import { cn } from '@/lib/utils'
+
+/** Misma lógica que los KPI del dashboard: color solo en el trazo, sin caja de fondo */
+const storeFormIconTone = {
+  header: 'text-indigo-600 dark:text-indigo-400',
+  section: 'text-indigo-600 dark:text-indigo-400',
+  logo: 'text-sky-600 dark:text-sky-400',
+  name: 'text-slate-600 dark:text-slate-400',
+  nit: 'text-violet-600 dark:text-violet-400',
+  city: 'text-teal-600 dark:text-teal-400',
+  phone: 'text-green-600 dark:text-green-400',
+  address: 'text-amber-600 dark:text-amber-400'
+} as const
+
+const formLabelIcon = 'h-4 w-4 shrink-0'
 
 interface StoreModalProps {
   isOpen: boolean
@@ -182,7 +208,11 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
           <div className="flex items-center justify-between gap-3 border-b border-zinc-200/90 px-4 py-3.5 sm:px-5 dark:border-zinc-800">
             <div className="flex min-w-0 items-center gap-2.5">
-              <StoreIcon className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+              <StoreIcon
+                className={cn('h-5 w-5 shrink-0', storeFormIconTone.header)}
+                strokeWidth={1.5}
+                aria-hidden
+              />
               <div className="min-w-0">
                 <h2 className="line-clamp-2 text-base font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-lg">
                   {isEdit ? 'Editar tienda' : 'Nueva tienda'}
@@ -208,7 +238,12 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
           <form onSubmit={handleSubmit} className="flex flex-col">
             <Card className="rounded-none border-0 shadow-none">
               <CardHeader className="px-3 pb-2 pt-4 sm:px-6 sm:pt-5">
-                <CardTitle className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                <CardTitle className="flex items-center gap-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
+                  <ClipboardList
+                    className={cn('h-5 w-5 shrink-0', storeFormIconTone.section)}
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
                   Datos de la tienda
                 </CardTitle>
                 {!isEdit && (
@@ -219,10 +254,17 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
               </CardHeader>
               <CardContent className="space-y-4 px-3 pb-4 pt-0 sm:px-6">
                 <div className="space-y-2">
-                  <Label className="text-zinc-700 dark:text-zinc-300">Logo (opcional)</Label>
+                  <Label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                    <ImageIcon
+                      className={cn(formLabelIcon, storeFormIconTone.logo)}
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                    Logo (opcional)
+                  </Label>
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/50">
-                      <Upload className="h-4 w-4 text-zinc-500" />
+                      <Upload className={cn(formLabelIcon, storeFormIconTone.logo)} strokeWidth={1.5} aria-hidden />
                       {isUploading ? 'Subiendo…' : formData.logo ? 'Cambiar imagen' : 'Subir logo'}
                       <input
                         type="file"
@@ -276,7 +318,11 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="store-name" className="text-zinc-700 dark:text-zinc-300">
+                  <Label
+                    htmlFor="store-name"
+                    className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300"
+                  >
+                    <Type className={cn(formLabelIcon, storeFormIconTone.name)} strokeWidth={1.5} aria-hidden />
                     Nombre de la tienda *
                   </Label>
                   <Input
@@ -293,7 +339,11 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="store-nit" className="text-zinc-700 dark:text-zinc-300">
+                    <Label
+                      htmlFor="store-nit"
+                      className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300"
+                    >
+                      <Hash className={cn(formLabelIcon, storeFormIconTone.nit)} strokeWidth={1.5} aria-hidden />
                       NIT
                     </Label>
                     <Input
@@ -305,7 +355,11 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="store-city" className="text-zinc-700 dark:text-zinc-300">
+                    <Label
+                      htmlFor="store-city"
+                      className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300"
+                    >
+                      <MapPin className={cn(formLabelIcon, storeFormIconTone.city)} strokeWidth={1.5} aria-hidden />
                       Ciudad
                     </Label>
                     <Input
@@ -319,7 +373,11 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="store-phone" className="text-zinc-700 dark:text-zinc-300">
+                  <Label
+                    htmlFor="store-phone"
+                    className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300"
+                  >
+                    <Phone className={cn(formLabelIcon, storeFormIconTone.phone)} strokeWidth={1.5} aria-hidden />
                     Teléfono
                   </Label>
                   <Input
@@ -333,7 +391,11 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="store-address" className="text-zinc-700 dark:text-zinc-300">
+                  <Label
+                    htmlFor="store-address"
+                    className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300"
+                  >
+                    <MapPinned className={cn(formLabelIcon, storeFormIconTone.address)} strokeWidth={1.5} aria-hidden />
                     Dirección
                   </Label>
                   <textarea

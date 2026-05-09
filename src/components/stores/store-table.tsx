@@ -14,7 +14,7 @@ import { cardShell } from '@/lib/card-shell'
 
 const storeCardShell = cn(cardShell, 'dark:shadow-none')
 const storeMetricIcon =
-  'h-4 w-4 shrink-0 text-brand-600/90 dark:text-brand-400/90'
+  'h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400'
 const storeMetricLabel =
   'text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400'
 
@@ -68,7 +68,7 @@ function StoreCard({
           'group relative flex w-full flex-col overflow-hidden transition-all duration-200',
           storeCardShell,
           isCurrentStore &&
-            'border-indigo-300/80 shadow-md ring-2 ring-indigo-200/90 dark:border-indigo-600/60 dark:ring-indigo-800/50',
+            'border-zinc-300 shadow-md ring-1 ring-zinc-200/95 dark:border-zinc-600 dark:ring-zinc-700/40',
           isSuperAdmin &&
             'cursor-pointer hover:border-zinc-300 hover:shadow-md dark:hover:border-zinc-600'
         )}
@@ -77,7 +77,7 @@ function StoreCard({
         <CardContent className="flex flex-col gap-3 p-4 sm:p-4.5">
           {isCurrentStore && (
             <span
-              className="absolute right-2 top-2 z-10 rounded-full border border-indigo-200/90 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-800 dark:border-indigo-700/60 dark:bg-indigo-950/60 dark:text-indigo-200"
+              className="absolute right-2 top-2 z-10 rounded-full border border-zinc-200/95 bg-zinc-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300"
               title="Vista actual"
             >
               Activa
@@ -90,7 +90,7 @@ function StoreCard({
                 <div
                   className={cn(
                     'relative h-16 w-16 overflow-hidden rounded-full border-2 border-zinc-200 bg-white shadow-sm dark:border-zinc-600',
-                    isCurrentStore && 'border-indigo-400 ring-2 ring-indigo-200/90 dark:border-indigo-500 dark:ring-indigo-700/45'
+                    isCurrentStore && 'border-zinc-400 ring-2 ring-zinc-200/90 dark:border-zinc-500 dark:ring-zinc-600/35'
                   )}
                 >
                   <Image
@@ -105,7 +105,7 @@ function StoreCard({
                 <div
                   className={cn(
                     'flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-200 bg-white shadow-sm dark:border-zinc-600 dark:bg-zinc-800/80',
-                    isCurrentStore && 'border-indigo-400 ring-2 ring-indigo-200/90 dark:border-indigo-500 dark:ring-indigo-700/45'
+                    isCurrentStore && 'border-zinc-400 ring-2 ring-zinc-200/90 dark:border-zinc-500 dark:ring-zinc-600/35'
                   )}
                 >
                   <Image
@@ -261,11 +261,11 @@ export function StoreTable({
 
   return (
     <Card className={cardShell}>
-      <CardHeader className="space-y-0 border-b border-indigo-100/70 bg-gradient-to-r from-indigo-50/80 via-white to-violet-50/60 p-4 dark:border-indigo-900/35 dark:from-indigo-950/40 dark:via-zinc-950 dark:to-violet-950/25 md:p-6">
+      <CardHeader className="space-y-0 border-b border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-1.5">
             <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-              <StoreIcon className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
+              <StoreIcon className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} aria-hidden />
               Micro Tiendas
             </CardTitle>
             <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -276,7 +276,7 @@ export function StoreTable({
             <Button
               onClick={onCreate}
               size="sm"
-              className="h-9 flex-1 bg-brand-700 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 sm:flex-none"
+              className="h-9 flex-1 bg-zinc-900 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 sm:flex-none"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Nueva Tienda</span>
@@ -288,14 +288,14 @@ export function StoreTable({
       <CardContent className="p-4 md:p-6">
         {stores.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-indigo-200/90 bg-indigo-50/60 dark:border-indigo-800/60 dark:bg-indigo-950/40">
-              <StoreIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} />
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900/60">
+              <StoreIcon className="h-5 w-5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
             </div>
             <p className="text-zinc-500 dark:text-zinc-400">No hay tiendas registradas</p>
             <Button
               onClick={onCreate}
               size="sm"
-              className="mt-4 bg-brand-700 text-white shadow-none hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
+              className="mt-4 bg-zinc-900 text-white shadow-none hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
             >
               Crear Primera Tienda
             </Button>

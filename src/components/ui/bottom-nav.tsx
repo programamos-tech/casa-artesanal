@@ -134,8 +134,8 @@ export function BottomNav() {
     <nav className="casa-artesanal-preserve-surface fixed bottom-0 left-0 right-0 z-[45] isolate xl:hidden">
       {/* Barra pegada al borde inferior: padding seguro dentro del contenedor para que el fondo llegue hasta abajo */}
       <div
-        className="casa-artesanal-preserve-surface relative flex flex-col overflow-hidden border-t border-zinc-800 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-950 pt-0 shadow-none backdrop-blur-xl"
-        style={{ paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
+        className="casa-artesanal-preserve-surface relative flex flex-col overflow-hidden border-t border-white/[0.06] pt-0 backdrop-blur-2xl"
+        style={{ background: 'linear-gradient(180deg,#040e24 0%,#020a18 100%)', boxShadow: '0 -4px 32px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.05)', paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
       >
         {/* Móvil y tablet: barra oscura; en móvil solo iconos (sin texto debajo) */}
         <div className="flex h-11 shrink-0 items-stretch gap-2 md:h-12 md:gap-2">
@@ -143,7 +143,7 @@ export function BottomNav() {
         <div className="flex w-12 shrink-0 items-center justify-center pl-2 md:w-14">
           <Link
             href="/profile"
-            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900/90 ring-1 ring-zinc-800/60 transition-colors hover:border-zinc-500"
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/[0.12] bg-white/[0.06] ring-1 ring-white/[0.05] transition-colors hover:border-white/25 hover:bg-white/[0.1]"
             title={currentStore?.name ? `Tienda: ${currentStore.name}` : 'Tienda'}
           >
             {currentStore?.logo ? (
@@ -179,14 +179,6 @@ export function BottomNav() {
               (href === '/sales' && currentPathname?.startsWith('/sales')) ||
               (href === '/stores' && currentPathname?.startsWith('/stores'))
             
-            // Barra oscura: iconos en zinc; activo resaltado sin verde
-            const getIconColor = () => {
-              if (!active) return 'text-zinc-500'
-              return 'text-zinc-100'
-            }
-
-            const activeLabelClass = active ? 'text-zinc-100' : 'text-zinc-400'
-            
             return (
               <li
                 key={href}
@@ -194,13 +186,11 @@ export function BottomNav() {
               >
                 {isStoresModule && !canAccessStores ? (
                   <div
-                    className={`flex h-full w-full min-w-0 cursor-not-allowed flex-col items-center justify-center gap-0 px-1.5 text-[9px] opacity-50 transition-all duration-200 md:gap-1 md:px-1 md:text-[10px] ${
-                      active ? activeLabelClass : 'text-zinc-500'
-                    }`}
+                    className="flex h-full w-full min-w-0 cursor-not-allowed flex-col items-center justify-center gap-0 px-1.5 text-[9px] opacity-30 text-white/50 transition-all duration-200 md:gap-1 md:px-1 md:text-[10px]"
                     title="Solo disponible para Super Administradores"
                     aria-label={`${label} — solo super administradores`}
                   >
-                    <Icon strokeWidth={1.5} className={`h-5 w-5 shrink-0 transition-colors md:h-5 md:w-5 ${getIconColor()}`} />
+                    <Icon strokeWidth={1.5} className="h-5 w-5 shrink-0" />
                     <span className="hidden max-w-full truncate whitespace-nowrap px-0.5 text-center leading-tight md:block">{label}</span>
                   </div>
                 ) : (
@@ -210,11 +200,11 @@ export function BottomNav() {
                   title={label}
                   className={`flex h-full w-full min-w-0 flex-col items-center justify-center gap-0 px-1.5 text-[9px] transition-all duration-200 touch-manipulation md:gap-1 md:px-1 md:text-[10px] ${
                     active
-                      ? `${activeLabelClass} bg-white/10`
-                      : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100 active:scale-95'
+                      ? 'text-white bg-white/[0.1] ring-1 ring-inset ring-white/[0.08]'
+                      : 'text-white/40 hover:bg-white/[0.05] hover:text-white/70 active:scale-95'
                   }`}
                 >
-                    <Icon strokeWidth={1.5} className={`h-5 w-5 shrink-0 transition-colors md:h-5 md:w-5 ${getIconColor()}`} />
+                  <Icon strokeWidth={1.5} className="h-5 w-5 shrink-0 transition-colors" />
                   <span className="hidden max-w-full truncate whitespace-nowrap px-0.5 text-center leading-tight md:block">{label}</span>
                 </Link>
                 )}
@@ -227,14 +217,14 @@ export function BottomNav() {
         {/* Difuminado derecha: indica que hay más opciones sin quitar espacio */}
         {showRightButton && (
           <div
-            className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-zinc-950 to-transparent md:w-10"
+            className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-[#020a18] to-transparent md:w-10"
             aria-hidden
           />
         )}
         {/* Difuminado izquierda: cuando hay scroll, indica que hay más a la izquierda */}
         {showLeftButton && (
           <div
-            className="pointer-events-none absolute bottom-0 left-14 top-0 z-10 w-8 bg-gradient-to-r from-zinc-950 to-transparent md:left-16 md:w-10"
+            className="pointer-events-none absolute bottom-0 left-14 top-0 z-10 w-8 bg-gradient-to-r from-[#020a18] to-transparent md:left-16 md:w-10"
             aria-hidden
           />
         )}

@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   UserCircle,
   UserCog,
-  Store,
+  Store as StoreIcon,
   Warehouse,
   ArrowRightLeft,
   CheckCircle,
@@ -67,7 +67,7 @@ const navigation = [
     icon: Shield, 
     module: 'roles',
     submenu: [
-      { name: 'Tiendas', href: '/stores', icon: Store, module: 'roles', requiresAllStoresAccess: true },
+      { name: 'Tiendas', href: '/stores', icon: StoreIcon, module: 'roles', requiresAllStoresAccess: true as const },
       { name: 'Roles', href: '/roles', icon: UserCog, module: 'roles' },
       { name: 'Actividades', href: '/logs', icon: Activity, module: 'logs' },
     ]
@@ -244,7 +244,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
               const canAccessStores = isStoresModule ? canAccessAllStores(user) : true
               
               // Si requiere acceso a todas las tiendas (y no es stores), verificar
-              if (item.requiresAllStoresAccess && !isStoresModule && !canAccessAllStores(user)) return null
+              if ((item as { requiresAllStoresAccess?: boolean }).requiresAllStoresAccess && !isStoresModule && !canAccessAllStores(user)) return null
               
               // Verificar si tiene submenú
               const hasSubmenu = item.submenu && item.submenu.length > 0
@@ -276,14 +276,21 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                 isSubmenuActive
               
               const rowActive =
-                'bg-[#1c1c1f] text-zinc-50 ring-1 ring-[#2a2a2d] dark:bg-zinc-800 dark:text-zinc-50 dark:ring-1 dark:ring-zinc-700'
+                'bg-white/[0.1] text-white ring-1 ring-inset ring-white/[0.1] shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
               const rowInactive =
-                'text-zinc-400 hover:bg-[#17171a] hover:text-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/70 dark:hover:text-zinc-100'
+                'text-white/55 hover:bg-white/[0.055] hover:text-white/90'
 
-              const getIconColorForItem = (active: boolean) =>
-                active
-                  ? 'text-zinc-50 dark:text-zinc-50'
-                  : 'text-zinc-500 group-hover:text-zinc-200 dark:text-zinc-500 dark:group-hover:text-zinc-200'
+              const navIconParent = (active: boolean) =>
+                cn(
+                  'mr-2.5 h-[18px] w-[18px] shrink-0 stroke-[1.75] transition-colors',
+                  active ? 'text-white/85' : 'text-white/40 group-hover:text-white/70'
+                )
+
+              const navIconChild = (active: boolean) =>
+                cn(
+                  'mr-2 h-4 w-4 shrink-0 stroke-[1.75] transition-colors',
+                  active ? 'text-white/85' : 'text-white/38 group-hover:text-white/65'
+                )
 
               const toggleSubmenu = (e: React.MouseEvent) => {
                 e.preventDefault()
@@ -306,28 +313,22 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                       <button
                         onClick={toggleSubmenu}
                         className={cn(
-                          'group flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                          'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
                           isActive || isSubmenuActive ? rowActive : rowInactive
                         )}
                       >
-                        <div className="flex flex-1 items-center">
-                          <item.icon
-                            strokeWidth={1.5}
-                            className={cn(
-                              'mr-2.5 h-4 w-4 shrink-0 transition-colors',
-                              getIconColorForItem(!!(isActive || isSubmenuActive))
-                            )}
-                          />
+                        <div className="flex min-w-0 flex-1 items-center">
+                          <item.icon className={navIconParent(!!(isActive || isSubmenuActive))} aria-hidden />
                           <span className="flex-1 truncate text-left">{item.name}</span>
                         </div>
                         {isExpanded ? (
-                          <ChevronDown strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-500" />
+                          <ChevronDown strokeWidth={2} className="ml-1 h-3 w-3 shrink-0 text-white/30" />
                         ) : (
-                          <ChevronRight strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-500" />
+                          <ChevronRight strokeWidth={2} className="ml-1 h-3 w-3 shrink-0 text-white/30" />
                         )}
                       </button>
                       {isExpanded && item.submenu && (
-                        <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#1f1f22] pl-2 dark:border-zinc-700">
+                        <div className="ml-2.5 mt-0.5 space-y-0.5 border-l border-white/[0.07] pl-2.5">
                           {item.submenu.map((subitem) => {
                             if (!canView(subitem.module)) return null
                             
@@ -351,38 +352,21 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                               (subitem.href === '/roles' && pathname?.startsWith('/roles')) ||
                               (subitem.href === '/logs' && pathname?.startsWith('/logs'))
 
-                            const getSubitemIconColor = (href: string) => {
-                              if (href === '/stores' && isMainStoreUser(user)) {
-                                return isSubActive
-                                  ? 'text-zinc-50 dark:text-zinc-50'
-                                  : 'text-zinc-500 group-hover:text-zinc-200 dark:text-zinc-500 dark:group-hover:text-zinc-200'
-                              }
-                              return isSubActive
-                                ? 'text-zinc-50 dark:text-zinc-50'
-                                : 'text-zinc-500 group-hover:text-zinc-200 dark:text-zinc-500 dark:group-hover:text-zinc-200'
-                            }
-                            
                             return (
                               <Link
                                 key={subitem.name}
                                 href={subitem.href}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={cn(
-                                  'group flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition-colors',
+                                  'group flex items-center rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-150',
                                   isSubActive ? rowActive : rowInactive
                                 )}
                               >
-                                <subitem.icon
-                                  strokeWidth={1.5}
-                                  className={cn(
-                                    'mr-2 h-3.5 w-3.5 shrink-0 transition-colors',
-                                    getSubitemIconColor(subitem.href)
-                                  )}
-                                />
+                                <subitem.icon className={navIconChild(isSubActive)} aria-hidden />
                                 <span className="flex-1 truncate">{subitem.name}</span>
                                 {subitem.href === '/inventory/receptions' && pendingReceptionsCount > 0 && (
                                   <span
-                                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100"
+                                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-white/12 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/75"
                                     title={`${pendingReceptionsCount} pendientes por gestionar`}
                                   >
                                     {pendingReceptionsCount > 99 ? '99+' : pendingReceptionsCount}
@@ -398,13 +382,10 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                     <>
                       {isStoresModule && !canAccessStores ? (
                         <div
-                          className={cn(
-                            'group flex cursor-not-allowed items-center rounded-md px-3 py-2 text-sm font-medium opacity-50 transition-colors',
-                            'text-zinc-600 dark:text-zinc-600'
-                          )}
+                          className="group flex cursor-not-allowed items-center rounded-lg px-2.5 py-2 text-sm font-medium opacity-35 text-white/60"
                           title="Solo disponible para Super Administradores"
                         >
-                          <item.icon strokeWidth={1.5} className="mr-2.5 h-4 w-4 shrink-0 text-zinc-600 dark:text-zinc-600" />
+                          <item.icon className="mr-2.5 h-[18px] w-[18px] shrink-0 text-white/35" aria-hidden />
                           <span className="flex-1 truncate">{item.name}</span>
                         </div>
                   ) : (
@@ -412,17 +393,11 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
-                        'group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        'group flex items-center rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
                         isActive ? rowActive : rowInactive
                       )}
                     >
-                      <item.icon
-                        strokeWidth={1.5}
-                        className={cn(
-                          'mr-2.5 h-4 w-4 shrink-0 transition-colors',
-                          getIconColorForItem(isActive)
-                        )}
-                      />
+                      <item.icon className={navIconParent(!!isActive)} aria-hidden />
                       <span className="flex-1 truncate">{item.name}</span>
                     </Link>
                       )}
@@ -433,30 +408,30 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
             })}
           </nav>
 
-          <div className="border-t border-[#1c1c1f] px-2.5 py-2 dark:border-zinc-800">
-            <p className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+          <div className="border-t border-white/[0.065] px-2 py-2">
+            <p className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-white/30">
               Apariencia
             </p>
             <SidebarThemeToggle className="w-full" />
           </div>
 
           {/* User info */}
-          <div className="border-t border-[#1c1c1f] p-2.5 dark:border-zinc-800">
-            <div className="flex items-center justify-between rounded-md bg-[#17171a] px-2 py-1 transition-colors hover:bg-[#1f1f22] dark:bg-zinc-900 dark:hover:bg-zinc-900/90">
+          <div className="border-t border-white/[0.065] p-2">
+            <div className="flex items-center justify-between rounded-xl bg-white/[0.06] px-2.5 py-2 ring-1 ring-inset ring-white/[0.07] transition-colors hover:bg-white/[0.09]">
               <div className="flex min-w-0 flex-1 items-center">
                 <div className="shrink-0">
                   <UserAvatar
                     name={user?.name || 'Usuario'}
                     seed={user?.id}
                     size="sm"
-                    className="ring-1 ring-[#2a2a2d] dark:ring-zinc-700"
+                    className="ring-1 ring-white/20 shadow-md"
                   />
                 </div>
                 <div className="ml-2.5 min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-100 dark:text-zinc-100">
-                    {user?.name || 'Diego Admin'}
+                  <p className="truncate text-sm font-semibold text-white/90">
+                    {user?.name || 'Usuario'}
                   </p>
-                  <p className="truncate text-xs text-zinc-400 dark:text-zinc-400">
+                  <p className="truncate text-xs text-white/40">
                     {user?.role === 'superadmin' ? 'Super Admin' : 
                      user?.role === 'admin' ? 'Admin' :
                      user?.role === 'vendedor' ? 'Vendedor' :
@@ -468,7 +443,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
               </div>
               <button
                 onClick={logout}
-                className="ml-1 rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                className="ml-1 rounded-lg p-1.5 text-white/35 transition-colors hover:bg-white/10 hover:text-white/80"
                 title="Cerrar sesión"
                 type="button"
               >
@@ -477,21 +452,19 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
             </div>
           </div>
 
-          <div className="px-2.5 pb-3 pt-1">
-            <p className="font-programamos-brand text-center text-[11px] font-medium leading-snug tracking-wide text-zinc-500 dark:text-zinc-500">
+          <div className="px-2 pb-3 pt-1">
+            <p className="font-programamos-brand text-center text-[10px] leading-snug tracking-wide text-white/20">
               powered by{' '}
               <a
                 href="https://programamos-st.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-zinc-700 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                className="font-semibold text-white/35 underline-offset-2 hover:text-white/60 hover:underline"
               >
                 programamos
               </a>
-              <span className="mx-1.5 text-zinc-400 dark:text-zinc-600" aria-hidden>
-                ·
-              </span>
-              <span className="text-zinc-500 tabular-nums dark:text-zinc-500">{`V${APP_VERSION}`}</span>
+              <span className="mx-1.5 text-white/15" aria-hidden>·</span>
+              <span className="tabular-nums text-white/20">{`V${APP_VERSION}`}</span>
             </p>
           </div>
         </div>
