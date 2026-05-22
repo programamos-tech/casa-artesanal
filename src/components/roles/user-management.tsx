@@ -20,11 +20,13 @@ import { appModalOverlayClass, appModalPanelClass, modalCardShellClass } from '@
 import { cn } from '@/lib/utils'
 
 const roleOptions = [
-  { value: 'superadmin', label: 'Super Admin' },
+  { value: 'superadmin', label: 'Propietario' },
   { value: 'admin', label: 'Administrador' },
   { value: 'cajero', label: 'Cajero' },
   { value: 'vendedor', label: 'Vendedor' },
-  { value: 'inventario', label: 'Inventario' }
+  { value: 'inventario', label: 'Inventario' },
+  { value: 'contador', label: 'Contador' },
+  { value: 'supervisor_tienda', label: 'Supervisor de tienda' },
 ]
 
 const moduleOptions = [
@@ -88,16 +90,29 @@ const rolePermissions = {
   'inventario': [
     { module: 'products', actions: allActions },
     { module: 'supplier_invoices', actions: allActions }
-  ]
+  ],
+  'contador': [
+    { module: 'dashboard', actions: ['view'] },
+    { module: 'payments', actions: allActions },
+    { module: 'supplier_invoices', actions: allActions }
+  ],
+  'supervisor_tienda': [
+    { module: 'dashboard', actions: allActions },
+    { module: 'products', actions: allActions },
+    { module: 'sales', actions: allActions },
+    { module: 'clients', actions: allActions }
+  ],
 }
 
 // Descripciones de cada rol
 const roleDescriptions = {
-  'superadmin': 'Acceso completo a todos los módulos del sistema (Diego)',
-  'admin': 'Acceso a reportes, ventas y créditos',
-  'cajero': 'Atiende caja: ventas, clientes, créditos, garantías y reportes (productos solo lectura)',
-  'vendedor': 'Acceso a reportes, productos, clientes, ventas y créditos',
-  'inventario': 'Solo productos (permisos según lo que marques abajo)'
+  'superadmin': 'Propietario: acceso completo a todos los módulos del sistema',
+  'admin': 'Administrador: reportes, ventas, créditos y facturador',
+  'cajero': 'Cajero: ventas, clientes, créditos, garantías y reportes (productos solo lectura)',
+  'vendedor': 'Vendedor: reportes, productos (lectura), clientes, ventas y créditos',
+  'inventario': 'Inventario: productos y facturador de proveedores',
+  'contador': 'Contador: reportes (lectura), créditos y facturador',
+  'supervisor_tienda': 'Supervisor: reportes, productos, ventas y clientes en su tienda',
 }
 
 // Estilos compartidos — alineados al formulario "Nueva venta" / "Nuevo producto"
@@ -659,7 +674,7 @@ export function UserManagement() {
                                 <SelectTrigger className={cn(formInputClass, 'h-auto justify-between text-left [&>svg]:text-zinc-400')}>
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="z-[200]">
                                   {roleOptions.map(role => (
                                     <SelectItem key={role.value} value={role.value}>
                                       {role.label}
@@ -684,7 +699,7 @@ export function UserManagement() {
                                   <SelectTrigger className={cn(formInputClass, 'h-auto justify-between text-left [&>svg]:text-zinc-400')}>
                                     <SelectValue placeholder="Seleccionar tienda" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent className="z-[200]">
                                     {mainStore && (
                                       <SelectItem value={mainStore.id}>
                                         {mainStore.name} {mainStore.city && `(${mainStore.city})`} — Principal
@@ -1231,7 +1246,7 @@ export function UserManagement() {
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="z-[200]">
                                   {roleOptions.map(role => (
                                     <SelectItem key={role.value} value={role.value}>
                                       {role.label}
@@ -1259,7 +1274,7 @@ export function UserManagement() {
                                   >
                                     <SelectValue placeholder="Seleccionar tienda" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent className="z-[200]">
                                     {mainStore && (
                                       <SelectItem value={mainStore.id}>
                                         {mainStore.name} {mainStore.city && `(${mainStore.city})`} — Principal

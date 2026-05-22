@@ -11,7 +11,6 @@ import {
   CreditCard,
   Shield,
   Activity,
-  LogOut,
   ShieldCheck,
   UserCircle,
   UserCog,
@@ -32,9 +31,6 @@ import { StoresService } from '@/lib/stores-service'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { APP_VERSION } from '@/config/app-meta'
 import type { Store } from '@/types/store'
-import { UserAvatar } from '@/components/ui/user-avatar'
-import { SidebarThemeToggle } from '@/components/ui/sidebar-theme-toggle'
-
 const navigation = [
   { name: 'Reportes', href: '/dashboard', icon: BarChart3, module: 'dashboard' },
   { 
@@ -84,7 +80,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { canView } = usePermissions()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [currentStore, setCurrentStore] = useState<Store | null>(null)
   const [pendingReceptionsCount, setPendingReceptionsCount] = useState(0)
@@ -408,51 +404,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
             })}
           </nav>
 
-          <div className="border-t border-white/[0.065] px-2 py-2">
-            <p className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-white/30">
-              Apariencia
-            </p>
-            <SidebarThemeToggle className="w-full" />
-          </div>
-
-          {/* User info */}
-          <div className="border-t border-white/[0.065] p-2">
-            <div className="flex items-center justify-between rounded-xl bg-white/[0.06] px-2.5 py-2 ring-1 ring-inset ring-white/[0.07] transition-colors hover:bg-white/[0.09]">
-              <div className="flex min-w-0 flex-1 items-center">
-                <div className="shrink-0">
-                  <UserAvatar
-                    name={user?.name || 'Usuario'}
-                    seed={user?.id}
-                    size="sm"
-                    className="ring-1 ring-white/20 shadow-md"
-                  />
-                </div>
-                <div className="ml-2.5 min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-white/90">
-                    {user?.name || 'Usuario'}
-                  </p>
-                  <p className="truncate text-xs text-white/40">
-                    {user?.role === 'superadmin' ? 'Super Admin' : 
-                     user?.role === 'admin' ? 'Admin' :
-                     user?.role === 'vendedor' ? 'Vendedor' :
-                     user?.role === 'cajero' ? 'Cajero' :
-                     user?.role === 'inventario' ? 'Inventario' :
-                     user?.role === 'contador' ? 'Contador' : 'Usuario'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={logout}
-                className="ml-1 rounded-lg p-1.5 text-white/35 transition-colors hover:bg-white/10 hover:text-white/80"
-                title="Cerrar sesión"
-                type="button"
-              >
-                <LogOut strokeWidth={1.5} className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="px-2 pb-3 pt-1">
+          <div className="border-t border-white/[0.065] px-2 pb-3 pt-2">
             <p className="font-programamos-brand text-center text-[10px] leading-snug tracking-wide text-white/20">
               powered by{' '}
               <a

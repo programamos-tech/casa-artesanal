@@ -67,6 +67,28 @@ export class ProductsService {
     }
   }
 
+  /** Microtienda: costo/precio de venta local desde store_stock. Principal: precios dual desde la fila products. */
+  private static buildProductPriceOverrides(
+    product: DbProductRow | Record<string, unknown>,
+    isMainStore: boolean,
+    productCost: number,
+    microStoreSalePrice: number
+  ): { cost?: number; retailPrice?: number; wholesalePrice?: number } {
+    if (isMainStore) {
+      return { cost: productCost }
+    }
+    const row = product as DbProductRow
+    const dbWholesale =
+      row.wholesale_price != null
+        ? Number(row.wholesale_price)
+        : Number(row.price ?? microStoreSalePrice)
+    return {
+      cost: productCost,
+      retailPrice: microStoreSalePrice,
+      wholesalePrice: dbWholesale,
+    }
+  }
+
   // Helper para aplicar filtro de stock a productos ya mapeados (funciona para tienda principal y microtiendas)
   private static applyStockFilterToProducts(products: Product[], stockFilter?: StockFilter): Product[] {
     if (!stockFilter || stockFilter === 'all') {
@@ -439,15 +461,11 @@ export class ProductsService {
           }
         }
 
-        const dbWholesale =
-          product.wholesale_price != null
-            ? Number(product.wholesale_price)
-            : Number(product.price ?? productPrice)
-        return this.mapDbProduct(product, stock, {
-          cost: productCost,
-          retailPrice: productPrice,
-          wholesalePrice: dbWholesale,
-        })
+        return this.mapDbProduct(
+          product,
+          stock,
+          this.buildProductPriceOverrides(product, isMainStore, productCost, productPrice)
+        )
       })
 
       // Aplicar filtro de stock si se especificó
@@ -630,15 +648,11 @@ export class ProductsService {
             */
           }
 
-          const dbWholesale =
-            product.wholesale_price != null
-              ? Number(product.wholesale_price)
-              : Number(product.price ?? productPrice)
-          return this.mapDbProduct(product, stock, {
-            cost: productCost,
-            retailPrice: productPrice,
-            wholesalePrice: dbWholesale,
-          })
+          return this.mapDbProduct(
+            product,
+            stock,
+            this.buildProductPriceOverrides(product, isMainStore, productCost, productPrice)
+          )
         })
 
         // Ordenar: productos con stock primero, luego por fecha más reciente
@@ -817,13 +831,11 @@ export class ProductsService {
         }
       }
 
-      const dbWholesale =
-        data.wholesale_price != null ? Number(data.wholesale_price) : Number(data.price ?? productPrice)
-      return this.mapDbProduct(data, stock, {
-        cost: Number(productCost ?? 0),
-        retailPrice: Number(productPrice ?? 0),
-        wholesalePrice: dbWholesale,
-      })
+      return this.mapDbProduct(
+        data,
+        stock,
+        this.buildProductPriceOverrides(data, isMainStore, Number(productCost ?? 0), Number(productPrice ?? 0))
+      )
     } catch (error) {
       // console.error('[PRODUCTS SERVICE] Exception in getProductById:', error)
       return null
@@ -1192,7 +1204,7 @@ export class ProductsService {
       // Búsqueda simplificada sin timeout - buscar en referencia y nombre
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, category_id, brand, reference, price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at')
+        .select('id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at')
         .or(`reference.ilike.%${cleanQuery}%,name.ilike.%${cleanQuery}%`)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -1256,15 +1268,11 @@ export class ProductsService {
           }
         }
 
-        const dbWholesale =
-          product.wholesale_price != null
-            ? Number(product.wholesale_price)
-            : Number(product.price ?? productPrice)
-        return this.mapDbProduct(product, stock, {
-          cost: productCost,
-          retailPrice: productPrice,
-          wholesalePrice: dbWholesale,
-        })
+        return this.mapDbProduct(
+          product,
+          stock,
+          this.buildProductPriceOverrides(product, isMainStore, productCost, productPrice)
+        )
       })
 
       // Aplicar filtro de stock si se especificó

@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useStoreUrl } from '@/hooks/use-store-url'
 import { cn } from '@/lib/utils'
 import { ReleaseNotesModal } from '@/components/ui/release-notes-modal'
+import { AppTopNav } from '@/components/layout/app-top-nav'
 
 interface ConditionalLayoutProps {
   children: React.ReactNode
@@ -53,6 +54,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
             isMobileMenuOpen && 'blur-sm'
           )}
         >
+          <AppTopNav />
           <div
             className={cn(
               'min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain bg-white dark:bg-zinc-950',

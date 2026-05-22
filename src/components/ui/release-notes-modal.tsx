@@ -40,6 +40,12 @@ export function ReleaseNotesModal() {
     }
   }, [])
 
+  useEffect(() => {
+    const onOpen = () => setOpen(true)
+    window.addEventListener('casa-artesanal:open-release-notes', onOpen)
+    return () => window.removeEventListener('casa-artesanal:open-release-notes', onOpen)
+  }, [])
+
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
     if (!next) {

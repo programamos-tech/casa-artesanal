@@ -28,7 +28,13 @@ import { useClients } from '@/contexts/clients-context'
 import { useProducts } from '@/contexts/products-context'
 import { useAuth } from '@/contexts/auth-context'
 import { ProductsService } from '@/lib/products-service'
-import { getProductUnitPriceForClient } from '@/lib/product-pricing'
+import {
+  getClientPriceFieldLabel,
+  getClientPriceTierLabel,
+  getProductAlternatePriceForClient,
+  getProductUnitPriceForClient,
+  isWholesaleClientType,
+} from '@/lib/product-pricing'
 import { ClientModal } from '@/components/clients/client-modal'
 
 // Constante para identificar la tienda principal
@@ -133,23 +139,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale]) // Ejecutar cuando se abre/cierra el modal o cambia la venta
-
-  useEffect(() => {
-    if (!selectedClient || selectedProducts.length === 0) return
-    setSelectedProducts(prev =>
-      prev.map(item => {
-        const product = products.find(p => p.id === item.productId)
-        if (!product) return item
-        const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
-        return {
-          ...item,
-          unitPrice,
-          total: unitPrice * item.quantity,
-        }
-      })
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar cliente
-  }, [selectedClient?.id, selectedClient?.type])
 
   // Manejar cambio de método de pago
   useEffect(() => {
@@ -386,6 +375,28 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     return productCache[productId] || products.find(p => p.id === productId)
   }, [productCache, products])
 
+  useEffect(() => {
+    if (!selectedClient || selectedProducts.length === 0) return
+    let cancelled = false
+    const syncPricesForClient = async () => {
+      const updated = await Promise.all(
+        selectedProducts.map(async item => {
+          const fresh = await ProductsService.getProductById(item.productId)
+          const product = fresh ?? findProductById(item.productId)
+          if (!product) return item
+          if (fresh) updateProductCache([fresh])
+          const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
+          return { ...item, unitPrice, total: unitPrice * item.quantity }
+        })
+      )
+      if (!cancelled) setSelectedProducts(updated)
+    }
+    void syncPricesForClient()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedClient?.id, selectedClient?.type, findProductById, updateProductCache])
+
   const getAvailableStock = (productId: string) => {
     const product = findProductById(productId)
     if (!product) return 0
@@ -510,66 +521,64 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   }
 
   const handleAddProduct = (product: Product) => {
-    // Debug: ver qué valores tiene el producto cuando se agrega
-    console.log('[SALE MODAL] handleAddProduct - product:', {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      cost: product.cost,
-      isMainStore: isMainStore,
-      userStoreId: user?.storeId
-    })
-    
-    const availableStock = getAvailableStock(product.id)
-    const selectedQuantity = getSelectedQuantity(product.id)
-    
-    // Verificar si hay stock disponible
-    if (availableStock <= 0) {
-      showStockAlert('No hay stock disponible para este producto', product.id)
-      return
-    }
-    
-    // Verificar si ya se ha seleccionado la cantidad máxima
-    if (selectedQuantity >= availableStock) {
-      showStockAlert(`Solo hay ${availableStock} unidades disponibles de este producto`, product.id)
-      return
-    }
-    
-    const existingItem = selectedProducts.find(item => item.productId === product.id)
-    
-    if (existingItem) {
-      const updatedTimestamp = Date.now()
-      setSelectedProducts(prev => 
-        prev.map(item => {
-          if (item.productId === product.id) {
-            const updatedItem = { ...item, quantity: item.quantity + 1, addedAt: updatedTimestamp }
-            // Recalcular total
-            updatedItem.total = updatedItem.quantity * updatedItem.unitPrice
-            return updatedItem
-          }
-          return item
-        })
-      )
-    } else {
-      const now = Date.now()
-      const newItem: SaleItem = {
-        id: Date.now().toString(),
-        productId: product.id,
-        productName: product.name,
-        productReferenceCode: product.reference,
-        quantity: 1,
-        unitPrice: getProductUnitPriceForClient(product, selectedClient?.type),
-        discount: 0,
-        discountType: 'amount',
-        tax: 0,
-        total: getProductUnitPriceForClient(product, selectedClient?.type),
-        addedAt: now
+    void (async () => {
+      const pricedProduct = (await ProductsService.getProductById(product.id)) ?? product
+      updateProductCache([pricedProduct])
+
+      const availableStock =
+        (pricedProduct.stock.warehouse || 0) + (pricedProduct.stock.store || 0)
+      const selectedQuantity = getSelectedQuantity(pricedProduct.id)
+
+      if (availableStock <= 0) {
+        showStockAlert('No hay stock disponible para este producto', pricedProduct.id)
+        return
       }
-      console.log('[SALE MODAL] handleAddProduct - newItem unitPrice:', newItem.unitPrice)
-      setSelectedProducts(prev => [newItem, ...prev])
-    }
-    setShowProductDropdown(false)
-    setProductSearch('')
+
+      if (selectedQuantity >= availableStock) {
+        showStockAlert(`Solo hay ${availableStock} unidades disponibles de este producto`, pricedProduct.id)
+        return
+      }
+
+      const existingItem = selectedProducts.find(item => item.productId === pricedProduct.id)
+      const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
+
+      if (existingItem) {
+        const updatedTimestamp = Date.now()
+        setSelectedProducts(prev =>
+          prev.map(item => {
+            if (item.productId === pricedProduct.id) {
+              const updatedItem = {
+                ...item,
+                quantity: item.quantity + 1,
+                addedAt: updatedTimestamp,
+                unitPrice,
+              }
+              updatedItem.total = updatedItem.quantity * unitPrice
+              return updatedItem
+            }
+            return item
+          })
+        )
+      } else {
+        const now = Date.now()
+        const newItem: SaleItem = {
+          id: Date.now().toString(),
+          productId: pricedProduct.id,
+          productName: pricedProduct.name,
+          productReferenceCode: pricedProduct.reference,
+          quantity: 1,
+          unitPrice,
+          discount: 0,
+          discountType: 'amount',
+          tax: 0,
+          total: unitPrice,
+          addedAt: now,
+        }
+        setSelectedProducts(prev => [newItem, ...prev])
+      }
+      setShowProductDropdown(false)
+      setProductSearch('')
+    })()
   }
 
   const formatNumber = (value: number): string => {
@@ -982,6 +991,16 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                           </Button>
                         </div>
                       </div>
+                      <p
+                        className={`mt-2 rounded-md border px-2 py-1 text-xs ${
+                          isWholesaleClientType(selectedClient.type)
+                            ? 'border-blue-200 bg-blue-50/80 text-blue-900 dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-200'
+                            : 'border-violet-200 bg-violet-50/80 text-violet-900 dark:border-violet-800/60 dark:bg-violet-950/30 dark:text-violet-200'
+                        }`}
+                      >
+                        Precios de lista:{' '}
+                        <span className="font-semibold">{getClientPriceTierLabel(selectedClient.type)}</span>
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -1127,9 +1146,13 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                     </div>
                                     <div className="flex-shrink-0 text-right">
                                       <div className="font-bold text-gray-900 dark:text-white text-sm">
-                                        ${product.price.toLocaleString()}
+                                        ${getProductUnitPriceForClient(product, selectedClient?.type).toLocaleString('es-CO')}
                                       </div>
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">c/u</div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {selectedClient
+                                          ? `${getClientPriceTierLabel(selectedClient.type)} c/u`
+                                          : 'c/u'}
+                                      </div>
                                     </div>
                                   </div>
                                 </button>
@@ -1163,7 +1186,16 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                         </Badge>
                       </div>
                       <div className="space-y-2">
-                        {orderedSelectedProducts.map(item => (
+                        {orderedSelectedProducts.map(item => {
+                          const lineProduct = findProductById(item.productId)
+                          const alternatePrice =
+                            lineProduct && selectedClient
+                              ? getProductAlternatePriceForClient(lineProduct, selectedClient.type)
+                              : null
+                          const priceTierLabel = selectedClient
+                            ? getClientPriceFieldLabel(selectedClient.type)
+                            : 'Precio'
+                          return (
                           <div key={item.id} className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-600 rounded-lg p-3">
                             {/* Product Info Header */}
                             <div className="flex items-start justify-between mb-3">
@@ -1172,9 +1204,16 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                   Stock disponible: <span className="font-medium text-gray-700 dark:text-gray-300">{getAvailableStock(item.productId)} unidades</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Precio:
+                                <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <label
+                                    className={`text-sm font-medium ${
+                                      selectedClient && isWholesaleClientType(selectedClient.type)
+                                        ? 'text-blue-700 dark:text-blue-300'
+                                        : 'text-gray-600 dark:text-gray-400'
+                                    }`}
+                                  >
+                                    {priceTierLabel}:
                                   </label>
                                   <input
                                     type="text"
@@ -1198,6 +1237,15 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                     step="100"
                                     placeholder="0"
                                   />
+                                </div>
+                                {alternatePrice && alternatePrice.amount > 0 && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {alternatePrice.label}:{' '}
+                                    <span className="line-through tabular-nums">
+                                      ${alternatePrice.amount.toLocaleString('es-CO')}
+                                    </span>
+                                  </p>
+                                )}
                                 </div>
                               </div>
                               <div className="text-right ml-3">
@@ -1261,7 +1309,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                               </div>
                             )}
                           </div>
-                        ))}
+                        )})}
                       </div>
                     </div>
                   )}

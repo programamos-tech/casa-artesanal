@@ -31,7 +31,14 @@ import { useSales } from '@/contexts/sales-context'
 import { useAuth } from '@/contexts/auth-context'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
-import { getProductUnitPriceForClient } from '@/lib/product-pricing'
+import {
+  getClientPriceFieldLabel,
+  getClientPriceTierLabel,
+  getProductAlternatePriceForClient,
+  getProductUnitPriceForClient,
+  isWholesaleClientType,
+} from '@/lib/product-pricing'
+import { ProductsService } from '@/lib/products-service'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -92,19 +99,33 @@ export default function NewSalePage() {
 
   useEffect(() => {
     if (!selectedClient || selectedProducts.length === 0) return
-    setSelectedProducts(prev =>
-      prev.map(item => {
-        const product =
-          productsInSaleCache.get(item.productId) ?? products.find(p => p.id === item.productId)
-        if (!product) return item
-        const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
-        return {
-          ...item,
-          unitPrice,
-          total: unitPrice * item.quantity,
-        }
-      })
-    )
+    let cancelled = false
+    const syncPricesForClient = async () => {
+      const updated = await Promise.all(
+        selectedProducts.map(async item => {
+          const fresh = await ProductsService.getProductById(item.productId)
+          const product =
+            fresh ??
+            productsInSaleCache.get(item.productId) ??
+            products.find(p => p.id === item.productId)
+          if (!product) return item
+          if (fresh) {
+            setProductsInSaleCache(prev => {
+              const next = new Map(prev)
+              next.set(fresh.id, fresh)
+              return next
+            })
+          }
+          const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
+          return { ...item, unitPrice, total: unitPrice * item.quantity }
+        })
+      )
+      if (!cancelled) setSelectedProducts(updated)
+    }
+    void syncPricesForClient()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar cliente
   }, [selectedClient?.id, selectedClient?.type])
 
@@ -376,44 +397,48 @@ export default function NewSalePage() {
   }
 
   const handleAddProduct = (product: Product) => {
-    const existingItem = selectedProducts.find(item => item.productId === product.id)
-    if (existingItem) {
-      handleUpdateQuantity(existingItem.id, existingItem.quantity + 1)
-      return
-    }
+    void (async () => {
+      const existingItem = selectedProducts.find(item => item.productId === product.id)
+      if (existingItem) {
+        handleUpdateQuantity(existingItem.id, existingItem.quantity + 1)
+        return
+      }
 
-    const availableStock = (product.stock.store || 0) + (product.stock.warehouse || 0)
-    if (availableStock === 0) {
-      setStockAlert({
-        show: true, 
-        message: 'Este producto no tiene stock disponible', 
-        productId: product.id 
+      const pricedProduct = (await ProductsService.getProductById(product.id)) ?? product
+      const availableStock =
+        (pricedProduct.stock.store || 0) + (pricedProduct.stock.warehouse || 0)
+      if (availableStock === 0) {
+        setStockAlert({
+          show: true,
+          message: 'Este producto no tiene stock disponible',
+          productId: product.id,
+        })
+        return
+      }
+
+      setProductsInSaleCache(prev => {
+        const newCache = new Map(prev)
+        newCache.set(pricedProduct.id, pricedProduct)
+        return newCache
       })
-      return
-    }
 
-    // Guardar el producto en el cache para mantener su información de stock
-    setProductsInSaleCache(prev => {
-      const newCache = new Map(prev)
-      newCache.set(product.id, product)
-      return newCache
-    })
+      const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
+      const newItem: SaleItem = {
+        id: `temp-${Date.now()}`,
+        productId: pricedProduct.id,
+        productName: pricedProduct.name,
+        productReferenceCode: pricedProduct.reference || 'N/A',
+        quantity: 1,
+        unitPrice,
+        total: unitPrice,
+        addedAt: Date.now(),
+      }
 
-    const newItem: SaleItem = {
-      id: `temp-${Date.now()}`,
-      productId: product.id,
-      productName: product.name,
-      productReferenceCode: product.reference || 'N/A',
-      quantity: 1,
-      unitPrice: getProductUnitPriceForClient(product, selectedClient?.type),
-      total: getProductUnitPriceForClient(product, selectedClient?.type),
-      addedAt: Date.now()
-    }
-
-    setSelectedProducts([...selectedProducts, newItem])
-    setProductSearch('')
-    setShowProductDropdown(false)
-    setHighlightedProductIndex(-1)
+      setSelectedProducts(prev => [...prev, newItem])
+      setProductSearch('')
+      setShowProductDropdown(false)
+      setHighlightedProductIndex(-1)
+    })()
   }
 
   const handleRemoveProduct = (itemId: string) => {
@@ -525,15 +550,9 @@ export default function NewSalePage() {
   }
 
   const findProductById = (productId: string) => {
-    // Primero buscar en el array de productos del contexto
-    const productInContext = products.find(p => p.id === productId)
-    if (productInContext) return productInContext
-    
-    // Si no está en el contexto, buscar en el cache de productos agregados a la venta
     const productInCache = productsInSaleCache.get(productId)
     if (productInCache) return productInCache
-    
-    return undefined
+    return products.find(p => p.id === productId)
   }
 
   const getAvailableStock = (productId: string) => {
@@ -933,7 +952,10 @@ export default function NewSalePage() {
                                           )}
                                         >
                                           Ref: {product.reference || 'N/A'} · Stock: {totalStock} · $
-                                          {(product.price || 0).toLocaleString('es-CO')}
+                                          {getProductUnitPriceForClient(product, selectedClient?.type).toLocaleString('es-CO')}
+                                          {selectedClient
+                                            ? ` · ${getClientPriceTierLabel(selectedClient.type)}`
+                                            : ''}
                                         </div>
                                       </div>
                                       {!hasStock && (
@@ -969,6 +991,13 @@ export default function NewSalePage() {
                           const warehouseStock = product?.stock?.warehouse || 0
                           const localStock = product?.stock?.store || 0
                           const reference = item.productReferenceCode || product?.reference || 'N/A'
+                          const alternatePrice =
+                            product && selectedClient
+                              ? getProductAlternatePriceForClient(product, selectedClient.type)
+                              : null
+                          const priceTierLabel = selectedClient
+                            ? getClientPriceFieldLabel(selectedClient.type)
+                            : 'Precio'
                           
                           return (
                             <div
@@ -983,24 +1012,61 @@ export default function NewSalePage() {
                                   <div className="mb-2 text-sm text-zinc-500 dark:text-zinc-400">
                                     Ref: {reference} · Bodega: {warehouseStock} · Local: {localStock}
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Precio</label>
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      value={formatNumber(item.unitPrice)}
-                                      onChange={(e) => {
-                                        const numericValue = parseNumber(e.target.value)
-                                        if (numericValue >= 0) {
-                                          handleUpdatePrice(item.id, numericValue)
-                                        }
-                                      }}
-                                      onBlur={() => handlePriceBlur(item.id)}
-                                      className="h-8 w-32 rounded-md border border-zinc-200 bg-white px-2 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
-                                      min={product?.cost || 0}
-                                      step="100"
-                                      placeholder="0"
-                                    />
+                                  <div className="space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <label
+                                        className={cn(
+                                          'text-sm font-medium',
+                                          selectedClient && isWholesaleClientType(selectedClient.type)
+                                            ? 'text-blue-700 dark:text-blue-300'
+                                            : 'text-zinc-600 dark:text-zinc-400'
+                                        )}
+                                      >
+                                        {priceTierLabel}
+                                      </label>
+                                      {selectedClient && (
+                                        <Badge
+                                          variant="outline"
+                                          className={cn(
+                                            'text-[10px] font-medium',
+                                            isWholesaleClientType(selectedClient.type)
+                                              ? 'border-blue-300 text-blue-800 dark:border-blue-700 dark:text-blue-200'
+                                              : 'border-violet-300 text-violet-800 dark:border-violet-700 dark:text-violet-200'
+                                          )}
+                                        >
+                                          {getClientPriceTierLabel(selectedClient.type)}
+                                        </Badge>
+                                      )}
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatNumber(item.unitPrice)}
+                                        onChange={(e) => {
+                                          const numericValue = parseNumber(e.target.value)
+                                          if (numericValue >= 0) {
+                                            handleUpdatePrice(item.id, numericValue)
+                                          }
+                                        }}
+                                        onBlur={() => handlePriceBlur(item.id)}
+                                        className={cn(
+                                          'h-8 w-32 rounded-md border bg-white px-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 dark:bg-zinc-900 dark:text-zinc-100',
+                                          selectedClient && isWholesaleClientType(selectedClient.type)
+                                            ? 'border-blue-300 focus:border-blue-400 focus:ring-blue-400/25 dark:border-blue-700'
+                                            : 'border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400/25 dark:border-zinc-600'
+                                        )}
+                                        min={product?.cost || 0}
+                                        step="100"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    {alternatePrice && alternatePrice.amount > 0 && (
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {alternatePrice.label}:{' '}
+                                        <span className="line-through tabular-nums">
+                                          {formatCurrency(alternatePrice.amount)}
+                                        </span>
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="ml-3 text-right">
@@ -1162,20 +1228,15 @@ export default function NewSalePage() {
                   {selectedClient && (
                     <div className="rounded-lg border border-zinc-200/90 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-800">
-                            <User className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                            {selectedClient.name}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                              {selectedClient.name}
+                          {selectedClient.email && (
+                            <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                              {selectedClient.email}
                             </div>
-                            {selectedClient.email && (
-                              <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                {selectedClient.email}
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <Badge className={cn(getClientTypeColor(selectedClient.type), 'whitespace-nowrap text-xs')}>
@@ -1192,6 +1253,20 @@ export default function NewSalePage() {
                           </Button>
                         </div>
                       </div>
+                      <p
+                        className={cn(
+                          'mt-2 rounded-md border px-2.5 py-1.5 text-xs',
+                          isWholesaleClientType(selectedClient.type)
+                            ? 'border-blue-200/90 bg-blue-50/90 text-blue-900 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-200'
+                            : 'border-violet-200/90 bg-violet-50/90 text-violet-900 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200'
+                        )}
+                      >
+                        Precios de lista:{' '}
+                        <span className="font-semibold">{getClientPriceTierLabel(selectedClient.type)}</span>
+                        {selectedClient.type === 'minorista' && (
+                          <span className="text-zinc-600 dark:text-zinc-400"> (mismo que cliente final)</span>
+                        )}
+                      </p>
                     </div>
                   )}
 

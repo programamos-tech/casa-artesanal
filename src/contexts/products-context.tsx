@@ -94,11 +94,27 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const updateProduct = async (id: string, updates: Partial<Product>): Promise<boolean> => {
     const success = await ProductsService.updateProduct(id, updates, currentUser?.id)
     if (success) {
-      setProducts(prev => prev.map(product => 
-        product.id === id ? { ...product, ...updates } as Product : product
-      ))
+      setProducts(prev => prev.map(product => {
+        if (product.id !== id) return product
+        const retailPrice = updates.retailPrice ?? updates.price ?? product.retailPrice ?? product.price
+        const wholesalePrice = updates.wholesalePrice ?? product.wholesalePrice ?? retailPrice
+        return {
+          ...product,
+          ...updates,
+          retailPrice,
+          wholesalePrice,
+          price: updates.price ?? retailPrice,
+        } as Product
+      }))
       // Si se actualizó stock, costo o precio, notificar cambio para el dashboard
-      if (updates.stock || updates.cost || updates.price || 'imageUrl' in updates) {
+      if (
+        updates.stock ||
+        updates.cost ||
+        updates.price ||
+        updates.retailPrice !== undefined ||
+        updates.wholesalePrice !== undefined ||
+        'imageUrl' in updates
+      ) {
         setProductsLastUpdated(Date.now())
       }
       return true
