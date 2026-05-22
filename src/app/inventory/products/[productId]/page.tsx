@@ -38,6 +38,7 @@ import { StockAdjustmentModal } from '@/components/products/stock-adjustment-mod
 import { StockTransferModal } from '@/components/products/stock-transfer-modal'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { toast } from 'sonner'
+import { formatMoneyInput, parseMoneyInput, toMoneyNumber } from '@/lib/money-input'
 
 const panel =
   'rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50'
@@ -45,11 +46,14 @@ const panel =
 const inputClass =
   'mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20'
 
+const priceInputClass = cn(inputClass, 'mt-0 pl-8 tabular-nums')
+
 type ProductDetailEditDraft = {
   name: string
   reference: string
   description: string
-  price: number
+  retailPrice: number
+  wholesalePrice: number
   cost: number
   categoryId: string
   brand: string
@@ -62,8 +66,9 @@ function draftFromProduct(p: Product): ProductDetailEditDraft {
     name: p.name || '',
     reference: p.reference || '',
     description: p.description || '',
-    price: p.price ?? 0,
-    cost: p.cost ?? 0,
+    retailPrice: toMoneyNumber(p.retailPrice ?? p.price),
+    wholesalePrice: toMoneyNumber(p.wholesalePrice ?? p.price),
+    cost: toMoneyNumber(p.cost),
     categoryId: p.categoryId || '',
     brand: p.brand || '',
     status: p.status,
@@ -224,7 +229,8 @@ export default function ProductDetailPage() {
     ) {
       err.reference = 'Esta referencia ya existe en otro producto'
     }
-    if (d.price <= 0) err.price = 'El precio debe ser mayor a 0'
+    if (d.retailPrice <= 0) err.retailPrice = 'El precio cliente final debe ser mayor a 0'
+    if (d.wholesalePrice <= 0) err.wholesalePrice = 'El precio mayorista debe ser mayor a 0'
     if (d.cost < 0) err.cost = 'El costo no puede ser negativo'
     return err
   }
@@ -269,7 +275,9 @@ export default function ProductDetailPage() {
           name: draft.name.trim(),
           reference: draft.reference.trim(),
           description: draft.description.trim(),
-          price: draft.price,
+          retailPrice: draft.retailPrice,
+          wholesalePrice: draft.wholesalePrice,
+          price: draft.retailPrice,
           cost: draft.cost,
           categoryId: draft.categoryId,
           brand: draft.brand.trim(),
@@ -764,46 +772,77 @@ export default function ProductDetailPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Precio de venta</dt>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Precio de adquisición</dt>
                   <dd className="mt-1">
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={draft.price || ''}
-                      onChange={(e) =>
-                        setDraft((d) => (d ? { ...d, price: parseFloat(e.target.value) || 0 } : null))
-                      }
-                      className={cn(
-                        inputClass,
-                        'mt-0 tabular-nums',
-                        editErrors.price && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50'
-                      )}
-                    />
-                    {editErrors.price && (
-                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editErrors.price}</p>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatMoneyInput(draft.cost)}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, cost: parseMoneyInput(e.target.value) } : null))
+                        }
+                        placeholder="0"
+                        className={cn(priceInputClass, editErrors.cost && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50')}
+                      />
+                    </div>
+                    {editErrors.cost && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editErrors.cost}</p>
                     )}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Costo</dt>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Venta cliente final</dt>
                   <dd className="mt-1">
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={draft.cost || ''}
-                      onChange={(e) =>
-                        setDraft((d) => (d ? { ...d, cost: parseFloat(e.target.value) || 0 } : null))
-                      }
-                      className={cn(
-                        inputClass,
-                        'mt-0 tabular-nums',
-                        editErrors.cost && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50'
-                      )}
-                    />
-                    {editErrors.cost && (
-                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editErrors.cost}</p>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatMoneyInput(draft.retailPrice)}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, retailPrice: parseMoneyInput(e.target.value) } : null))
+                        }
+                        placeholder="0"
+                        className={cn(
+                          priceInputClass,
+                          editErrors.retailPrice && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50'
+                        )}
+                      />
+                    </div>
+                    {editErrors.retailPrice && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editErrors.retailPrice}</p>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Venta mayorista</dt>
+                  <dd className="mt-1">
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatMoneyInput(draft.wholesalePrice)}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, wholesalePrice: parseMoneyInput(e.target.value) } : null))
+                        }
+                        placeholder="0"
+                        className={cn(
+                          priceInputClass,
+                          editErrors.wholesalePrice && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50'
+                        )}
+                      />
+                    </div>
+                    {editErrors.wholesalePrice && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editErrors.wholesalePrice}</p>
                     )}
                   </dd>
                 </div>
@@ -840,11 +879,18 @@ export default function ProductDetailPage() {
                 <Field label="Descripción">{product.description || 'Sin descripción'}</Field>
                 <Field label="Categoría">{getCategoryName(product.categoryId)}</Field>
                 {product.brand ? <Field label="Marca">{product.brand}</Field> : null}
-                <Field label="Precio de venta">
-                  <span className="font-semibold tabular-nums">{formatCurrency(product.price)}</span>
-                </Field>
-                <Field label="Costo">
+                <Field label="Precio de adquisición">
                   <span className="font-semibold tabular-nums">{formatCurrency(product.cost)}</span>
+                </Field>
+                <Field label="Venta cliente final">
+                  <span className="font-semibold tabular-nums">
+                    {formatCurrency(product.retailPrice ?? product.price)}
+                  </span>
+                </Field>
+                <Field label="Venta mayorista">
+                  <span className="font-semibold tabular-nums">
+                    {formatCurrency(product.wholesalePrice ?? product.price)}
+                  </span>
                 </Field>
                 <Field label="Fecha de creación">
                   <span className="tabular-nums">{formatDate(product.createdAt)}</span>

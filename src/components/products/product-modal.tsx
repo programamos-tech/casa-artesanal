@@ -11,6 +11,7 @@ import { useProducts } from '@/contexts/products-context'
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { formatMoneyInput, parseMoneyInput, formatIntegerInput, parseIntegerInput } from '@/lib/money-input'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -64,7 +65,8 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
     name: product?.name || '',
     reference: product?.reference || '',
     description: product?.description || '',
-    price: product?.price || 0,
+    retailPrice: product?.retailPrice ?? product?.price ?? 0,
+    wholesalePrice: product?.wholesalePrice ?? product?.price ?? 0,
     cost: product?.cost || 0,
     stock: {
       warehouse: product?.stock?.warehouse || 0,
@@ -89,7 +91,8 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         name: product.name || '',
         reference: product.reference || '',
         description: product.description || '',
-        price: product.price || 0,
+        retailPrice: product.retailPrice ?? product.price ?? 0,
+        wholesalePrice: product.wholesalePrice ?? product.price ?? 0,
         cost: product.cost || 0,
         stock: {
           warehouse: product.stock?.warehouse || 0,
@@ -107,27 +110,6 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
     }
     setUploadPreview(null)
   }, [product])
-
-  const formatNumber = (value: number | string): string => {
-    const numValue = typeof value === 'string' ? parseFloat(value) : value
-    if (isNaN(numValue) || numValue === 0) return ''
-
-    if (Number.isInteger(numValue)) {
-      return numValue.toLocaleString('es-CO', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-    }
-    return numValue.toLocaleString('es-CO', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })
-  }
-
-  const parseFormattedNumber = (value: string): number => {
-    const cleanValue = value.replace(/\./g, '').replace(/,/g, '')
-    return parseFloat(cleanValue) || 0
-  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -177,8 +159,11 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         newErrors.reference = 'Esta referencia ya existe en otro producto'
       }
     }
-    if (formData.price <= 0) {
-      newErrors.price = 'El precio debe ser mayor a 0'
+    if (formData.retailPrice <= 0) {
+      newErrors.retailPrice = 'El precio cliente final debe ser mayor a 0'
+    }
+    if (formData.wholesalePrice <= 0) {
+      newErrors.wholesalePrice = 'El precio mayorista debe ser mayor a 0'
     }
     if (formData.cost < 0) {
       newErrors.cost = 'El costo no puede ser negativo'
@@ -245,7 +230,9 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         name: formData.name.trim(),
         reference: formData.reference.trim(),
         description: formData.description.trim(),
-        price: formData.price,
+        retailPrice: formData.retailPrice,
+        wholesalePrice: formData.wholesalePrice,
+        price: formData.retailPrice,
         cost: formData.cost,
         stock: {
           warehouse: formData.stock.warehouse,
@@ -270,7 +257,8 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
       name: '',
       reference: '',
       description: '',
-      price: 0,
+      retailPrice: 0,
+      wholesalePrice: 0,
       cost: 0,
       stock: {
         warehouse: 0,
@@ -474,49 +462,6 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                     )}
                   </div>
                 </SectionCard>
-
-                <SectionCard icon={DollarSign} title="Información financiera" iconClassName="text-violet-600 dark:text-violet-400">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label htmlFor="product-price" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Precio de venta <span className="text-zinc-400 dark:text-zinc-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
-                          $
-                        </span>
-                        <input
-                          id="product-price"
-                          type="text"
-                          value={formatNumber(formData.price)}
-                          onChange={e => handleInputChange('price', parseFormattedNumber(e.target.value))}
-                          className={cn(inputBase, 'pl-8', errors.price && 'border-red-500/70')}
-                          placeholder="0"
-                        />
-                      </div>
-                      {errors.price && <p className="mt-1.5 text-sm text-red-400">{errors.price}</p>}
-                    </div>
-                    <div>
-                      <label htmlFor="product-cost" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Costo de adquisición
-                      </label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
-                          $
-                        </span>
-                        <input
-                          id="product-cost"
-                          type="text"
-                          value={formatNumber(formData.cost)}
-                          onChange={e => handleInputChange('cost', parseFormattedNumber(e.target.value))}
-                          className={cn(inputBase, 'pl-8', errors.cost && 'border-red-500/70')}
-                          placeholder="0"
-                        />
-                      </div>
-                      {errors.cost && <p className="mt-1.5 text-sm text-red-400">{errors.cost}</p>}
-                    </div>
-                  </div>
-                </SectionCard>
               </div>
 
               <div className="space-y-4 lg:space-y-5">
@@ -574,13 +519,13 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                         <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Stock actual</label>
                         {product ? (
                             <div className="w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 dark:border-zinc-600/80 dark:bg-zinc-900/60 dark:text-zinc-400">
-                            {formatNumber(formData.stock.store)} unidades
+                            {formatIntegerInput(formData.stock.store)} unidades
                           </div>
                         ) : (
                           <input
                             type="text"
-                            value={formatNumber(formData.stock.store)}
-                            onChange={e => handleInputChange('stock.store', parseFormattedNumber(e.target.value))}
+                            value={formatIntegerInput(formData.stock.store)}
+                            onChange={e => handleInputChange('stock.store', parseIntegerInput(e.target.value))}
                             className={cn(inputBase, errors.stockStore && 'border-red-500/70')}
                             placeholder="0"
                           />
@@ -599,13 +544,13 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Stock actual</label>
                           {product ? (
                             <div className="w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 dark:border-zinc-600/80 dark:bg-zinc-900/60 dark:text-zinc-400">
-                              {formatNumber(formData.stock.warehouse)} unidades
+                              {formatIntegerInput(formData.stock.warehouse)} unidades
                             </div>
                           ) : (
                             <input
                               type="text"
-                              value={formatNumber(formData.stock.warehouse)}
-                              onChange={e => handleInputChange('stock.warehouse', parseFormattedNumber(e.target.value))}
+                              value={formatIntegerInput(formData.stock.warehouse)}
+                              onChange={e => handleInputChange('stock.warehouse', parseIntegerInput(e.target.value))}
                               className={cn(inputBase, errors.stockWarehouse && 'border-red-500/70')}
                               placeholder="0"
                             />
@@ -622,11 +567,78 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Stock total</span>
                       <span className="text-lg font-semibold tabular-nums text-zinc-900 dark:text-white">
-                        {formatNumber(
+                        {formatIntegerInput(
                           isMainStore ? formData.stock.warehouse + formData.stock.store : formData.stock.store
                         )}{' '}
                         <span className="text-sm font-normal text-zinc-500 dark:text-zinc-500">unidades</span>
                       </span>
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  icon={DollarSign}
+                  title="Información financiera"
+                  description="Precio de compra y dos precios de venta según tipo de cliente."
+                  iconClassName="text-violet-600 dark:text-violet-400"
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                      <label htmlFor="product-cost" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        Precio de adquisición
+                      </label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                          $
+                        </span>
+                        <input
+                          id="product-cost"
+                          type="text"
+                          value={formatMoneyInput(formData.cost)}
+                          onChange={e => handleInputChange('cost', parseMoneyInput(e.target.value))}
+                          className={cn(inputBase, 'pl-8', errors.cost && 'border-red-500/70')}
+                          placeholder="0"
+                        />
+                      </div>
+                      {errors.cost && <p className="mt-1.5 text-sm text-red-400">{errors.cost}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="product-retail-price" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        Venta cliente final <span className="text-zinc-400 dark:text-zinc-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                          $
+                        </span>
+                        <input
+                          id="product-retail-price"
+                          type="text"
+                          value={formatMoneyInput(formData.retailPrice)}
+                          onChange={e => handleInputChange('retailPrice', parseMoneyInput(e.target.value))}
+                          className={cn(inputBase, 'pl-8', errors.retailPrice && 'border-red-500/70')}
+                          placeholder="0"
+                        />
+                      </div>
+                      {errors.retailPrice && <p className="mt-1.5 text-sm text-red-400">{errors.retailPrice}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="product-wholesale-price" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        Venta mayorista <span className="text-zinc-400 dark:text-zinc-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                          $
+                        </span>
+                        <input
+                          id="product-wholesale-price"
+                          type="text"
+                          value={formatMoneyInput(formData.wholesalePrice)}
+                          onChange={e => handleInputChange('wholesalePrice', parseMoneyInput(e.target.value))}
+                          className={cn(inputBase, 'pl-8', errors.wholesalePrice && 'border-red-500/70')}
+                          placeholder="0"
+                        />
+                      </div>
+                      {errors.wholesalePrice && <p className="mt-1.5 text-sm text-red-400">{errors.wholesalePrice}</p>}
                     </div>
                   </div>
                 </SectionCard>

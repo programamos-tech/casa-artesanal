@@ -188,9 +188,9 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
   const isEdit = !!client
 
   const typeOptions = [
-    { value: 'mayorista' as const, label: 'Mayorista' },
-    { value: 'minorista' as const, label: 'Minorista' },
-    { value: 'consumidor_final' as const, label: 'Consumidor Final' },
+    { value: 'consumidor_final' as const, label: 'Cliente final' },
+    { value: 'mayorista' as const, label: 'Cliente mayorista' },
+    { value: 'minorista' as const, label: 'Minorista (precio cliente final)' },
   ]
 
   const modal = (

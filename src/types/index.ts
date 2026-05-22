@@ -32,7 +32,13 @@ export interface Product {
   name: string
   reference: string
   description: string
+  /** Precio de venta a cliente final (minorista / consumidor final) */
+  retailPrice: number
+  /** Precio de venta a cliente mayorista */
+  wholesalePrice: number
+  /** Alias de retailPrice para compatibilidad con catálogo y código legado */
   price: number
+  /** Precio de adquisición */
   cost: number
   stock: {
     warehouse: number

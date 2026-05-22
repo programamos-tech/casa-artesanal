@@ -16,7 +16,57 @@ export type StockFilter =
   | 'Solo Bodega (Bajo)'
   | 'Solo Bodega (Muy Bajo)'
 
+type DbProductRow = {
+  id: string
+  name: string
+  description?: string | null
+  category_id?: string | null
+  brand?: string | null
+  reference: string
+  price?: number | null
+  retail_price?: number | null
+  wholesale_price?: number | null
+  cost?: number | null
+  status: string
+  image_url?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export class ProductsService {
+  private static mapDbProduct(
+    row: DbProductRow,
+    stock: Product['stock'],
+    overrides?: { cost?: number; retailPrice?: number; wholesalePrice?: number }
+  ): Product {
+    const dbRetail = row.retail_price != null ? Number(row.retail_price) : Number(row.price ?? 0)
+    const dbWholesale =
+      row.wholesale_price != null ? Number(row.wholesale_price) : Number(row.price ?? dbRetail)
+    const retailPrice =
+      overrides?.retailPrice != null ? Number(overrides.retailPrice) : dbRetail
+    const wholesalePrice =
+      overrides?.wholesalePrice != null ? Number(overrides.wholesalePrice) : dbWholesale
+    const cost = overrides?.cost != null ? Number(overrides.cost) : Number(row.cost ?? 0)
+
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description ?? '',
+      categoryId: row.category_id ?? '',
+      brand: row.brand ?? '',
+      reference: row.reference,
+      retailPrice,
+      wholesalePrice,
+      price: retailPrice,
+      cost,
+      stock,
+      status: row.status as Product['status'],
+      imageUrl: row.image_url || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }
+  }
+
   // Helper para aplicar filtro de stock a productos ya mapeados (funciona para tienda principal y microtiendas)
   private static applyStockFilterToProducts(products: Product[], stockFilter?: StockFilter): Product[] {
     if (!stockFilter || stockFilter === 'all') {
@@ -389,21 +439,15 @@ export class ProductsService {
           }
         }
 
-        return {
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          categoryId: product.category_id,
-          brand: product.brand,
-          reference: product.reference,
-          price: productPrice,
+        const dbWholesale =
+          product.wholesale_price != null
+            ? Number(product.wholesale_price)
+            : Number(product.price ?? productPrice)
+        return this.mapDbProduct(product, stock, {
           cost: productCost,
-          stock: stock,
-          status: product.status,
-          imageUrl: product.image_url || undefined,
-          createdAt: product.created_at,
-          updatedAt: product.updated_at
-        }
+          retailPrice: productPrice,
+          wholesalePrice: dbWholesale,
+        })
       })
 
       // Aplicar filtro de stock si se especificó
@@ -586,21 +630,15 @@ export class ProductsService {
             */
           }
 
-          return {
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            categoryId: product.category_id,
-            brand: product.brand,
-            reference: product.reference,
-            price: productPrice,
+          const dbWholesale =
+            product.wholesale_price != null
+              ? Number(product.wholesale_price)
+              : Number(product.price ?? productPrice)
+          return this.mapDbProduct(product, stock, {
             cost: productCost,
-            stock: stock,
-            status: product.status,
-            imageUrl: product.image_url || undefined,
-            createdAt: product.created_at,
-            updatedAt: product.updated_at
-          }
+            retailPrice: productPrice,
+            wholesalePrice: dbWholesale,
+          })
         })
 
         // Ordenar: productos con stock primero, luego por fecha más reciente
@@ -779,24 +817,13 @@ export class ProductsService {
         }
       }
 
-      const product = {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        categoryId: data.category_id,
-        brand: data.brand,
-        reference: data.reference,
-        price: productPrice,
-        cost: productCost,
-        stock: stock,
-        status: data.status,
-        imageUrl: data.image_url || undefined,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      }
-
-      // console.log('[PRODUCTS SERVICE] Product mapped successfully')
-      return product
+      const dbWholesale =
+        data.wholesale_price != null ? Number(data.wholesale_price) : Number(data.price ?? productPrice)
+      return this.mapDbProduct(data, stock, {
+        cost: Number(productCost ?? 0),
+        retailPrice: Number(productPrice ?? 0),
+        wholesalePrice: dbWholesale,
+      })
     } catch (error) {
       // console.error('[PRODUCTS SERVICE] Exception in getProductById:', error)
       return null
@@ -879,6 +906,8 @@ export class ProductsService {
   // Crear nuevo producto
   static async createProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>, currentUserId?: string): Promise<Product | null> {
     try {
+      const retailPrice = productData.retailPrice ?? productData.price
+      const wholesalePrice = productData.wholesalePrice ?? productData.price ?? retailPrice
       const insertData = {
         id: uuidv4(),
         name: productData.name,
@@ -886,7 +915,9 @@ export class ProductsService {
         category_id: productData.categoryId || null, // Convertir string vacío a null
         brand: productData.brand || null, // Convertir string vacío a null
         reference: productData.reference,
-        price: productData.price,
+        price: retailPrice,
+        retail_price: retailPrice,
+        wholesale_price: wholesalePrice,
         cost: productData.cost,
         stock_warehouse: productData.stock.warehouse,
         stock_store: productData.stock.store,
@@ -948,25 +979,11 @@ export class ProductsService {
         )
       }
 
-      return {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        categoryId: data.category_id,
-        brand: data.brand,
-        reference: data.reference,
-        price: data.price,
-        cost: data.cost,
-        stock: {
-          warehouse: data.stock_warehouse || 0,
-          store: data.stock_store || 0,
-          total: (data.stock_warehouse || 0) + (data.stock_store || 0)
-        },
-        status: data.status,
-        imageUrl: data.image_url || undefined,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      }
+      return this.mapDbProduct(data, {
+        warehouse: data.stock_warehouse || 0,
+        store: data.stock_store || 0,
+        total: (data.stock_warehouse || 0) + (data.stock_store || 0),
+      })
     } catch (error) {
       // Error silencioso en producción
       return null
@@ -996,7 +1013,14 @@ export class ProductsService {
       // Cost y Price: en microtiendas se actualizan en store_stock, en tienda principal en products
       if (isMainStore) {
         // Tienda principal: actualizar en products
-        if (updates.price !== undefined) updateData.price = updates.price
+        if (updates.retailPrice !== undefined) {
+          updateData.retail_price = updates.retailPrice
+          updateData.price = updates.retailPrice
+        } else if (updates.price !== undefined) {
+          updateData.price = updates.price
+          updateData.retail_price = updates.price
+        }
+        if (updates.wholesalePrice !== undefined) updateData.wholesale_price = updates.wholesalePrice
         if (updates.cost !== undefined) updateData.cost = updates.cost
         if (updates.stock) {
           updateData.stock_warehouse = updates.stock.warehouse
@@ -1232,21 +1256,15 @@ export class ProductsService {
           }
         }
 
-        return {
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          categoryId: product.category_id,
-          brand: product.brand,
-          reference: product.reference,
-          price: productPrice,
+        const dbWholesale =
+          product.wholesale_price != null
+            ? Number(product.wholesale_price)
+            : Number(product.price ?? productPrice)
+        return this.mapDbProduct(product, stock, {
           cost: productCost,
-          stock: stock,
-          status: product.status,
-          imageUrl: product.image_url || undefined,
-          createdAt: product.created_at,
-          updatedAt: product.updated_at || product.created_at
-        }
+          retailPrice: productPrice,
+          wholesalePrice: dbWholesale,
+        })
       })
 
       // Aplicar filtro de stock si se especificó

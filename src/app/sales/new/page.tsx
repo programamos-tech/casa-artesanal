@@ -31,6 +31,7 @@ import { useSales } from '@/contexts/sales-context'
 import { useAuth } from '@/contexts/auth-context'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
+import { getProductUnitPriceForClient } from '@/lib/product-pricing'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -88,6 +89,24 @@ export default function NewSalePage() {
     getAllClients()
     refreshProducts()
   }, [getAllClients, refreshProducts])
+
+  useEffect(() => {
+    if (!selectedClient || selectedProducts.length === 0) return
+    setSelectedProducts(prev =>
+      prev.map(item => {
+        const product =
+          productsInSaleCache.get(item.productId) ?? products.find(p => p.id === item.productId)
+        if (!product) return item
+        const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
+        return {
+          ...item,
+          unitPrice,
+          total: unitPrice * item.quantity,
+        }
+      })
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar cliente
+  }, [selectedClient?.id, selectedClient?.type])
 
   // Cargar vendedores activos disponibles para asignar a la venta.
   // Filtramos por:
@@ -386,8 +405,8 @@ export default function NewSalePage() {
       productName: product.name,
       productReferenceCode: product.reference || 'N/A',
       quantity: 1,
-      unitPrice: product.price,
-      total: product.price,
+      unitPrice: getProductUnitPriceForClient(product, selectedClient?.type),
+      total: getProductUnitPriceForClient(product, selectedClient?.type),
       addedAt: Date.now()
     }
 

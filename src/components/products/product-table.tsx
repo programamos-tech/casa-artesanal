@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -57,6 +57,7 @@ interface ProductTableProps {
   totalProducts: number
   hasMore: boolean
   isSearching: boolean
+  searchLoading?: boolean
   stockFilter: StockFilter
   onFilterChange: (filter: StockFilter) => void
   onEdit: (product: Product) => void
@@ -79,6 +80,7 @@ export function ProductTable({
   totalProducts,
   hasMore,
   isSearching,
+  searchLoading = false,
   stockFilter,
   onFilterChange,
   onEdit,
@@ -126,16 +128,22 @@ export function ProductTable({
   const canTransfer = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'edit')
 
   const [searchTerm, setSearchTerm] = useState('')
-
-  const handleSearch = (term: string) => {
-    onSearch(term)
-  }
+  const onSearchRef = useRef(onSearch)
+  onSearchRef.current = onSearch
 
   useEffect(() => {
     if (!searchTerm.trim()) return
-    const timeoutId = setTimeout(() => handleSearch(searchTerm), 500)
+    const timeoutId = setTimeout(() => {
+      void onSearchRef.current(searchTerm)
+    }, 500)
     return () => clearTimeout(timeoutId)
   }, [searchTerm])
+
+  useEffect(() => {
+    if (!searchTerm.trim()) return
+    void onSearchRef.current(searchTerm)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar filtro de stock
+  }, [stockFilter])
 
   const goProduct = (p: Product) => {
     if (onView) onView(p)
@@ -347,26 +355,31 @@ export function ProductTable({
                 />
                 <input
                   type="search"
-                  placeholder="Buscar producto..."
+                  placeholder={searchLoading ? 'Buscando...' : 'Buscar producto...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
-                      handleSearch(searchTerm)
+                      void onSearchRef.current(searchTerm)
                     }
                   }}
                   aria-label="Buscar producto"
+                  aria-busy={searchLoading}
                   className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-10 text-sm font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
                 />
-                {searchTerm ? (
+                {searchLoading ? (
+                  <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2" aria-hidden>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 border-t-violet-600 dark:border-zinc-600 dark:border-t-violet-400" />
+                  </div>
+                ) : searchTerm ? (
                   <button
                     type="button"
                     onClick={() => {
                       setSearchTerm('')
-                      handleSearch('')
+                      void onSearchRef.current('')
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     title="Limpiar búsqueda"
                   >
                     <X className="h-4 w-4" strokeWidth={2} />
@@ -394,12 +407,15 @@ export function ProductTable({
             </div>
           </div>
 
-          {loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-zinc-950/50">
-              <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
-            </div>
-          )}
-          <CardContent className="p-0">
+          <CardContent className="relative p-0">
+            {loading && !searchLoading && (
+              <div
+                className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-zinc-950/50"
+                aria-hidden={!loading}
+              >
+                <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+              </div>
+            )}
             {products.length === 0 ? (
               <div className="py-16 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">

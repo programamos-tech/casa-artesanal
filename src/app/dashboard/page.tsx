@@ -48,6 +48,7 @@ import { Sale } from '@/types'
 import { CancelledInvoicesModal } from '@/components/dashboard/cancelled-invoices-modal'
 import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
+import { isWholesaleClientType } from '@/lib/product-pricing'
 
 type DateFilter = 'today' | 'specific' | 'all' | 'range'
 
@@ -127,6 +128,16 @@ export default function DashboardPage() {
   const transferTileRef = useRef<HTMLButtonElement>(null)
   const transferPopoverRef = useRef<HTMLDivElement>(null)
   const [transferPopoverPos, setTransferPopoverPos] = useState<{
+    top: number
+    left: number
+    placement: 'right' | 'left' | 'bottom'
+    arrowOffset: number
+    width: number
+  } | null>(null)
+  const [showProfitBreakdown, setShowProfitBreakdown] = useState(false)
+  const profitTileRef = useRef<HTMLButtonElement>(null)
+  const profitPopoverRef = useRef<HTMLDivElement>(null)
+  const [profitPopoverPos, setProfitPopoverPos] = useState<{
     top: number
     left: number
     placement: 'right' | 'left' | 'bottom'
@@ -294,6 +305,89 @@ export default function DashboardPage() {
       document.removeEventListener('touchstart', onPointerDown)
     }
   }, [showTransferBreakdown])
+
+  useEffect(() => {
+    if (!showProfitBreakdown) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowProfitBreakdown(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showProfitBreakdown])
+
+  useEffect(() => {
+    if (!showProfitBreakdown) {
+      setProfitPopoverPos(null)
+      return
+    }
+
+    const compute = () => {
+      const el = profitTileRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const gap = 6
+      const margin = 8
+      const popoverMaxHeight = 360
+      const width = Math.min(320, Math.max(260, vw - margin * 2))
+      const isWide = vw >= 768
+
+      let placement: 'right' | 'left' | 'bottom' = 'bottom'
+      let left = rect.left + rect.width / 2 - width / 2
+      let top = rect.bottom + gap
+
+      if (isWide) {
+        if (rect.right + gap + width <= vw - margin) {
+          placement = 'right'
+          left = rect.right + gap
+          top = rect.top + rect.height / 2 - Math.min(popoverMaxHeight, 220) / 2
+        } else if (rect.left - gap - width >= margin) {
+          placement = 'left'
+          left = rect.left - gap - width
+          top = rect.top + rect.height / 2 - Math.min(popoverMaxHeight, 220) / 2
+        }
+      }
+
+      left = Math.max(margin, Math.min(left, vw - width - margin))
+      top = Math.max(margin, Math.min(top, vh - margin - 80))
+
+      const tileCenterX = rect.left + rect.width / 2
+      const tileCenterY = rect.top + rect.height / 2
+      const arrowOffset =
+        placement === 'bottom'
+          ? Math.max(16, Math.min(width - 16, tileCenterX - left))
+          : Math.max(16, Math.min(220, tileCenterY - top))
+
+      setProfitPopoverPos({ top, left, placement, arrowOffset, width })
+    }
+
+    compute()
+    const onScroll = () => compute()
+    window.addEventListener('resize', compute)
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      window.removeEventListener('resize', compute)
+      window.removeEventListener('scroll', onScroll, true)
+    }
+  }, [showProfitBreakdown])
+
+  useEffect(() => {
+    if (!showProfitBreakdown) return
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null
+      if (!target) return
+      if (profitTileRef.current?.contains(target)) return
+      if (profitPopoverRef.current?.contains(target)) return
+      setShowProfitBreakdown(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+    }
+  }, [showProfitBreakdown])
 
   const goToCredits = useCallback(() => {
     router.push('/payments')
@@ -979,47 +1073,47 @@ export default function DashboardPage() {
     // Clientes únicos que han comprado en el período seleccionado - Excluir ventas canceladas
     const uniqueClients = new Set(activeSales.map(sale => sale.clientId)).size
 
-    // Calcular ganancia bruta (ventas - costo de productos vendidos)
-    // Excluir ventas canceladas del cálculo de ganancia bruta
-    // Para ventas a crédito: solo contar la ganancia cuando el crédito esté completado
-    const grossProfit = activeSales.reduce((totalProfit, sale) => {
-      // Si es una venta a crédito, verificar si el crédito está completado
-      if (sale.paymentMethod === 'credit') {
-        // Buscar el crédito asociado a esta venta
-        const associatedCredit = allCredits.find(c => c.saleId === sale.id)
+    // Ganancia bruta por tipo de cliente (mayorista vs cliente final)
+    const clientTypeById = new Map(allClients.map((c) => [c.id, c.type]))
+    let grossProfitRetail = 0
+    let grossProfitWholesale = 0
 
-        // Solo contar la ganancia si el crédito está completado
-        // Si no hay crédito asociado o no está completado, no contar la ganancia
+    const profitForSale = (sale: (typeof activeSales)[number]) => {
+      if (sale.paymentMethod === 'credit') {
+        const associatedCredit = allCredits.find((c) => c.saleId === sale.id)
         if (!associatedCredit || associatedCredit.status !== 'completed') {
-          return totalProfit
+          return 0
         }
       }
+      if (!sale.items?.length) return 0
 
-      if (!sale.items) return totalProfit
-
-      const saleProfit = sale.items.reduce((itemProfit, item) => {
-        // Buscar el producto para obtener su costo (primero en cache, luego en allProducts)
-        const product = specificProductsCache.get(item.productId) || allProducts.find(p => p.id === item.productId)
+      return sale.items.reduce((itemProfit, item) => {
+        const product =
+          specificProductsCache.get(item.productId) || allProducts.find((p) => p.id === item.productId)
         const cost = product?.cost || 0
-
-        // Calcular el precio real de venta después de descuentos
         const baseTotal = item.quantity * item.unitPrice
-        const discountAmount = item.discountType === 'percentage'
-          ? (baseTotal * (item.discount || 0)) / 100
-          : (item.discount || 0)
+        const discountAmount =
+          item.discountType === 'percentage'
+            ? (baseTotal * (item.discount || 0)) / 100
+            : item.discount || 0
         const salePriceAfterDiscount = Math.max(0, baseTotal - discountAmount)
-
-        // El precio unitario real después de descuentos
         const realUnitPrice = item.quantity > 0 ? salePriceAfterDiscount / item.quantity : 0
-
-        // Ganancia bruta = (precio de venta real - costo) * cantidad
-        const itemGrossProfit = (realUnitPrice - cost) * item.quantity
-
-        return itemProfit + itemGrossProfit
+        return itemProfit + (realUnitPrice - cost) * item.quantity
       }, 0)
+    }
 
-      return totalProfit + saleProfit
-    }, 0)
+    activeSales.forEach((sale) => {
+      const saleProfit = profitForSale(sale)
+      if (saleProfit === 0) return
+      const clientType = clientTypeById.get(sale.clientId)
+      if (isWholesaleClientType(clientType)) {
+        grossProfitWholesale += saleProfit
+      } else {
+        grossProfitRetail += saleProfit
+      }
+    })
+
+    const grossProfit = grossProfitRetail + grossProfitWholesale
 
     // Facturas anuladas: usar allSales (misma ventana que getDashboardSales), no filteredData.sales.
     // filteredData para "hoy" solo incluye ventas creadas ese día; una factura anulada suele crearse antes.
@@ -1243,6 +1337,8 @@ export default function DashboardPage() {
       overdueCreditsDebt,
       uniqueClients,
       grossProfit,
+      grossProfitRetail,
+      grossProfitWholesale,
       cancelledSales,
       lostValue,
       lowStockProducts: optimizedMetrics.inventorySummary?.lowStockCount ?? lowStockProducts,
@@ -1676,7 +1772,10 @@ export default function DashboardPage() {
             <button
               ref={transferTileRef}
               type="button"
-              onClick={() => setShowTransferBreakdown((prev) => !prev)}
+              onClick={() => {
+                setShowProfitBreakdown(false)
+                setShowTransferBreakdown((prev) => !prev)
+              }}
               className={cn(dashKpiCard, dashMetricTileInteractive)}
               aria-haspopup="dialog"
               aria-expanded={showTransferBreakdown}
@@ -1792,9 +1891,15 @@ export default function DashboardPage() {
 
             {isSuperAdmin && (
               <button
+                ref={profitTileRef}
                 type="button"
-                onClick={() => router.push('/sales')}
+                onClick={() => {
+                  setShowTransferBreakdown(false)
+                  setShowProfitBreakdown((prev) => !prev)
+                }}
                 className={cn(dashKpiCard, dashMetricTileInteractive)}
+                aria-haspopup="dialog"
+                aria-expanded={showProfitBreakdown}
               >
                 <div className="flex gap-3">
                   <div className={dashKpiIconWrap} aria-hidden>
@@ -1806,6 +1911,9 @@ export default function DashboardPage() {
                       {formatCurrency(metrics.grossProfit)}
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Por ventas del período</p>
+                    <p className="mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
+                      Clic para ver desglose
+                    </p>
                   </div>
                 </div>
               </button>
@@ -2391,6 +2499,120 @@ export default function DashboardPage() {
                   ]
                   return (
                     <ul className="space-y-1.5">
+                      {rows.map((row) => (
+                        <li
+                          key={row.label}
+                          className="flex flex-col gap-0.5 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-2 dark:border-zinc-700/60 dark:bg-zinc-800/40"
+                        >
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                              {row.label}
+                            </span>
+                            <span className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                              {formatCurrency(row.amount)}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                            {pct(row.amount)}
+                          </span>
+                          {row.hint ? (
+                            <span className="text-[10px] leading-snug text-zinc-400 dark:text-zinc-500">
+                              {row.hint}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                })()}
+              </div>
+            </div>,
+            document.body
+          )}
+
+        {showProfitBreakdown &&
+          profitPopoverPos &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <div
+              ref={profitPopoverRef}
+              role="dialog"
+              aria-labelledby="profit-breakdown-title"
+              style={{
+                position: 'fixed',
+                top: profitPopoverPos.top,
+                left: profitPopoverPos.left,
+                width: profitPopoverPos.width,
+                zIndex: 200,
+              }}
+              className={cn(
+                'flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl ring-1 ring-zinc-950/5 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10',
+                'animate-in fade-in-0 zoom-in-95 duration-150'
+              )}
+            >
+              <span
+                aria-hidden
+                style={
+                  profitPopoverPos.placement === 'right'
+                    ? { top: profitPopoverPos.arrowOffset - 5, left: -5 }
+                    : profitPopoverPos.placement === 'left'
+                      ? { top: profitPopoverPos.arrowOffset - 5, right: -5 }
+                      : { top: -5, left: profitPopoverPos.arrowOffset - 5 }
+                }
+                className={cn(
+                  'absolute h-2.5 w-2.5 rotate-45 border bg-white dark:bg-zinc-900',
+                  profitPopoverPos.placement === 'right' &&
+                    'border-b-0 border-r-0 border-zinc-200 dark:border-zinc-600',
+                  profitPopoverPos.placement === 'left' &&
+                    'border-l-0 border-t-0 border-zinc-200 dark:border-zinc-600',
+                  profitPopoverPos.placement === 'bottom' &&
+                    'border-b-0 border-r-0 border-zinc-200 dark:border-zinc-600'
+                )}
+              />
+              <button
+                type="button"
+                className="absolute right-1.5 top-1.5 rounded-full p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                onClick={() => setShowProfitBreakdown(false)}
+                aria-label="Cerrar desglose"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </button>
+              <div className="border-b border-zinc-100 px-3.5 pb-2.5 pr-9 pt-3 dark:border-zinc-800">
+                <h2
+                  id="profit-breakdown-title"
+                  className="text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+                >
+                  Desglose — ganancia bruta
+                </h2>
+                <p className="mt-0.5 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+                  Ganancia del período según tipo de cliente de la factura.
+                </p>
+              </div>
+              <div className="max-h-[min(50vh,320px)] overflow-y-auto px-3 py-2.5">
+                {(() => {
+                  const total = metrics.grossProfit
+                  const pct = (n: number) =>
+                    total > 0 ? `${((n / total) * 100).toFixed(1)}% del total` : '0% del total'
+                  const rows: { label: string; amount: number; hint?: string }[] = [
+                    {
+                      label: 'Cliente final',
+                      amount: metrics.grossProfitRetail,
+                      hint: 'Consumidor final y minorista',
+                    },
+                    { label: 'Cliente mayorista', amount: metrics.grossProfitWholesale },
+                  ]
+                  return (
+                    <ul className="space-y-1.5">
+                      <li className="flex flex-col gap-0.5 rounded-lg border border-teal-200/80 bg-teal-50/50 px-2.5 py-2 dark:border-teal-900/50 dark:bg-teal-950/25">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Total ganancia bruta
+                          </span>
+                          <span className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                            {formatCurrency(total)}
+                          </span>
+                        </div>
+                      </li>
                       {rows.map((row) => (
                         <li
                           key={row.label}

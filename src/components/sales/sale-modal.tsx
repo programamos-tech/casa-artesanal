@@ -28,6 +28,7 @@ import { useClients } from '@/contexts/clients-context'
 import { useProducts } from '@/contexts/products-context'
 import { useAuth } from '@/contexts/auth-context'
 import { ProductsService } from '@/lib/products-service'
+import { getProductUnitPriceForClient } from '@/lib/product-pricing'
 import { ClientModal } from '@/components/clients/client-modal'
 
 // Constante para identificar la tienda principal
@@ -132,6 +133,23 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale]) // Ejecutar cuando se abre/cierra el modal o cambia la venta
+
+  useEffect(() => {
+    if (!selectedClient || selectedProducts.length === 0) return
+    setSelectedProducts(prev =>
+      prev.map(item => {
+        const product = products.find(p => p.id === item.productId)
+        if (!product) return item
+        const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
+        return {
+          ...item,
+          unitPrice,
+          total: unitPrice * item.quantity,
+        }
+      })
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar cliente
+  }, [selectedClient?.id, selectedClient?.type])
 
   // Manejar cambio de método de pago
   useEffect(() => {
@@ -540,11 +558,11 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         productName: product.name,
         productReferenceCode: product.reference,
         quantity: 1,
-        unitPrice: product.price,
+        unitPrice: getProductUnitPriceForClient(product, selectedClient?.type),
         discount: 0,
         discountType: 'amount',
         tax: 0,
-        total: product.price,
+        total: getProductUnitPriceForClient(product, selectedClient?.type),
         addedAt: now
       }
       console.log('[SALE MODAL] handleAddProduct - newItem unitPrice:', newItem.unitPrice)
