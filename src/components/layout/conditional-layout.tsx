@@ -8,6 +8,7 @@ import { useStoreUrl } from '@/hooks/use-store-url'
 import { cn } from '@/lib/utils'
 import { ReleaseNotesModal } from '@/components/ui/release-notes-modal'
 import { AppTopNav } from '@/components/layout/app-top-nav'
+import { OwnerAssistantBubble } from '@/components/assistant/owner-assistant-bubble'
 
 interface ConditionalLayoutProps {
   children: React.ReactNode
@@ -72,6 +73,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
         </main>
       </div>
       <ReleaseNotesModal />
+      <OwnerAssistantBubble />
     </ProtectedRoute>
   )
 }
