@@ -65,7 +65,8 @@ export class CategoriesService {
         id: uuidv4(),
         name: categoryData.name,
         description: categoryData.description,
-        status: categoryData.status || 'active'
+        status: categoryData.status || 'active',
+        store_id: '00000000-0000-0000-0000-000000000001',
       }
       
       const { data, error } = await supabase

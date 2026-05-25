@@ -16,11 +16,18 @@ export type StockFilter =
   | 'Solo Bodega (Bajo)'
   | 'Solo Bodega (Muy Bajo)'
 
+/** `all` o UUID de categoría */
+export type CategoryFilter = 'all' | string
+
+const PRODUCT_SELECT_WITH_CATEGORY =
+  '*, categories:category_id ( id, name )'
+
 type DbProductRow = {
   id: string
   name: string
   description?: string | null
   category_id?: string | null
+  categories?: { id?: string; name?: string } | null
   brand?: string | null
   reference: string
   price?: number | null
@@ -47,12 +54,17 @@ export class ProductsService {
     const wholesalePrice =
       overrides?.wholesalePrice != null ? Number(overrides.wholesalePrice) : dbWholesale
     const cost = overrides?.cost != null ? Number(overrides.cost) : Number(row.cost ?? 0)
+    const embeddedCategory = row.categories
+    const categoryName = embeddedCategory?.name?.trim() || undefined
+    const categoryId =
+      (row.category_id ?? embeddedCategory?.id ?? '') as string
 
     return {
       id: row.id,
       name: row.name,
       description: row.description ?? '',
-      categoryId: row.category_id ?? '',
+      categoryId,
+      categoryName,
       brand: row.brand ?? '',
       reference: row.reference,
       retailPrice,
@@ -370,7 +382,8 @@ export class ProductsService {
   static async getAllProducts(
     page: number = 1,
     limit: number = 10,
-    stockFilter?: StockFilter
+    stockFilter?: StockFilter,
+    categoryFilter?: CategoryFilter
   ): Promise<{ products: Product[], total: number, hasMore: boolean }> {
     try {
       const currentStoreId = getCurrentUserStoreId()
@@ -390,11 +403,17 @@ export class ProductsService {
 
       // Obtener productos paginados
       // Ordenar por created_at (más recientes primero)
-      const { data, error } = await supabase
+      let listQuery = supabase
         .from('products')
-        .select('*')
+        .select(PRODUCT_SELECT_WITH_CATEGORY)
         .order('created_at', { ascending: false })
         .range(from, to)
+
+      if (categoryFilter && categoryFilter !== 'all') {
+        listQuery = listQuery.eq('category_id', categoryFilter)
+      }
+
+      const { data, error } = await listQuery
 
       if (error) {
         // Error silencioso en producción
@@ -402,9 +421,15 @@ export class ProductsService {
       }
 
       // Obtener el total de productos
-      const { count, error: countError } = await supabase
+      let countQuery = supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
+
+      if (categoryFilter && categoryFilter !== 'all') {
+        countQuery = countQuery.eq('category_id', categoryFilter)
+      }
+
+      const { count, error: countError } = await countQuery
 
       if (countError) {
         // Error silencioso en producción
@@ -778,7 +803,7 @@ export class ProductsService {
       // Usar supabaseAdmin para evitar problemas de permisos RLS en microtiendas
       const { data, error } = await supabaseAdmin
         .from('products')
-        .select('*')
+        .select(PRODUCT_SELECT_WITH_CATEGORY)
         .eq('id', id)
         .single()
 
@@ -1193,7 +1218,12 @@ export class ProductsService {
 
   // Buscar productos
   // storeId: opcional, si se pasa se usa ese, si no se intenta obtener del localStorage
-  static async searchProducts(query: string, stockFilter?: StockFilter, storeId?: string | null): Promise<Product[]> {
+  static async searchProducts(
+    query: string,
+    stockFilter?: StockFilter,
+    storeId?: string | null,
+    categoryFilter?: CategoryFilter
+  ): Promise<Product[]> {
     try {
       const cleanQuery = query.trim()
 
@@ -1202,12 +1232,20 @@ export class ProductsService {
       }
 
       // Búsqueda simplificada sin timeout - buscar en referencia y nombre
-      const { data, error } = await supabase
+      let searchQuery = supabase
         .from('products')
-        .select('id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at')
+        .select(
+          `id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at, categories:category_id ( id, name )`
+        )
         .or(`reference.ilike.%${cleanQuery}%,name.ilike.%${cleanQuery}%`)
         .order('created_at', { ascending: false })
         .limit(100)
+
+      if (categoryFilter && categoryFilter !== 'all') {
+        searchQuery = searchQuery.eq('category_id', categoryFilter)
+      }
+
+      const { data, error } = await searchQuery
 
       if (error) {
         // Error silencioso en producción

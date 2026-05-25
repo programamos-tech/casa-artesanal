@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { Product } from '@/types'
-import { ProductsService, StockFilter } from '@/lib/products-service'
+import { ProductsService, StockFilter, CategoryFilter } from '@/lib/products-service'
 import { useAuth } from './auth-context'
 
 interface ProductsContextType {
@@ -14,8 +14,10 @@ interface ProductsContextType {
   isSearching: boolean
   searchLoading: boolean
   stockFilter: StockFilter
+  categoryFilter: CategoryFilter
   productsLastUpdated: number
   setStockFilter: (filter: StockFilter) => void
+  setCategoryFilter: (filter: CategoryFilter) => void
   createProduct: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>
   updateProduct: (id: string, updates: Partial<Product>) => Promise<boolean>
   deleteProduct: (id: string) => Promise<{ success: boolean, error?: string }>
@@ -44,6 +46,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const [isSearching, setIsSearching] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [stockFilter, setStockFilterState] = useState<StockFilter>('all')
+  const [categoryFilter, setCategoryFilterState] = useState<CategoryFilter>('all')
   const [productsLastUpdated, setProductsLastUpdated] = useState(Date.now()) // Timestamp para notificar cambios
   const { user: currentUser } = useAuth()
   const storeId = currentUser?.storeId
@@ -55,7 +58,12 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     const silent = options?.silent === true
     if (!silent) setLoading(true)
     try {
-      const result = await ProductsService.getAllProducts(1, ITEMS_PER_PAGE, activeFilter)
+      const result = await ProductsService.getAllProducts(
+        1,
+        ITEMS_PER_PAGE,
+        activeFilter,
+        categoryFilter
+      )
       setProducts(result.products)
       setCurrentPage(1)
       setTotalProducts(result.total)
@@ -66,16 +74,20 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [storeId, stockFilter])
+  }, [storeId, stockFilter, categoryFilter])
 
   useEffect(() => {
     if (isSearchingRef.current) return
     void refreshProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo tienda y filtro de stock
-  }, [storeId, stockFilter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tienda y filtros de listado
+  }, [storeId, stockFilter, categoryFilter])
 
   const setStockFilter = useCallback((filter: StockFilter) => {
     setStockFilterState(filter)
+  }, [])
+
+  const setCategoryFilter = useCallback((filter: CategoryFilter) => {
+    setCategoryFilterState(filter)
   }, [])
 
   const createProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
@@ -136,7 +148,12 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     setIsSearching(false)
     setSearchLoading(false)
     try {
-      const result = await ProductsService.getAllProducts(1, ITEMS_PER_PAGE, stockFilter)
+      const result = await ProductsService.getAllProducts(
+        1,
+        ITEMS_PER_PAGE,
+        stockFilter,
+        categoryFilter
+      )
       setProducts(result.products)
       setCurrentPage(1)
       setTotalProducts(result.total)
@@ -144,7 +161,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       // Error silencioso en producción
     }
-  }, [stockFilter])
+  }, [stockFilter, categoryFilter])
 
   const searchProducts = useCallback(async (searchTerm: string): Promise<Product[]> => {
     if (!searchTerm.trim()) {
@@ -156,7 +173,12 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     setSearchLoading(true)
 
     try {
-      const results = await ProductsService.searchProducts(searchTerm, stockFilter, storeId)
+      const results = await ProductsService.searchProducts(
+        searchTerm,
+        stockFilter,
+        storeId,
+        categoryFilter
+      )
       setProducts(results)
       setCurrentPage(1)
       return results
@@ -165,13 +187,18 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setSearchLoading(false)
     }
-  }, [clearSearch, stockFilter, storeId])
+  }, [clearSearch, stockFilter, storeId, categoryFilter])
 
   const goToPage = async (page: number) => {
     if (page >= 1 && page <= Math.ceil(totalProducts / ITEMS_PER_PAGE) && !loading) {
       try {
         setLoading(true)
-        const result = await ProductsService.getAllProducts(page, ITEMS_PER_PAGE, stockFilter)
+        const result = await ProductsService.getAllProducts(
+          page,
+          ITEMS_PER_PAGE,
+          stockFilter,
+          categoryFilter
+        )
         setProducts(result.products)
         setCurrentPage(page)
         setTotalProducts(result.total)
@@ -248,8 +275,10 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     isSearching,
     searchLoading,
     stockFilter,
+    categoryFilter,
     productsLastUpdated,
     setStockFilter,
+    setCategoryFilter,
     createProduct, 
     updateProduct, 
     deleteProduct, 

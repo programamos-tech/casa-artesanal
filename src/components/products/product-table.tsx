@@ -24,7 +24,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { Product, Category } from '@/types'
-import type { StockFilter } from '@/lib/products-service'
+import type { StockFilter, CategoryFilter } from '@/lib/products-service'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
@@ -59,7 +59,9 @@ interface ProductTableProps {
   isSearching: boolean
   searchLoading?: boolean
   stockFilter: StockFilter
+  categoryFilter: CategoryFilter
   onFilterChange: (filter: StockFilter) => void
+  onCategoryFilterChange: (filter: CategoryFilter) => void
   onEdit: (product: Product) => void
   onDelete: (product: Product) => void
   onCreate: () => void
@@ -82,7 +84,9 @@ export function ProductTable({
   isSearching,
   searchLoading = false,
   stockFilter,
+  categoryFilter,
   onFilterChange,
+  onCategoryFilterChange,
   onEdit,
   onDelete,
   onCreate,
@@ -142,16 +146,22 @@ export function ProductTable({
   useEffect(() => {
     if (!searchTerm.trim()) return
     void onSearchRef.current(searchTerm)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar filtro de stock
-  }, [stockFilter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar filtros
+  }, [stockFilter, categoryFilter])
+
+  const activeCategories = [...categories]
+    .filter((c) => c.status === 'active')
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
 
   const goProduct = (p: Product) => {
     if (onView) onView(p)
     else router.push(`/inventory/products/${p.id}`)
   }
 
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find((c) => c.id === categoryId)
+  const getCategoryLabel = (product: Product) => {
+    if (product.categoryName?.trim()) return product.categoryName.trim()
+    if (!product.categoryId) return 'Sin categoría'
+    const category = categories.find((c) => c.id === product.categoryId)
     return category?.name || 'Sin categoría'
   }
 
@@ -340,14 +350,14 @@ export function ProductTable({
           </CardHeader>
 
           <div className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/25 md:px-6 md:py-4">
-            <div
-              className={cn(
-                'casa-artesanal-preserve-surface flex min-h-11 flex-nowrap items-stretch overflow-hidden rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90 transition-[box-shadow,border-color,ring-color]',
-                'divide-x divide-zinc-200/85 dark:divide-zinc-600/90 dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
-                'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20'
-              )}
-            >
-              <div className="relative min-w-0 flex-1">
+            <div className="flex flex-col gap-2">
+              <div
+                className={cn(
+                  'casa-artesanal-preserve-surface relative flex min-h-11 items-stretch overflow-hidden rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90',
+                  'dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
+                  'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20'
+                )}
+              >
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 z-10 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-violet-700 dark:text-violet-300"
                   strokeWidth={2}
@@ -386,23 +396,68 @@ export function ProductTable({
                   </button>
                 ) : null}
               </div>
-              <div className="relative flex shrink-0 items-stretch bg-transparent">
-                <select
-                  value={stockFilter}
-                  onChange={(e) => onFilterChange(e.target.value as StockFilter)}
-                  aria-label="Filtrar por estado de stock"
-                  className="h-11 min-w-[10.25rem] max-w-[46vw] cursor-pointer appearance-none border-0 bg-transparent py-2 pl-3 pr-9 text-sm font-medium text-zinc-900 focus:outline-none dark:text-zinc-100 sm:min-w-[12.5rem] sm:max-w-none"
-                >
-                  {stockStatusOptions.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600/80 dark:text-teal-400/90"
-                  aria-hidden
-                />
+
+              <div
+                className={cn(
+                  'casa-artesanal-preserve-surface grid grid-cols-1 gap-2 sm:grid-cols-2',
+                  'rounded-2xl border border-zinc-300/95 bg-white p-1 shadow-sm ring-1 ring-zinc-200/90',
+                  'dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85'
+                )}
+              >
+                <label className="relative flex min-h-11 items-center gap-2 rounded-xl px-2 sm:pr-8">
+                  <Tag
+                    className={cn('h-4 w-4 shrink-0', productCategoriesIconClass)}
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  <span className="hidden shrink-0 text-xs font-medium uppercase tracking-wide text-zinc-500 sm:inline dark:text-zinc-400">
+                    Categoría
+                  </span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => onCategoryFilterChange(e.target.value as CategoryFilter)}
+                    aria-label="Filtrar por categoría"
+                    className="h-9 min-w-0 flex-1 cursor-pointer appearance-none truncate rounded-lg border-0 bg-zinc-50/80 py-1.5 pl-2 pr-8 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500/25 dark:bg-zinc-800/60 dark:text-zinc-100"
+                  >
+                    <option value="all">Todas las categorías</option>
+                    {activeCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600/80 dark:text-amber-400/90 sm:right-3"
+                    aria-hidden
+                  />
+                </label>
+
+                <label className="relative flex min-h-11 items-center gap-2 rounded-xl px-2 sm:pr-8">
+                  <Package
+                    className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  <span className="hidden shrink-0 text-xs font-medium uppercase tracking-wide text-zinc-500 sm:inline dark:text-zinc-400">
+                    Stock
+                  </span>
+                  <select
+                    value={stockFilter}
+                    onChange={(e) => onFilterChange(e.target.value as StockFilter)}
+                    aria-label="Filtrar por estado de stock"
+                    className="h-9 min-w-0 flex-1 cursor-pointer appearance-none truncate rounded-lg border-0 bg-zinc-50/80 py-1.5 pl-2 pr-8 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-teal-500/25 dark:bg-zinc-800/60 dark:text-zinc-100"
+                  >
+                    {stockStatusOptions.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600/80 dark:text-teal-400/90 sm:right-3"
+                    aria-hidden
+                  />
+                </label>
               </div>
             </div>
           </div>
@@ -459,7 +514,7 @@ export function ProductTable({
                             <div className="min-w-0 flex-1">
                               <span className="font-mono text-xs font-semibold text-zinc-600 dark:text-zinc-400">{product.reference}</span>
                               <p className="mt-0.5 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">{product.name}</p>
-                              <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryName(product.categoryId)}</p>
+                              <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
                             </div>
                             <Badge variant="outline" className={cn(badgeTint, 'shrink-0 border-0 px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
                               <span className="flex items-center gap-1">
@@ -554,7 +609,7 @@ export function ProductTable({
                                 <div className="min-w-0">
                                   <span className="font-mono text-xs font-semibold text-zinc-600 dark:text-zinc-400">{product.reference}</span>
                                   <p className="mt-0.5 truncate font-semibold text-zinc-900 dark:text-zinc-100">{product.name}</p>
-                                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryName(product.categoryId)}</p>
+                                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
                                 </div>
                               </td>
                               {isMainStore ? (

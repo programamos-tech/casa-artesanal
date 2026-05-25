@@ -420,8 +420,10 @@ export default function ProductDetailPage() {
     }
   }
 
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId)
+  const getCategoryLabel = (p: Product) => {
+    if (p.categoryName?.trim()) return p.categoryName.trim()
+    if (!p.categoryId) return 'Sin categoría'
+    const category = categories.find(c => c.id === p.categoryId)
     return category?.name || 'Sin categoría'
   }
 
@@ -624,7 +626,7 @@ export default function ProductDetailPage() {
                     )}
                   </div>
                   <p className="mt-0.5 font-mono text-sm text-zinc-600 dark:text-zinc-300">{product.reference}</p>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{getCategoryName(product.categoryId)}</p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
                 </>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
@@ -877,7 +879,7 @@ export default function ProductDetailPage() {
             ) : (
               <dl className="grid gap-4 sm:grid-cols-2">
                 <Field label="Descripción">{product.description || 'Sin descripción'}</Field>
-                <Field label="Categoría">{getCategoryName(product.categoryId)}</Field>
+                <Field label="Categoría">{getCategoryLabel(product)}</Field>
                 {product.brand ? <Field label="Marca">{product.brand}</Field> : null}
                 <Field label="Precio de adquisición">
                   <span className="font-semibold tabular-nums">{formatCurrency(product.cost)}</span>

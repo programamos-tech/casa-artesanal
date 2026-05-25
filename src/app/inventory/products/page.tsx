@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ProductTable } from '@/components/products/product-table'
 import { ProductModal } from '@/components/products/product-modal'
 import { CategoryModal } from '@/components/categories/category-modal'
@@ -14,8 +14,12 @@ import { Product, Category, StockTransfer } from '@/types'
 import { toast } from 'sonner'
 
 export default function ProductsPage() {
-  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, stockFilter, setStockFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts, productsLastUpdated } = useProducts()
-  const { categories, createCategory, toggleCategoryStatus, deleteCategory } = useCategories()
+  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts, productsLastUpdated } = useProducts()
+  const { categories, createCategory, toggleCategoryStatus, deleteCategory, refreshCategories } = useCategories()
+
+  useEffect(() => {
+    void refreshCategories()
+  }, [refreshCategories])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -177,7 +181,9 @@ export default function ProductsPage() {
         isSearching={isSearching}
         searchLoading={searchLoading}
         stockFilter={stockFilter}
+        categoryFilter={categoryFilter}
         onFilterChange={setStockFilter}
+        onCategoryFilterChange={setCategoryFilter}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreate={handleCreate}

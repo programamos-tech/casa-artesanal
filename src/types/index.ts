@@ -46,6 +46,8 @@ export interface Product {
     total: number
   }
   categoryId: string
+  /** Nombre de categoría desde la BD (join); evita depender solo del contexto de categorías */
+  categoryName?: string
   brand: string
   status: 'active' | 'inactive' | 'discontinued' | 'out_of_stock'
   /** URL pública (Storage) para catálogo / ficha del producto */
