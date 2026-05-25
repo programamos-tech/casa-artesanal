@@ -14,6 +14,7 @@ const ROOT = path.join(__dirname, '..')
 
 const CSV_PATH = path.join(ROOT, 'public/inventario 2026 nuevo sistema - Hoja 1.csv')
 const OUT_SQL = path.join(ROOT, 'scripts/sql/import-inventario-2026.sql')
+const OUT_PRICES_SQL = path.join(ROOT, 'scripts/sql/update-inventario-2026-prices.sql')
 
 const NS_CAT = 'a3f2c8e1-9b4d-4e6f-8a1c-202605221200'
 const MAIN_STORE = '00000000-0000-0000-0000-000000000001'
@@ -113,20 +114,9 @@ for (let r = 1; r < table.length; r++) {
     continue
   }
 
-  let retail = parsePrice(row[idx.retail])
-  let wholesale = parsePrice(row[idx.wholesale])
-
-  const priceInName = prod.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*$/)
-  if (retail == null && priceInName) {
-    retail = parsePrice(priceInName[1])
-    prod = prod.slice(0, priceInName.index).trim()
-  }
-
-  if (retail == null) {
-    skipped.push({ cod, reason: 'sin precio cliente final', prod })
-    continue
-  }
-  if (wholesale == null) wholesale = retail
+  // Sin valor en el Excel → 0 (no inferir desde nombre ni copiar el otro precio)
+  const retail = parsePrice(row[idx.retail]) ?? 0
+  const wholesale = parsePrice(row[idx.wholesale]) ?? 0
 
   const catName = titleWords(cat)
   const name = titleWords(`${catName} ${prod}`)
@@ -157,6 +147,7 @@ let sql = `-- Inventario 2026 — importación catálogo
 -- Origen: public/inventario 2026 nuevo sistema - Hoja 1.csv
 -- Referencia = código CSV con ceros a la izquierda (001, 002, …)
 -- Nombre = categoría + producto | stock_store = cantidad | bodega = 0
+-- Precio vacío en Excel → retail_price / wholesale_price = 0
 
 BEGIN;
 
@@ -216,12 +207,34 @@ sql += `\nON CONFLICT (reference) DO UPDATE SET
 COMMIT;
 `
 
+const pricesSql = `-- Actualizar precios inventario 2026 (vacío en Excel = 0)
+-- Origen: public/inventario 2026 nuevo sistema - Hoja 1.csv
+
+BEGIN;
+
+${products
+  .map(
+    p =>
+      `UPDATE public.products SET price = ${p.retail.toFixed(2)}, retail_price = ${p.retail.toFixed(2)}, wholesale_price = ${p.wholesale.toFixed(2)}, updated_at = now() WHERE reference = ${sqlStr(p.reference)};`
+  )
+  .join('\n')}
+
+COMMIT;
+`
+
 fs.mkdirSync(path.dirname(OUT_SQL), { recursive: true })
 fs.writeFileSync(OUT_SQL, sql, 'utf8')
+fs.writeFileSync(OUT_PRICES_SQL, pricesSql, 'utf8')
+
+const zeroRetail = products.filter(p => p.retail === 0).length
+const zeroWholesale = products.filter(p => p.wholesale === 0).length
 
 console.log('SQL:', OUT_SQL)
+console.log('Precios:', OUT_PRICES_SQL)
 console.log('Categorías:', categories.length)
 console.log('Productos:', products.length)
+console.log('Sin precio cliente final (0):', zeroRetail)
+console.log('Sin precio mayorista (0):', zeroWholesale)
 if (skipped.length) {
   console.log('Omitidos:', skipped.length)
   console.log(skipped.slice(0, 10))
