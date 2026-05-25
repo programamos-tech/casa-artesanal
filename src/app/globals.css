@@ -603,3 +603,18 @@ body::-webkit-scrollbar,
     max-width: 100% !important;
   }
 }
+
+/* Barra de carga unificada (AppLoadingScreen) */
+@keyframes app-loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.app-loading-bar {
+  width: 42%;
+  animation: app-loading-bar 0.75s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}

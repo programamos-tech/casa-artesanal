@@ -11,7 +11,6 @@ import { SalesProvider } from "@/contexts/sales-context";
 import { WarrantyProvider } from "@/contexts/warranty-context";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { ConditionalLayout } from "@/components/layout/conditional-layout";
-import { GlobalLoading } from "@/components/ui/global-loading";
 import { MobileNavWrapper } from "@/components/ui/mobile-nav-wrapper";
 import { ToasterWrapper } from "@/components/ui/toaster-wrapper";
 
@@ -72,7 +71,6 @@ export default function RootLayout({
                 <CategoriesProvider>
                   <SalesProvider>
                     <WarrantyProvider>
-                      <GlobalLoading />
                       <ConditionalLayout>
                         {children}
                       </ConditionalLayout>

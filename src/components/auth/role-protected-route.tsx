@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
+import { AppLoadingScreen } from '@/components/ui/app-loading-screen'
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode
@@ -47,14 +48,7 @@ export function RoleProtectedRoute({
   }, [user, isLoading, module, requiredAction, router])
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-neutral-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
-          <p className="text-gray-700 dark:text-gray-300 text-lg">Verificando permisos...</p>
-        </div>
-      </div>
-    )
+    return <AppLoadingScreen />
   }
 
   if (!user) {

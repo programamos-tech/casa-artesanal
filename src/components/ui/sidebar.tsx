@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
@@ -29,7 +30,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { canAccessAllStores, isMainStoreUser } from '@/lib/store-helper'
 import { StoresService } from '@/lib/stores-service'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
-import { APP_VERSION } from '@/config/app-meta'
+import { APP_NAME, APP_VERSION } from '@/config/app-meta'
 import type { Store } from '@/types/store'
 const navigation = [
   { name: 'Reportes', href: '/dashboard', icon: BarChart3, module: 'dashboard' },
@@ -275,6 +276,8 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                 'bg-white/[0.1] text-white ring-1 ring-inset ring-white/[0.1] shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
               const rowInactive =
                 'text-white/55 hover:bg-white/[0.055] hover:text-white/90'
+              /** Con submenú: el padre no se resalta; solo el hijo activo */
+              const isParentHighlighted = hasSubmenu ? false : isActive
 
               const navIconParent = (active: boolean) =>
                 cn(
@@ -310,11 +313,11 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                         onClick={toggleSubmenu}
                         className={cn(
                           'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
-                          isActive || isSubmenuActive ? rowActive : rowInactive
+                          isParentHighlighted ? rowActive : rowInactive
                         )}
                       >
                         <div className="flex min-w-0 flex-1 items-center">
-                          <item.icon className={navIconParent(!!(isActive || isSubmenuActive))} aria-hidden />
+                          <item.icon className={navIconParent(isParentHighlighted)} aria-hidden />
                           <span className="flex-1 truncate text-left">{item.name}</span>
                         </div>
                         {isExpanded ? (
@@ -404,19 +407,21 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
             })}
           </nav>
 
-          <div className="border-t border-white/[0.065] px-2 pb-3 pt-2">
-            <p className="font-programamos-brand text-center text-[10px] leading-snug tracking-wide text-white/20">
-              powered by{' '}
-              <a
-                href="https://programamos-st.vercel.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-white/35 underline-offset-2 hover:text-white/60 hover:underline"
-              >
-                programamos
-              </a>
-              <span className="mx-1.5 text-white/15" aria-hidden>·</span>
-              <span className="tabular-nums text-white/20">{`V${APP_VERSION}`}</span>
+          <div className="flex flex-col items-center gap-2.5 border-t border-white/[0.065] px-2 pb-4 pt-3.5">
+            <Image
+              src="/berea.png"
+              alt="Berea — Software a medida"
+              width={220}
+              height={80}
+              className="h-[4.75rem] w-[88%] max-w-none object-contain object-center opacity-95 brightness-110 contrast-[1.02]"
+              unoptimized
+            />
+            <p className="max-w-full text-center text-[10px] leading-snug tracking-wide text-white/30">
+              <span className="font-medium text-white/45">{APP_NAME}</span>
+              <span className="mx-1.5 text-white/15" aria-hidden>
+                ·
+              </span>
+              <span className="tabular-nums text-white/35">v{APP_VERSION}</span>
             </p>
           </div>
         </div>
