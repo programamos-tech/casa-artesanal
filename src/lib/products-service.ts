@@ -22,6 +22,10 @@ export type CategoryFilter = 'all' | string
 const PRODUCT_SELECT_WITH_CATEGORY =
   '*, categories:category_id ( id, name )'
 
+/** Listado: sin join (más rápido; la categoría se resuelve en el cliente) */
+const PRODUCT_LIST_SELECT =
+  'id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at'
+
 type DbProductRow = {
   id: string
   name: string
@@ -41,6 +45,18 @@ type DbProductRow = {
 }
 
 export class ProductsService {
+  /** Orden catálogo inventario: 001, 002, … 010, 011 */
+  private static referenceSortKey(reference: string): number {
+    const n = Number.parseInt(String(reference ?? '').replace(/\D/g, ''), 10)
+    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER
+  }
+
+  private static sortProductsByReference(products: Product[]): Product[] {
+    return [...products].sort(
+      (a, b) => this.referenceSortKey(a.reference) - this.referenceSortKey(b.reference)
+    )
+  }
+
   private static mapDbProduct(
     row: DbProductRow,
     stock: Product['stock'],
@@ -393,52 +409,66 @@ export class ProductsService {
       // Para filtros de stock, necesitamos obtener más productos y filtrar después
       // porque el stock real puede venir de store_stock (microtiendas)
       const needsStockFilter = stockFilter && stockFilter !== 'all'
-      // En microtienda con filtro hace falta un pool mayor: el stock viene de store_stock
-      // y solo una parte del catálogo tiene fila en esa tienda
-      const fetchLimit = needsStockFilter
-        ? (isMainStore ? limit * 5 : Math.max(limit * 10, 500))
-        : limit
-      const from = (page - 1) * (needsStockFilter ? fetchLimit : limit)
-      const to = from + fetchLimit - 1
+      const needsCategoryFilter = Boolean(categoryFilter && categoryFilter !== 'all')
+      // Solo el filtro de stock exige traer muchos registros y paginar en cliente
+      const needsClientPagination = needsStockFilter
+      const pageFrom = (page - 1) * limit
 
-      // Obtener productos paginados
-      // Ordenar por created_at (más recientes primero)
       let listQuery = supabase
         .from('products')
-        .select(PRODUCT_SELECT_WITH_CATEGORY)
-        .order('created_at', { ascending: false })
-        .range(from, to)
+        .select(PRODUCT_LIST_SELECT)
+        .eq('status', 'active')
+        .order('reference', { ascending: true })
 
-      if (categoryFilter && categoryFilter !== 'all') {
-        listQuery = listQuery.eq('category_id', categoryFilter)
+      if (needsCategoryFilter) {
+        listQuery = listQuery.eq('category_id', categoryFilter!)
+      }
+
+      if (needsClientPagination) {
+        listQuery = listQuery.limit(1000)
+      } else {
+        // +1 fila para saber si hay página siguiente sin consulta count
+        listQuery = listQuery.range(pageFrom, pageFrom + limit)
       }
 
       const { data, error } = await listQuery
 
       if (error) {
-        // Error silencioso en producción
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[ProductsService.getAllProducts]', error.message)
+        }
         return { products: [], total: 0, hasMore: false }
       }
 
-      // Obtener el total de productos
-      let countQuery = supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-
-      if (categoryFilter && categoryFilter !== 'all') {
-        countQuery = countQuery.eq('category_id', categoryFilter)
+      let rows = data ?? []
+      let hasMoreFromFetch = false
+      if (!needsClientPagination && rows.length > limit) {
+        hasMoreFromFetch = true
+        rows = rows.slice(0, limit)
       }
 
-      const { count, error: countError } = await countQuery
-
-      if (countError) {
-        // Error silencioso en producción
-        return { products: [], total: 0, hasMore: false }
+      let total = 0
+      if (needsClientPagination) {
+        // total se calcula tras filtrar en cliente
+      } else if (hasMoreFromFetch || pageFrom > 0) {
+        let countQuery = supabase
+          .from('products')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'active')
+        if (needsCategoryFilter) {
+          countQuery = countQuery.eq('category_id', categoryFilter!)
+        }
+        const { count } = await countQuery
+        total = count ?? pageFrom + rows.length + (hasMoreFromFetch ? 1 : 0)
+      } else {
+        total = rows.length
       }
 
-      // Mapear productos con stock correcto según el tipo de tienda (optimizado)
-      const productIds = data.map((p: any) => p.id)
-      const stockMap = await this.getProductsStockForStore(productIds, currentStoreId)
+      const productIds = rows.map((p: { id: string }) => p.id)
+      // Tienda principal: stock ya viene en la fila; evitar segunda ronda de consultas
+      const stockMap = isMainStore
+        ? new Map<string, { warehouse: number; store: number; total: number }>()
+        : await this.getProductsStockForStore(productIds, currentStoreId)
 
       // Para microtiendas, obtener cost/price de store_stock
       let costPriceMap = new Map<string, { cost: number | null, price: number | null }>()
@@ -460,12 +490,16 @@ export class ProductsService {
         }
       }
 
-      const mappedProducts = data.map((product: any) => {
-        const stock = stockMap.get(product.id) || { warehouse: 0, store: 0, total: 0 }
+      const mappedProducts = rows.map((product: any) => {
+        const stock = isMainStore
+          ? {
+              warehouse: Number(product.stock_warehouse ?? 0),
+              store: Number(product.stock_store ?? 0),
+              total:
+                Number(product.stock_warehouse ?? 0) + Number(product.stock_store ?? 0),
+            }
+          : stockMap.get(product.id) || { warehouse: 0, store: 0, total: 0 }
 
-        // Para microtiendas, usar cost/price de store_stock si existe
-        // Si el costo en store_stock es 0 o null, usar el costo original del producto como respaldo
-        // (esto cubre transferencias anteriores a la implementación de costos por tienda)
         let productCost = product.cost
         let productPrice = product.price
 
@@ -473,14 +507,11 @@ export class ProductsService {
           const storeStockCostPrice = costPriceMap.get(product.id)
 
           if (storeStockCostPrice) {
-            // Si hay registro en store_stock con cost/price, usar esos valores
-            // Si cost es null o 0, usar el price de Sincelejo como cost por defecto
             productCost = (storeStockCostPrice.cost !== null && storeStockCostPrice.cost !== 0)
               ? storeStockCostPrice.cost
-              : product.price // Precio de venta de Sincelejo como cost por defecto
+              : product.price
             productPrice = storeStockCostPrice.price !== null ? storeStockCostPrice.price : 0
           } else {
-            // Sin registro: usar price de Sincelejo como cost por defecto
             productCost = product.price
             productPrice = 0
           }
@@ -493,35 +524,23 @@ export class ProductsService {
         )
       })
 
-      // Aplicar filtro de stock si se especificó
-      const filteredProducts = this.applyStockFilterToProducts(mappedProducts, stockFilter)
+      let filteredProducts = mappedProducts
+      filteredProducts = this.applyStockFilterToProducts(filteredProducts, stockFilter)
+      const sortedProducts = this.sortProductsByReference(filteredProducts)
 
-      // Ordenar: productos con stock primero, luego por fecha más reciente
-      const sortedProducts = filteredProducts.sort((a, b) => {
-        const aHasStock = a.stock.total > 0
-        const bHasStock = b.stock.total > 0
-
-        // Si uno tiene stock y el otro no, el que tiene stock va primero
-        if (aHasStock && !bHasStock) return -1
-        if (!aHasStock && bHasStock) return 1
-
-        // Si ambos tienen stock o ambos no tienen stock, ordenar por fecha más reciente
-        const aDate = a.updatedAt || a.createdAt
-        const bDate = b.updatedAt || b.createdAt
-        return new Date(bDate).getTime() - new Date(aDate).getTime()
-      })
-
-      // Paginar los resultados filtrados
-      const paginatedProducts = needsStockFilter
-        ? sortedProducts.slice(0, limit)
+      const paginatedProducts = needsClientPagination
+        ? sortedProducts.slice(pageFrom, pageFrom + limit)
         : sortedProducts
+
+      const totalOut = needsClientPagination ? sortedProducts.length : total
+      const hasMoreOut = needsClientPagination
+        ? pageFrom + limit < sortedProducts.length
+        : hasMoreFromFetch || pageFrom + limit < totalOut
 
       return {
         products: paginatedProducts,
-        total: needsStockFilter ? filteredProducts.length : (count || 0),
-        hasMore: needsStockFilter
-          ? sortedProducts.length > limit
-          : to < (count || 0) - 1
+        total: totalOut,
+        hasMore: hasMoreOut,
       }
     } catch (error) {
       // Error silencioso en producción
@@ -545,7 +564,7 @@ export class ProductsService {
         const { data, error, count } = await supabase
           .from('products')
           .select('*', { count: 'exact' })
-          .order('created_at', { ascending: false })
+          .order('reference', { ascending: true })
           .range(from, to)
 
         if (error) {
@@ -680,20 +699,7 @@ export class ProductsService {
           )
         })
 
-        // Ordenar: productos con stock primero, luego por fecha más reciente
-        const sortedProducts = mappedProducts.sort((a, b) => {
-          const aHasStock = a.stock.total > 0
-          const bHasStock = b.stock.total > 0
-
-          if (aHasStock && !bHasStock) return -1
-          if (!aHasStock && bHasStock) return 1
-
-          const aDate = a.updatedAt || a.createdAt
-          const bDate = b.updatedAt || b.createdAt
-          return new Date(bDate).getTime() - new Date(aDate).getTime()
-        })
-
-        allProducts.push(...sortedProducts)
+        allProducts.push(...mappedProducts)
 
         // Si obtuvimos menos productos que el tamaño de página, no hay más
         if (data.length < pageSize) {
@@ -709,18 +715,7 @@ export class ProductsService {
         }
       }
 
-      // Ordenar todos los productos al final: productos con stock primero, luego por fecha más reciente
-      return allProducts.sort((a, b) => {
-        const aHasStock = a.stock.total > 0
-        const bHasStock = b.stock.total > 0
-
-        if (aHasStock && !bHasStock) return -1
-        if (!aHasStock && bHasStock) return 1
-
-        const aDate = a.updatedAt || a.createdAt
-        const bDate = b.updatedAt || b.createdAt
-        return new Date(bDate).getTime() - new Date(aDate).getTime()
-      })
+      return this.sortProductsByReference(allProducts)
     } catch (error) {
       // Error silencioso en producción
       return []
@@ -1234,11 +1229,10 @@ export class ProductsService {
       // Búsqueda simplificada sin timeout - buscar en referencia y nombre
       let searchQuery = supabase
         .from('products')
-        .select(
-          `id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at, categories:category_id ( id, name )`
-        )
+        .select(PRODUCT_LIST_SELECT)
+        .eq('status', 'active')
         .or(`reference.ilike.%${cleanQuery}%,name.ilike.%${cleanQuery}%`)
-        .order('created_at', { ascending: false })
+        .order('reference', { ascending: true })
         .limit(100)
 
       if (categoryFilter && categoryFilter !== 'all') {
@@ -1248,19 +1242,18 @@ export class ProductsService {
       const { data, error } = await searchQuery
 
       if (error) {
-        // Error silencioso en producción
         return []
       }
 
-      // Obtener stock correcto según el tipo de tienda
-      // Usar storeId pasado como parámetro, o intentar obtener del localStorage
       const currentStoreId = storeId !== undefined ? storeId : getCurrentUserStoreId()
       const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
       const isMainStore = !currentStoreId || currentStoreId === MAIN_STORE_ID
 
-      // console.log('[PRODUCTS SERVICE] searchProducts - storeId param:', storeId, 'currentStoreId:', currentStoreId, 'isMainStore:', isMainStore)
-      const productIds = data.map((p: any) => p.id)
-      const stockMap = await this.getProductsStockForStore(productIds, currentStoreId)
+      const rows = data ?? []
+      const productIds = rows.map((p: { id: string }) => p.id)
+      const stockMap = isMainStore
+        ? new Map<string, { warehouse: number; store: number; total: number }>()
+        : await this.getProductsStockForStore(productIds, currentStoreId)
 
       // Para microtiendas, obtener cost/price de store_stock
       let costPriceMap = new Map<string, { cost: number | null, price: number | null }>()
@@ -1282,10 +1275,16 @@ export class ProductsService {
         }
       }
 
-      const mappedProducts = data.map((product: any) => {
-        const stock = stockMap.get(product.id) || { warehouse: 0, store: 0, total: 0 }
+      const mappedProducts = rows.map((product: any) => {
+        const stock = isMainStore
+          ? {
+              warehouse: Number(product.stock_warehouse ?? 0),
+              store: Number(product.stock_store ?? 0),
+              total:
+                Number(product.stock_warehouse ?? 0) + Number(product.stock_store ?? 0),
+            }
+          : stockMap.get(product.id) || { warehouse: 0, store: 0, total: 0 }
 
-        // Para microtiendas, usar cost/price de store_stock si existe
         let productCost = product.cost
         let productPrice = product.price
 
@@ -1293,14 +1292,11 @@ export class ProductsService {
           const storeStockCostPrice = costPriceMap.get(product.id)
 
           if (storeStockCostPrice) {
-            // Si hay registro en store_stock con cost/price, usar esos valores
-            // Si cost es null o 0, usar el price de Sincelejo como cost por defecto
             productCost = (storeStockCostPrice.cost !== null && storeStockCostPrice.cost !== 0)
               ? storeStockCostPrice.cost
-              : product.price // Precio de venta de Sincelejo como cost por defecto
+              : product.price
             productPrice = storeStockCostPrice.price !== null ? storeStockCostPrice.price : 0
           } else {
-            // Sin registro: usar price de Sincelejo como cost por defecto
             productCost = product.price
             productPrice = 0
           }
@@ -1313,21 +1309,8 @@ export class ProductsService {
         )
       })
 
-      // Aplicar filtro de stock si se especificó
       const filteredProducts = this.applyStockFilterToProducts(mappedProducts, stockFilter)
-
-      // Ordenar: productos con stock primero, luego por fecha más reciente
-      return filteredProducts.sort((a, b) => {
-        const aHasStock = a.stock.total > 0
-        const bHasStock = b.stock.total > 0
-
-        if (aHasStock && !bHasStock) return -1
-        if (!aHasStock && bHasStock) return 1
-
-        const aDate = a.updatedAt || a.createdAt
-        const bDate = b.updatedAt || b.createdAt
-        return new Date(bDate).getTime() - new Date(aDate).getTime()
-      })
+      return this.sortProductsByReference(filteredProducts)
     } catch (error) {
       // Error silencioso en producción
       return []

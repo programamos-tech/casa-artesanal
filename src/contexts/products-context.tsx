@@ -13,11 +13,19 @@ interface ProductsContextType {
   hasMore: boolean
   isSearching: boolean
   searchLoading: boolean
+  filtersLoading: boolean
   stockFilter: StockFilter
   categoryFilter: CategoryFilter
   productsLastUpdated: number
   setStockFilter: (filter: StockFilter) => void
   setCategoryFilter: (filter: CategoryFilter) => void
+  applyProductFilters: (opts?: {
+    page?: number
+    stock?: StockFilter
+    category?: CategoryFilter
+    search?: string
+    silent?: boolean
+  }) => Promise<void>
   createProduct: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>
   updateProduct: (id: string, updates: Partial<Product>) => Promise<boolean>
   deleteProduct: (id: string) => Promise<{ success: boolean, error?: string }>
@@ -45,50 +53,114 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const [hasMore, setHasMore] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [filtersLoading, setFiltersLoading] = useState(false)
   const [stockFilter, setStockFilterState] = useState<StockFilter>('all')
   const [categoryFilter, setCategoryFilterState] = useState<CategoryFilter>('all')
   const [productsLastUpdated, setProductsLastUpdated] = useState(Date.now()) // Timestamp para notificar cambios
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isLoading: authLoading } = useAuth()
   const storeId = currentUser?.storeId
-  const isSearchingRef = useRef(isSearching)
-  isSearchingRef.current = isSearching
+  const listSearchRef = useRef('')
+  const fetchSeqRef = useRef(0)
 
-  const refreshProducts = useCallback(async (filter?: StockFilter, options?: { silent?: boolean }) => {
-    const activeFilter = filter ?? stockFilter
-    const silent = options?.silent === true
-    if (!silent) setLoading(true)
-    try {
-      const result = await ProductsService.getAllProducts(
-        1,
-        ITEMS_PER_PAGE,
-        activeFilter,
-        categoryFilter
-      )
-      setProducts(result.products)
-      setCurrentPage(1)
-      setTotalProducts(result.total)
-      setHasMore(result.hasMore)
-      setIsSearching(false)
-    } catch (error) {
-      // Error silencioso en producción
-    } finally {
-      if (!silent) setLoading(false)
-    }
-  }, [storeId, stockFilter, categoryFilter])
+  const applyProductFilters = useCallback(
+    async (opts?: {
+      page?: number
+      stock?: StockFilter
+      category?: CategoryFilter
+      search?: string
+      silent?: boolean
+    }) => {
+      const page = opts?.page ?? 1
+      const sf = opts?.stock ?? stockFilter
+      const cf = opts?.category ?? categoryFilter
+      const term = (opts?.search !== undefined ? opts.search : listSearchRef.current).trim()
+      const silent = opts?.silent === true
+      const seq = ++fetchSeqRef.current
+
+      if (opts?.search !== undefined) {
+        listSearchRef.current = opts.search
+      }
+
+      if (silent) {
+        setFiltersLoading(true)
+      } else {
+        setLoading(true)
+      }
+      setSearchLoading(!!term)
+
+      try {
+        if (term) {
+          setIsSearching(true)
+          const results = await ProductsService.searchProducts(term, sf, storeId, cf)
+          if (seq !== fetchSeqRef.current) return
+          setProducts(results)
+          setCurrentPage(1)
+          setTotalProducts(results.length)
+          setHasMore(false)
+        } else {
+          setIsSearching(false)
+          const result = await ProductsService.getAllProducts(page, ITEMS_PER_PAGE, sf, cf)
+          if (seq !== fetchSeqRef.current) return
+          setProducts(result.products)
+          setCurrentPage(page)
+          setTotalProducts(result.total)
+          setHasMore(result.hasMore)
+        }
+      } catch {
+        // Error silencioso en producción
+      } finally {
+        if (seq === fetchSeqRef.current) {
+          setLoading(false)
+          setFiltersLoading(false)
+          setSearchLoading(false)
+        }
+      }
+    },
+    [stockFilter, categoryFilter, storeId]
+  )
+
+  const refreshProducts = useCallback(
+    async (filter?: StockFilter, options?: { silent?: boolean }) => {
+      await applyProductFilters({
+        page: 1,
+        stock: filter,
+        silent: options?.silent,
+      })
+    },
+    [applyProductFilters]
+  )
 
   useEffect(() => {
-    if (isSearchingRef.current) return
-    void refreshProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tienda y filtros de listado
-  }, [storeId, stockFilter, categoryFilter])
+    if (authLoading) return
+    void applyProductFilters({ page: 1 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial y cambio de tienda
+  }, [storeId, authLoading])
 
-  const setStockFilter = useCallback((filter: StockFilter) => {
-    setStockFilterState(filter)
-  }, [])
+  const setStockFilter = useCallback(
+    (filter: StockFilter) => {
+      setStockFilterState(filter)
+      void applyProductFilters({
+        stock: filter,
+        page: 1,
+        search: listSearchRef.current,
+        silent: true,
+      })
+    },
+    [applyProductFilters]
+  )
 
-  const setCategoryFilter = useCallback((filter: CategoryFilter) => {
-    setCategoryFilterState(filter)
-  }, [])
+  const setCategoryFilter = useCallback(
+    (filter: CategoryFilter) => {
+      setCategoryFilterState(filter)
+      void applyProductFilters({
+        category: filter,
+        page: 1,
+        search: listSearchRef.current,
+        silent: true,
+      })
+    },
+    [applyProductFilters]
+  )
 
   const createProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
     const newProduct = await ProductsService.createProduct(productData, currentUser?.id)
@@ -145,69 +217,48 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const clearSearch = useCallback(async (): Promise<void> => {
-    setIsSearching(false)
-    setSearchLoading(false)
-    try {
-      const result = await ProductsService.getAllProducts(
-        1,
-        ITEMS_PER_PAGE,
-        stockFilter,
-        categoryFilter
-      )
-      setProducts(result.products)
-      setCurrentPage(1)
-      setTotalProducts(result.total)
-      setHasMore(result.hasMore)
-    } catch (error) {
-      // Error silencioso en producción
-    }
-  }, [stockFilter, categoryFilter])
+    listSearchRef.current = ''
+    await applyProductFilters({ page: 1, search: '' })
+  }, [applyProductFilters])
 
-  const searchProducts = useCallback(async (searchTerm: string): Promise<Product[]> => {
-    if (!searchTerm.trim()) {
-      await clearSearch()
-      return []
-    }
+  const searchProducts = useCallback(
+    async (searchTerm: string): Promise<Product[]> => {
+      listSearchRef.current = searchTerm
+      if (!searchTerm.trim()) {
+        await clearSearch()
+        return []
+      }
 
-    setIsSearching(true)
-    setSearchLoading(true)
-
-    try {
-      const results = await ProductsService.searchProducts(
-        searchTerm,
-        stockFilter,
-        storeId,
-        categoryFilter
-      )
-      setProducts(results)
-      setCurrentPage(1)
-      return results
-    } catch (error) {
-      return []
-    } finally {
-      setSearchLoading(false)
-    }
-  }, [clearSearch, stockFilter, storeId, categoryFilter])
+      setSearchLoading(true)
+      try {
+        const results = await ProductsService.searchProducts(
+          searchTerm,
+          stockFilter,
+          storeId,
+          categoryFilter
+        )
+        setIsSearching(true)
+        setProducts(results)
+        setCurrentPage(1)
+        setTotalProducts(results.length)
+        setHasMore(false)
+        return results
+      } catch {
+        return []
+      } finally {
+        setSearchLoading(false)
+      }
+    },
+    [stockFilter, categoryFilter, storeId, clearSearch]
+  )
 
   const goToPage = async (page: number) => {
     if (page >= 1 && page <= Math.ceil(totalProducts / ITEMS_PER_PAGE) && !loading) {
-      try {
-        setLoading(true)
-        const result = await ProductsService.getAllProducts(
-          page,
-          ITEMS_PER_PAGE,
-          stockFilter,
-          categoryFilter
-        )
-        setProducts(result.products)
-        setCurrentPage(page)
-        setTotalProducts(result.total)
-        setHasMore(result.hasMore)
-      } catch (error) {
-      // Error silencioso en producción
-      } finally {
-        setLoading(false)
-      }
+      await applyProductFilters({
+        page,
+        search: listSearchRef.current,
+        silent: true,
+      })
     }
   }
 
@@ -274,11 +325,13 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
     hasMore,
     isSearching,
     searchLoading,
+    filtersLoading,
     stockFilter,
     categoryFilter,
     productsLastUpdated,
     setStockFilter,
     setCategoryFilter,
+    applyProductFilters,
     createProduct, 
     updateProduct, 
     deleteProduct, 

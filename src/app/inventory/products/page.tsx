@@ -14,7 +14,7 @@ import { Product, Category, StockTransfer } from '@/types'
 import { toast } from 'sonner'
 
 export default function ProductsPage() {
-  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts, productsLastUpdated } = useProducts()
+  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, filtersLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts, productsLastUpdated } = useProducts()
   const { categories, createCategory, toggleCategoryStatus, deleteCategory, refreshCategories } = useCategories()
 
   useEffect(() => {
@@ -180,6 +180,7 @@ export default function ProductsPage() {
         hasMore={hasMore}
         isSearching={isSearching}
         searchLoading={searchLoading}
+        filtersLoading={filtersLoading}
         stockFilter={stockFilter}
         categoryFilter={categoryFilter}
         onFilterChange={setStockFilter}
