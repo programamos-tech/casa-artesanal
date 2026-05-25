@@ -24,13 +24,12 @@ import {
   FileText
 } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
-import { Logo } from './logo'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
-import { canAccessAllStores, isMainStoreUser } from '@/lib/store-helper'
+import { canAccessAllStores, getCurrentUserStoreId, isMainStoreUser } from '@/lib/store-helper'
 import { StoresService } from '@/lib/stores-service'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
-import { APP_NAME, APP_VERSION } from '@/config/app-meta'
+import { APP_BRAND_LOGO, APP_NAME, APP_VERSION } from '@/config/app-meta'
 import type { Store } from '@/types/store'
 const navigation = [
   { name: 'Reportes', href: '/dashboard', icon: BarChart3, module: 'dashboard' },
@@ -106,31 +105,31 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     onMobileMenuToggle?.(isMobileMenuOpen)
   }, [isMobileMenuOpen, onMobileMenuToggle])
 
-  // Cargar información de la tienda del usuario
+  // Cargar tienda activa (principal o microtienda seleccionada)
   useEffect(() => {
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
     const loadStoreInfo = async () => {
-      if (user?.storeId) {
-        try {
-          const store = await StoresService.getStoreById(user.storeId)
-          setCurrentStore(store)
-        } catch (error) {
-          console.error('Error loading store info:', error)
-        }
-      } else {
-        // Si no tiene storeId, es de la tienda principal
-        try {
-          const mainStore = await StoresService.getMainStore()
-          setCurrentStore(mainStore)
-        } catch (error) {
-          console.error('Error loading main store:', error)
-        }
+      if (!user) {
+        setCurrentStore(null)
+        return
+      }
+
+      const storeId = getCurrentUserStoreId() ?? user.storeId
+      try {
+        const store =
+          !storeId || storeId === MAIN_STORE_ID
+            ? await StoresService.getMainStore()
+            : await StoresService.getStoreById(storeId)
+        setCurrentStore(store)
+      } catch (error) {
+        console.error('Error loading store info:', error)
+        setCurrentStore(null)
       }
     }
 
-    if (user) {
-      loadStoreInfo()
-    }
-  }, [user])
+    void loadStoreInfo()
+  }, [user, user?.storeId])
 
   // Contador de recepciones pendientes para badge en sidebar.
   useEffect(() => {
@@ -209,24 +208,42 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
           {/* Logo y Tienda */}
           <div
             className={cn(
-              'border-b border-[#1c1c1f] px-1 py-2 transition-colors dark:border-zinc-800'
+              'border-b border-[#1c1c1f] px-2 py-3 transition-colors dark:border-zinc-800'
             )}
           >
             <Link
               href="/dashboard"
-              className="relative flex flex-col items-center transition-opacity hover:opacity-90"
+              className="relative flex w-full flex-col items-center gap-2 px-1 transition-opacity hover:opacity-90"
             >
-              <div className="relative">
-                {currentStore?.logo ? (
-                  <img
-                    src={currentStore.logo}
-                    alt={currentStore.name}
-                    className="h-11 w-11 object-cover"
-                  />
-                ) : (
-                  <Logo size="lg" />
-                )}
+              <div className="flex w-full min-h-[4.75rem] items-center justify-center">
+                <Image
+                  src={APP_BRAND_LOGO}
+                  alt={APP_NAME}
+                  width={240}
+                  height={88}
+                  className="h-[4.75rem] w-[92%] max-w-[12rem] object-contain object-center"
+                  priority
+                  unoptimized
+                />
               </div>
+              {currentStore?.name ? (
+                <p
+                  className="max-w-full text-center text-[11px] font-medium leading-snug tracking-wide text-white/55"
+                  title={
+                    currentStore.city
+                      ? `${currentStore.name} — ${currentStore.city}`
+                      : currentStore.name
+                  }
+                >
+                  <span className="line-clamp-2">
+                    {isMainStoreUser(user)
+                      ? currentStore.name
+                      : currentStore.city
+                        ? `${currentStore.name} — ${currentStore.city}`
+                        : currentStore.name}
+                  </span>
+                </p>
+              ) : null}
             </Link>
           </div>
 

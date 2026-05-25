@@ -10,6 +10,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
 import { LoginThemeToggle } from '@/components/auth/login-theme-toggle'
+import { APP_BRAND_LOGO, APP_NAME } from '@/config/app-meta'
+import Image from 'next/image'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido').min(1, 'Email es requerido'),
@@ -89,13 +91,15 @@ export default function LoginPage() {
       />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col md:flex-row">
         <div className="flex flex-shrink-0 flex-col items-center justify-center px-8 pb-8 pt-12 md:w-[46%] md:pb-16 md:pt-16 lg:w-1/2">
-          <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-[#0d0d0e] p-3.5 ring-1 ring-zinc-200 drop-shadow-[0_8px_18px_rgba(24,24,27,0.12)] dark:ring-zinc-800 dark:drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] md:h-[190px] md:w-[190px] md:p-7">
-            <img
-              src="/logo.ya.png"
-              alt="Casa Artesanal"
-              className="h-full w-full object-contain"
-            />
-          </div>
+          <Image
+            src={APP_BRAND_LOGO}
+            alt={APP_NAME}
+            width={320}
+            height={120}
+            className="h-20 w-auto max-w-[min(100%,15rem)] object-contain object-center invert dark:invert-0 md:h-28 md:max-w-[18rem] lg:h-32"
+            priority
+            unoptimized
+          />
         </div>
 
         <div className="flex flex-1 flex-col justify-center px-6 pb-16 pt-2 md:px-10 md:py-16 lg:px-16 xl:pl-8">

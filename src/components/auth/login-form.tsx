@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { LoginThemeToggle } from '@/components/auth/login-theme-toggle'
+import { APP_BRAND_LOGO, APP_NAME } from '@/config/app-meta'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido').min(1, 'Email es requerido'),
@@ -86,10 +87,16 @@ export function LoginForm() {
         aria-hidden
       />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-        <div className="mb-10 flex justify-center">
-          <div className="relative h-[70px] w-[70px] overflow-hidden rounded-full bg-[#0d0d0e] p-2.5 ring-1 ring-zinc-200 dark:ring-zinc-800 md:h-[84px] md:w-[84px] md:p-3">
-            <Image src="/logo.ya.png" alt="Casa Artesanal" width={84} height={84} className="h-full w-full object-contain" priority />
-          </div>
+        <div className="mb-10 flex justify-center px-2">
+          <Image
+            src={APP_BRAND_LOGO}
+            alt={APP_NAME}
+            width={280}
+            height={100}
+            className="h-16 w-auto max-w-full object-contain object-center invert dark:invert-0 md:h-20"
+            priority
+            unoptimized
+          />
         </div>
 
         <div className="mb-8 text-center">
