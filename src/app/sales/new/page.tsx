@@ -87,6 +87,7 @@ export default function NewSalePage() {
   const [isCreating, setIsCreating] = useState(false)
   const productRefs = useRef<(HTMLDivElement | null)[]>([])
   const lastSearchTermRef = useRef<string>('')
+  const isSubmittingRef = useRef(false)
   // Cache de productos agregados a la venta para mantener su información de stock
   const [productsInSaleCache, setProductsInSaleCache] = useState<Map<string, Product>>(new Map())
   
@@ -717,6 +718,7 @@ export default function NewSalePage() {
   }
 
   const handleSave = async () => {
+    if (isCreating || isSubmittingRef.current) return
     if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
 
     // El vendedor es obligatorio: el cajero debe asignar a quién corresponde la venta.
@@ -808,18 +810,19 @@ export default function NewSalePage() {
       sellerEmail: seller.email,
     }
 
+    isSubmittingRef.current = true
+    setIsCreating(true)
+    setInvoiceNumber('Generando...')
     try {
-      setIsCreating(true)
-      setInvoiceNumber('Generando...')
       await createSale(saleData)
-      setInvoiceNumber('Pendiente')
-      setIsCreating(false)
       router.push('/sales')
     } catch (error) {
       console.error('Error creating sale:', error)
       setInvoiceNumber('Pendiente')
-      setIsCreating(false)
       alert('Error al crear la venta. Por favor intenta de nuevo.')
+    } finally {
+      isSubmittingRef.current = false
+      setIsCreating(false)
     }
   }
 

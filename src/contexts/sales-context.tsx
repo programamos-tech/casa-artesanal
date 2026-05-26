@@ -2,9 +2,22 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { Sale } from '@/types'
-import { SalesService, SALES_PAGE_SIZE } from '@/lib/sales-service'
+import { SalesService, SALES_PAGE_SIZE, SalesListOptions } from '@/lib/sales-service'
 import { useAuth } from './auth-context'
 import { useProducts } from './products-context'
+
+export type SalesDateRange = {
+  start: Date | null
+  end: Date | null
+}
+
+function toListOptions(range: SalesDateRange): SalesListOptions | undefined {
+  if (!range.start && !range.end) return undefined
+  return {
+    dateRangeStart: range.start ?? range.end ?? undefined,
+    dateRangeEnd: range.end ?? range.start ?? undefined,
+  }
+}
 
 interface SalesContextType {
   sales: Sale[]
@@ -20,9 +33,14 @@ interface SalesContextType {
   searchSales: (searchTerm: string) => Promise<Sale[]>
   refreshSales: () => Promise<void>
   goToPage: (page: number) => Promise<void>
+  dateRange: SalesDateRange
+  setDateRange: (range: SalesDateRange) => Promise<void>
+  clearDateRange: () => Promise<void>
 }
 
 const SalesContext = createContext<SalesContextType | undefined>(undefined)
+
+const emptyDateRange: SalesDateRange = { start: null, end: null }
 
 export function SalesProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<Sale[]>([])
@@ -30,13 +48,18 @@ export function SalesProvider({ children }: { children: ReactNode }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalSales, setTotalSales] = useState(0)
   const [hasMore, setHasMore] = useState(false)
+  const [dateRange, setDateRangeState] = useState<SalesDateRange>(emptyDateRange)
   const { user: currentUser } = useAuth()
   const { refreshProducts, returnStockFromSale } = useProducts()
 
-  const fetchSales = useCallback(async (page: number = 1, append: boolean = false) => {
+  const fetchSales = useCallback(async (
+    page: number = 1,
+    append: boolean = false,
+    activeRange: SalesDateRange = dateRange
+  ) => {
     try {
       setLoading(true)
-      const result = await SalesService.getAllSales(page, SALES_PAGE_SIZE)
+      const result = await SalesService.getAllSales(page, SALES_PAGE_SIZE, toListOptions(activeRange))
       
       if (append) {
         setSales(prev => [...prev, ...result.sales])
@@ -52,7 +75,7 @@ export function SalesProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [currentUser?.storeId])
+  }, [currentUser?.storeId, dateRange])
 
   useEffect(() => {
     fetchSales()
@@ -66,10 +89,7 @@ export function SalesProvider({ children }: { children: ReactNode }) {
     try {
       const newSale = await SalesService.createSale(saleData, currentUser.id)
       setSales(prev => [newSale, ...prev])
-      // No refrescar productos aquí: evita setLoading(true) y re-renders en cascada que bloquean la vista.
-      // El stock se actualizará al entrar a inventario o al abrir de nuevo la página de nueva venta.
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }
@@ -83,7 +103,6 @@ export function SalesProvider({ children }: { children: ReactNode }) {
       const updatedSale = await SalesService.updateSale(id, saleData, currentUser.id)
       setSales(prev => prev.map(sale => sale.id === id ? updatedSale : sale))
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }
@@ -97,7 +116,6 @@ export function SalesProvider({ children }: { children: ReactNode }) {
       await SalesService.deleteSale(id, currentUser.id)
       setSales(prev => prev.filter(sale => sale.id !== id))
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }
@@ -108,10 +126,8 @@ export function SalesProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Cancelar la venta (esto ya maneja el crédito y el stock)
       const result = await SalesService.cancelSale(id, reason, currentUser.id)
 
-      // Actualizar el estado local con el motivo de cancelación
       setSales(prev => {
         const updated = prev.map(sale => 
           sale.id === id 
@@ -121,26 +137,18 @@ export function SalesProvider({ children }: { children: ReactNode }) {
         return updated
       })
       
-      // Refrescar las ventas para obtener los datos actualizados de la base de datos
-      await fetchSales(currentPage, false)
+      await fetchSales(currentPage, false, dateRange)
 
-      // Si es una venta a crédito, notificar para actualizar la vista de créditos
       const cancelledSale = sales.find(sale => sale.id === id)
 
       if (cancelledSale?.paymentMethod === 'credit') {
-
         window.dispatchEvent(new CustomEvent('creditCancelled', { 
           detail: { invoiceNumber: cancelledSale.invoiceNumber } 
         }))
-
-      } else {
-
       }
 
       return result
     } catch (error) {
-      // Error silencioso en producción
-      // Proporcionar un mensaje de error más específico
       if (error instanceof Error) {
         if (error.message.includes('Product not found')) {
           throw new Error('Error: No se pudo encontrar uno de los productos para devolver al stock. La venta no fue anulada.')
@@ -162,33 +170,39 @@ export function SalesProvider({ children }: { children: ReactNode }) {
 
     try {
       await SalesService.finalizeDraftSale(id, currentUser.id)
-      // Refrescar productos para actualizar el stock
       await refreshProducts()
-      // Refrescar ventas
-      await fetchSales(currentPage, false)
+      await fetchSales(currentPage, false, dateRange)
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }
 
   const searchSales = async (searchTerm: string): Promise<Sale[]> => {
     try {
-      return await SalesService.searchSales(searchTerm)
+      return await SalesService.searchSales(searchTerm, toListOptions(dateRange))
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }
 
   const refreshSales = async () => {
-    await fetchSales(1, false)
+    await fetchSales(1, false, dateRange)
   }
 
   const goToPage = async (page: number) => {
     if (page >= 1 && page <= Math.ceil(totalSales / SALES_PAGE_SIZE) && !loading) {
-      await fetchSales(page, false)
+      await fetchSales(page, false, dateRange)
     }
+  }
+
+  const setDateRange = async (range: SalesDateRange) => {
+    setDateRangeState(range)
+    await fetchSales(1, false, range)
+  }
+
+  const clearDateRange = async () => {
+    setDateRangeState(emptyDateRange)
+    await fetchSales(1, false, emptyDateRange)
   }
 
   return (
@@ -205,7 +219,10 @@ export function SalesProvider({ children }: { children: ReactNode }) {
       finalizeDraftSale,
       searchSales,
       refreshSales,
-      goToPage
+      goToPage,
+      dateRange,
+      setDateRange,
+      clearDateRange,
     }}>
       {children}
     </SalesContext.Provider>

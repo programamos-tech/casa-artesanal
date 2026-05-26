@@ -83,26 +83,16 @@ export default function SalesPage() {
   }
 
   const handleUpdateSale = async (id: string, saleData: Omit<Sale, 'id' | 'createdAt'>) => {
-    try {
-      // Convertir a Partial<Sale> para el contexto
-      await updateSale(id, saleData as Partial<Sale>)
-      setIsModalOpen(false)
-      setSaleToEdit(null)
-      await refreshSales()
-    } catch (error) {
-      // Error silencioso en producción
-      alert('Error al actualizar el borrador')
-    }
+    await updateSale(id, saleData as Partial<Sale>)
+    setIsModalOpen(false)
+    setSaleToEdit(null)
+    await refreshSales()
   }
 
   const handleSaveSale = async (saleData: Omit<Sale, 'id' | 'createdAt'>) => {
-    try {
-      await createSale(saleData)
-      setIsModalOpen(false)
-    } catch (error) {
-      // Error silencioso en producción
-      alert('Error al crear la venta')
-    }
+    await createSale(saleData)
+    setIsModalOpen(false)
+    setSaleToEdit(null)
   }
 
   const handlePrint = async (sale: Sale) => {

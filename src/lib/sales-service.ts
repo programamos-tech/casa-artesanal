@@ -7,6 +7,48 @@ import { getCurrentUserStoreId, canAccessAllStores, getCurrentUser } from './sto
 /** Tamaño de página de la lista de ventas (contexto + servicio + tabla). */
 export const SALES_PAGE_SIZE = 20
 
+export type SalesListOptions = {
+  /** Inicio del rango (inclusive, medianoche local). */
+  dateRangeStart?: Date
+  /** Fin del rango (inclusive, fin del día local). */
+  dateRangeEnd?: Date
+}
+
+/** Rango del día en hora local (Colombia / navegador del usuario). */
+export function getLocalDayRange(date: Date): { start: Date; end: Date } {
+  return {
+    start: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0),
+    end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999),
+  }
+}
+
+/** `YYYY-MM-DD` → Date en medianoche local. */
+export function parseSalesDateInput(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
+  if (!match) return null
+  const y = Number(match[1])
+  const m = Number(match[2])
+  const d = Number(match[3])
+  const date = new Date(y, m - 1, d)
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null
+  return date
+}
+
+function applyCreatedAtRangeFilter<T extends { gte: (col: string, v: string) => T; lte: (col: string, v: string) => T }>(
+  query: T,
+  rangeStart?: Date,
+  rangeEnd?: Date
+): T {
+  if (!rangeStart && !rangeEnd) return query
+  const rawA = rangeStart ?? rangeEnd!
+  const rawB = rangeEnd ?? rangeStart!
+  const a = rawA <= rawB ? rawA : rawB
+  const b = rawB >= rawA ? rawB : rawA
+  const { start } = getLocalDayRange(a)
+  const { end } = getLocalDayRange(b)
+  return query.gte('created_at', start.toISOString()).lte('created_at', end.toISOString())
+}
+
 export class SalesService {
   /**
    * Siguiente número de factura por tienda.
@@ -41,7 +83,11 @@ export class SalesService {
     }
   }
 
-  static async getAllSales(page: number = 1, limit: number = SALES_PAGE_SIZE): Promise<{ sales: Sale[], total: number, hasMore: boolean }> {
+  static async getAllSales(
+    page: number = 1,
+    limit: number = SALES_PAGE_SIZE,
+    options?: SalesListOptions
+  ): Promise<{ sales: Sale[], total: number, hasMore: boolean }> {
     try {
       const offset = (page - 1) * limit
       const user = getCurrentUser()
@@ -63,6 +109,8 @@ export class SalesService {
         // Microtienda: solo ventas de esa microtienda
         countQuery = countQuery.eq('store_id', storeId)
       }
+
+      countQuery = applyCreatedAtRangeFilter(countQuery, options?.dateRangeStart, options?.dateRangeEnd)
 
       const { count, error: countError } = await countQuery
 
@@ -107,6 +155,8 @@ export class SalesService {
         dataQuery = dataQuery.eq('store_id', storeId)
       }
 
+      dataQuery = applyCreatedAtRangeFilter(dataQuery, options?.dateRangeStart, options?.dateRangeEnd)
+
       const { data, error } = await dataQuery
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
@@ -115,8 +165,6 @@ export class SalesService {
         throw error
       }
 
-      // OPTIMIZADO: Batch queries en lugar de N+1
-      // 1. Recolectar product_ids que necesitan referencia
       const productIdsNeedingRef = new Set<string>()
       for (const sale of data || []) {
         for (const item of sale.sale_items || []) {
@@ -126,7 +174,6 @@ export class SalesService {
         }
       }
 
-      // 2. Una sola query para obtener todas las referencias faltantes
       const productRefsMap = new Map<string, string>()
       if (productIdsNeedingRef.size > 0) {
         const { data: productsData } = await supabase
@@ -140,7 +187,6 @@ export class SalesService {
         }
       }
 
-      // 3. Recolectar invoice_numbers de ventas a crédito
       const creditInvoiceNumbers: string[] = []
       for (const sale of data || []) {
         if (sale.payment_method === 'credit' && sale.invoice_number) {
@@ -148,7 +194,6 @@ export class SalesService {
         }
       }
 
-      // 4. Una sola query para obtener todos los créditos
       const creditStatusMap = new Map<string, string>()
       if (creditInvoiceNumbers.length > 0) {
         let creditQuery = supabase
@@ -168,7 +213,6 @@ export class SalesService {
         }
       }
 
-      // 5. Mapear ventas sin queries adicionales
       const sales = (data || []).map((sale) => {
         const itemsWithReferences = (sale.sale_items || []).map((item: any) => {
           let productReference = item.product_reference_code
@@ -1798,7 +1842,7 @@ export class SalesService {
     }
   }
 
-  static async searchSales(searchTerm: string): Promise<Sale[]> {
+  static async searchSales(searchTerm: string, options?: SalesListOptions): Promise<Sale[]> {
     try {
       const cleanTerm = searchTerm.trim()
       if (!cleanTerm) return []
@@ -1831,6 +1875,8 @@ export class SalesService {
       if (storeId && !canAccessAllStores(user)) {
         query = query.eq('store_id', storeId)
       }
+
+      query = applyCreatedAtRangeFilter(query, options?.dateRangeStart, options?.dateRangeEnd)
 
       // Buscar en ambos campos: número de factura Y nombre del cliente
       if (isNumber) {

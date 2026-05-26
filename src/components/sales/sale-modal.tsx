@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -53,9 +53,9 @@ const MIN_PROFIT_MARGIN = 0.10
 interface SaleModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (sale: Omit<Sale, 'id' | 'createdAt'>) => void
+  onSave: (sale: Omit<Sale, 'id' | 'createdAt'>) => void | Promise<void>
   sale?: Sale | null // Venta existente para editar (solo borradores)
-  onUpdate?: (id: string, sale: Omit<Sale, 'id' | 'createdAt'>) => void // Callback para actualizar
+  onUpdate?: (id: string, sale: Omit<Sale, 'id' | 'createdAt'>) => void | Promise<void>
 }
 
 export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModalProps) {
@@ -88,6 +88,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   
   // Estado para cálculo de vuelto (solo efectivo)
   const [receivedAmount, setReceivedAmount] = useState<string>('')
+  const [isSaving, setIsSaving] = useState(false)
+  const isSubmittingRef = useRef(false)
 
   // Cargar clientes y productos cuando se abre el modal
   useEffect(() => {
@@ -753,7 +755,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     )
   }
 
-  const handleSave = (isDraft: boolean = false) => {
+  const handleSave = async (isDraft: boolean = false) => {
+    if (isSaving || isSubmittingRef.current) return
     // Validar que hay cliente, productos, método de pago y que todos tengan cantidad > 0
     if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
 
@@ -809,29 +812,37 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       invoiceNumber: sale?.invoiceNumber // Mantener número de factura si es edición
     }
 
-    // Si es modo edición y hay onUpdate, usar update en lugar de create
-    if (sale && sale.status === 'draft' && onUpdate) {
-      // Actualizar el número de factura antes de guardar
-      if (!sale.invoiceNumber) {
-        setInvoiceNumber('Generando...')
-      }
-      onUpdate(sale.id, saleData)
-    } else {
-      // Crear nueva venta
-      // Actualizar el número de factura antes de guardar
+    isSubmittingRef.current = true
+    setIsSaving(true)
+    if (!sale?.invoiceNumber) {
       setInvoiceNumber('Generando...')
-      onSave(saleData)
     }
-    
-    handleClose()
+    try {
+      if (sale && sale.status === 'draft' && onUpdate) {
+        await onUpdate(sale.id, saleData)
+      } else {
+        await onSave(saleData)
+      }
+      handleClose()
+    } catch {
+      setInvoiceNumber(sale?.invoiceNumber ?? 'Pendiente')
+      alert(
+        isDraft
+          ? 'Error al guardar el borrador. Por favor intenta de nuevo.'
+          : 'Error al crear la venta. Por favor intenta de nuevo.'
+      )
+    } finally {
+      isSubmittingRef.current = false
+      setIsSaving(false)
+    }
   }
 
   const handleSaveAsDraft = () => {
-    // Permitir borrador para cualquier tipo de venta
-    handleSave(true)
+    void handleSave(true)
   }
 
   const handleClose = () => {
+    if (isSaving) return
     setSelectedClient(null)
     setSelectedProducts([])
     setPaymentMethod('')
@@ -1682,6 +1693,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
           <div className="flex items-center justify-end gap-3">
             <Button
               onClick={handleClose}
+              disabled={isSaving}
               variant="outline"
               className="border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white font-medium px-6 py-2.5"
             >
@@ -1689,20 +1701,32 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
             </Button>
             {!sale && (
               <Button
-                onClick={() => handleSave(false)}
-                disabled={!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod}
+                onClick={() => void handleSave(false)}
+                disabled={
+                  isSaving ||
+                  !selectedClient ||
+                  selectedProducts.length === 0 ||
+                  validProducts.length === 0 ||
+                  !paymentMethod
+                }
                 className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
               >
-                Crear Venta
+                {isSaving ? 'Creando venta…' : 'Crear Venta'}
               </Button>
             )}
             {sale && sale.status === 'draft' && (
               <Button
-                onClick={() => handleSave(false)}
-                disabled={!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod}
+                onClick={() => void handleSave(false)}
+                disabled={
+                  isSaving ||
+                  !selectedClient ||
+                  selectedProducts.length === 0 ||
+                  validProducts.length === 0 ||
+                  !paymentMethod
+                }
                 className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
               >
-                Finalizar y Crear Venta
+                {isSaving ? 'Facturando…' : 'Finalizar y Crear Venta'}
               </Button>
             )}
           </div>

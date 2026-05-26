@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,8 @@ import { CreditsService } from '@/lib/credits-service'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { cn } from '@/lib/utils'
 import { SALES_PAGE_SIZE } from '@/lib/sales-service'
+import { useSales, type SalesDateRange } from '@/contexts/sales-context'
+import { SalesDateRangeFilter } from '@/components/sales/sales-date-range-filter'
 import { cardShell } from '@/lib/card-shell'
 
 const badgeTint = 'casa-artesanal-preserve-surface'
@@ -63,6 +65,8 @@ export function SalesTable({
   onSearch,
   onRefresh
 }: SalesTableProps) {
+  const { dateRange, setDateRange, clearDateRange } = useSales()
+  const hasDateFilter = Boolean(dateRange.start || dateRange.end)
   const { canCreate, currentUser } = usePermissions()
   const canCreateSales = canCreate('sales')
   const roleNorm = (currentUser?.role ?? '').toLowerCase().trim()
@@ -190,7 +194,7 @@ export function SalesTable({
     // Debounce la búsqueda para evitar muchas llamadas
     const timeoutId = setTimeout(handleSearch, 300)
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, onSearch])
+  }, [searchTerm, onSearch, dateRange])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -355,6 +359,26 @@ export function SalesTable({
     index === self.findIndex((s) => s.id === sale.id)
   )
   
+  const formatRangeLabel = (range: SalesDateRange) => {
+    const fmt = (d: Date) =>
+      d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+    if (range.start && range.end) {
+      const a = range.start <= range.end ? range.start : range.end
+      const b = range.end >= range.start ? range.end : range.start
+      if (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+      ) {
+        return fmt(a)
+      }
+      return `${a.toLocaleDateString('es-CO')} — ${b.toLocaleDateString('es-CO')}`
+    }
+    if (range.start) return fmt(range.start)
+    if (range.end) return fmt(range.end)
+    return ''
+  }
+
   const filteredSales = uniqueSales.filter(sale => {
     if (filterStatus === 'all') return true
     if (filterStatus === 'pending') {
@@ -372,6 +396,14 @@ export function SalesTable({
     // Para otros estados, usar el filtro normal
     return sale.status === filterStatus
   })
+
+  const daySalesTotal = useMemo(
+    () =>
+      filteredSales
+        .filter(sale => sale.status !== 'cancelled')
+        .reduce((sum, sale) => sum + (sale.total || 0), 0),
+    [filteredSales]
+  )
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -394,11 +426,24 @@ export function SalesTable({
                     Búsqueda activa
                   </Badge>
                 ) : null}
+                {hasDateFilter ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      badgeTint,
+                      'border-0 bg-violet-100/90 text-[11px] font-normal text-violet-800 dark:bg-violet-950/40 dark:text-violet-200'
+                    )}
+                  >
+                    Por fecha
+                  </Badge>
+                ) : null}
               </CardTitle>
               <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                {searchTerm.trim()
-                  ? 'Filtra resultados o limpia la búsqueda para ver el listado completo'
-                  : 'Administra tus ventas y genera facturas'}
+                {hasDateFilter
+                  ? `Ventas · ${formatRangeLabel(dateRange)}`
+                  : searchTerm.trim()
+                    ? 'Filtra resultados o limpia la búsqueda para ver el listado completo'
+                    : 'Administra tus ventas y genera facturas'}
               </p>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
@@ -438,7 +483,7 @@ export function SalesTable({
         <div className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/25 md:px-6 md:py-4">
           <div
             className={cn(
-              'casa-artesanal-preserve-surface flex min-h-11 flex-nowrap items-stretch overflow-hidden rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90 transition-[box-shadow,border-color,ring-color]',
+              'casa-artesanal-preserve-surface flex min-h-11 flex-nowrap items-stretch overflow-x-auto rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90 transition-[box-shadow,border-color,ring-color]',
               'divide-x divide-zinc-200/85 dark:divide-zinc-600/90 dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
               'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20'
             )}
@@ -472,6 +517,12 @@ export function SalesTable({
                 </button>
               ) : null}
             </div>
+            <SalesDateRangeFilter
+              start={dateRange.start}
+              end={dateRange.end}
+              onStartChange={start => void setDateRange({ start, end: dateRange.end })}
+              onEndChange={end => void setDateRange({ start: dateRange.start, end })}
+            />
             <div className="relative flex shrink-0 items-stretch bg-transparent">
               <select
                 value={filterStatus}
@@ -497,6 +548,28 @@ export function SalesTable({
               />
             </div>
           </div>
+
+          {hasDateFilter && !isSearching ? (
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-zinc-500 dark:text-zinc-400">
+                <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                  {filteredSales.length}
+                </span>{' '}
+                venta{filteredSales.length !== 1 ? 's' : ''} en el período
+              </span>
+              <span className="font-semibold tabular-nums text-brand-700 dark:text-brand-400">
+                Total: {formatCurrency(daySalesTotal)}
+              </span>
+              <button
+                type="button"
+                onClick={() => void clearDateRange()}
+                className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 hover:text-violet-900 dark:text-violet-300 dark:hover:text-violet-100"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={2} />
+                Quitar filtro de fechas
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <CardContent className="p-0">
@@ -511,12 +584,18 @@ export function SalesTable({
                 <Receipt className={cn('h-7 w-7', salesHeroIconClass)} strokeWidth={1.5} />
               </div>
               <h3 className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-                {searchTerm.trim() ? 'No se encontraron ventas' : 'No hay ventas registradas'}
+                {searchTerm.trim()
+                  ? 'No se encontraron ventas'
+                  : hasDateFilter
+                    ? 'No hay ventas en este período'
+                    : 'No hay ventas registradas'}
               </h3>
               <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
                 {searchTerm.trim()
                   ? 'Prueba otra factura, cliente o limpia la búsqueda'
-                  : 'Comienza creando una nueva venta'}
+                  : hasDateFilter
+                    ? 'Elige otro rango o quita el filtro de fechas'
+                    : 'Comienza creando una nueva venta'}
               </p>
             </div>
           ) : (

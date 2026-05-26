@@ -305,7 +305,7 @@ export default function SaleDetailModal({
   }
 
   const handleFinalizeDraft = async () => {
-    if (!sale || !onFinalizeDraft) return
+    if (!sale || !onFinalizeDraft || isFinalizing) return
     
     setIsFinalizing(true)
     try {
