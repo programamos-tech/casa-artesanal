@@ -520,17 +520,6 @@ export default function NewSalePage() {
     return cleaned === '' ? 0 : parseFloat(cleaned) || 0
   }
 
-  const handleUpdatePrice = (itemId: string, newPrice: number) => {
-    if (newPrice < 0) return
-    
-    setSelectedProducts(selectedProducts.map(item => {
-      if (item.id === itemId) {
-        return applyLineTotal({ ...item, unitPrice: newPrice })
-      }
-      return item
-    }))
-  }
-
   const handleUpdateDiscount = (itemId: string, discount: number) => {
     setSelectedProducts(prev =>
       prev.map(item => (item.id === itemId ? applyLineTotal({ ...item, discount }) : item))
@@ -546,33 +535,6 @@ export default function NewSalePage() {
         return applyLineTotal({ ...item, discountType, discount })
       })
     )
-  }
-
-  const handlePriceBlur = (itemId: string) => {
-    // Validar precio al perder el foco y mostrar alerta si es inválido
-    const item = selectedProducts.find(i => i.id === itemId)
-    if (!item) return
-    // Usar findProductById que busca en contexto y cache
-    const product = findProductById(item.productId)
-    if (!product) return
-    
-    // Precio mínimo: siempre el costo de adquisición (en Sincelejo y microtiendas)
-    const minPrice = product.cost || 0
-    const priceType = 'costo de adquisición'
-    
-    // Si el precio es menor al mínimo, mostrar alerta
-    if (item.unitPrice < minPrice) {
-      setStockAlert({
-        show: true,
-        message: `${item.productName} no puede ser vendido por menos de ${formatCurrency(minPrice)} (${priceType})`,
-        productId: item.productId
-      })
-    } else {
-      // Si el precio es válido, ocultar la alerta para este producto
-      if (stockAlert.show && stockAlert.productId === item.productId) {
-        setStockAlert({ show: false, message: '', productId: undefined })
-      }
-    }
   }
 
   const findProductById = (productId: string) => {
@@ -1061,24 +1023,18 @@ export default function NewSalePage() {
                                         </div>
                                         <input
                                           type="text"
-                                          inputMode="numeric"
+                                          readOnly
+                                          disabled
+                                          tabIndex={-1}
                                           value={formatNumber(item.unitPrice)}
-                                          onChange={(e) => {
-                                            const numericValue = parseNumber(e.target.value)
-                                            if (numericValue >= 0) {
-                                              handleUpdatePrice(item.id, numericValue)
-                                            }
-                                          }}
-                                          onBlur={() => handlePriceBlur(item.id)}
+                                          title="Precio según tipo de cliente. Usa el campo Descuento para rebajas."
+                                          aria-label={`${priceTierLabel} (solo lectura)`}
                                           className={cn(
-                                            'h-9 w-36 rounded-md border bg-white px-2.5 text-base text-zinc-900 focus:outline-none focus:ring-2 dark:bg-zinc-900 dark:text-zinc-100',
+                                            'h-9 w-36 cursor-not-allowed rounded-md border bg-zinc-100 px-2.5 text-base tabular-nums text-zinc-700 opacity-100 dark:bg-zinc-900/90 dark:text-zinc-200',
                                             selectedClient && isWholesaleClientType(selectedClient.type)
-                                              ? 'border-blue-300 focus:border-blue-400 focus:ring-blue-400/25 dark:border-blue-700'
-                                              : 'border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400/25 dark:border-zinc-600'
+                                              ? 'border-blue-200 dark:border-blue-800'
+                                              : 'border-zinc-200 dark:border-zinc-600'
                                           )}
-                                          min={product?.cost || 0}
-                                          step="100"
-                                          placeholder="0"
                                         />
                                       </div>
                                       <SaleLineDiscountFields

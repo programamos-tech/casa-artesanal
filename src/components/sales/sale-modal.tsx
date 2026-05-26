@@ -600,66 +600,12 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     return cleaned === '' ? 0 : parseFloat(cleaned) || 0
   }
 
-  const handleUpdatePrice = (itemId: string, newPrice: number) => {
-    if (newPrice < 0) return
-
-    // Permitir escribir libremente, la validación se hará al perder el foco
-    setSelectedProducts(prev =>
-      prev.map(item => {
-        if (item.id === itemId) {
-          return applyLineTotal({ ...item, unitPrice: newPrice })
-        }
-        return item
-      })
-    )
-  }
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0
     }).format(amount)
-  }
-
-  const handlePriceBlur = (itemId: string) => {
-    // Validar precio al perder el foco y mostrar alerta si es inválido
-    const item = selectedProducts.find(i => i.id === itemId)
-    if (item) {
-      const product = findProductById(item.productId)
-      if (!product) return
-      
-      // Debug: ver qué valores tiene el producto
-      console.log('[SALE MODAL] handlePriceBlur - product:', {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        cost: product.cost,
-        isMainStore: isMainStore,
-        userStoreId: user?.storeId
-      })
-      
-      // Precio mínimo: siempre el costo de adquisición (en Sincelejo y microtiendas)
-      const minPrice = product.cost || 0
-      const priceType = 'costo de adquisición'
-      
-      console.log('[SALE MODAL] handlePriceBlur - validation:', {
-        itemUnitPrice: item.unitPrice,
-        minPrice: minPrice,
-        priceType: priceType,
-        shouldShowAlert: item.unitPrice < minPrice
-      })
-      
-      // Si el precio es menor al mínimo, mostrar alerta
-      if (item.unitPrice < minPrice) {
-        showStockAlert(`${item.productName} no puede ser vendido por menos de ${formatCurrency(minPrice)} (${priceType})`, item.productId)
-      } else {
-        // Si el precio es válido, ocultar la alerta para este producto
-        if (stockAlert.show && stockAlert.productId === item.productId) {
-          setStockAlert({ show: false, message: '', productId: undefined })
-        }
-      }
-    }
   }
 
   const handleRemoveProduct = (itemId: string) => {
@@ -1246,25 +1192,17 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                     </label>
                                     <input
                                       type="text"
-                                      inputMode="numeric"
+                                      readOnly
+                                      disabled
+                                      tabIndex={-1}
                                       value={formatNumber(item.unitPrice)}
-                                      onChange={(e) => {
-                                        const numericValue = parseNumber(e.target.value)
-                                        handleUpdatePrice(item.id, numericValue)
-                                      }}
-                                      onBlur={() => handlePriceBlur(item.id)}
-                                      className={`h-9 w-36 rounded-md border bg-white px-2.5 text-base text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/25 dark:bg-neutral-700 dark:text-white ${
-                                        (() => {
-                                          const product = findProductById(item.productId)
-                                          if (!product) return false
-                                          const minPrice = product.cost || 0
-                                          return item.unitPrice && item.unitPrice < minPrice
-                                        })()
-                                          ? 'border-red-500 dark:border-red-500'
+                                      title="Precio según tipo de cliente. Usa el campo Descuento para rebajas."
+                                      aria-label={`${priceTierLabel} (solo lectura)`}
+                                      className={`h-9 w-36 cursor-not-allowed rounded-md border bg-zinc-100 px-2.5 text-base tabular-nums text-gray-700 opacity-100 dark:bg-neutral-800 dark:text-zinc-200 ${
+                                        selectedClient && isWholesaleClientType(selectedClient.type)
+                                          ? 'border-blue-200 dark:border-blue-800'
                                           : 'border-gray-300 dark:border-neutral-600'
                                       }`}
-                                      step="100"
-                                      placeholder="0"
                                     />
                                   </div>
                                   <SaleLineDiscountFields
