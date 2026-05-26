@@ -107,8 +107,9 @@ export default function NewSalePage() {
   }, [getAllClients, refreshProducts])
 
   useEffect(() => {
-    if (!selectedClient || selectedProducts.length === 0) return
+    if (selectedProducts.length === 0) return
     let cancelled = false
+    const clientType = selectedClient?.type ?? null
     const syncPricesForClient = async () => {
       const updated = await Promise.all(
         selectedProducts.map(async item => {
@@ -125,7 +126,7 @@ export default function NewSalePage() {
               return next
             })
           }
-          const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
+          const unitPrice = getProductUnitPriceForClient(product, clientType)
           return applyLineTotal({ ...item, unitPrice })
         })
       )
@@ -135,7 +136,7 @@ export default function NewSalePage() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar cliente
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular precios al cambiar o quitar cliente
   }, [selectedClient?.id, selectedClient?.type])
 
   // Cargar vendedores activos disponibles para asignar a la venta.
@@ -978,7 +979,7 @@ export default function NewSalePage() {
                               : null
                           const priceTierLabel = selectedClient
                             ? getClientPriceFieldLabel(selectedClient.type)
-                            : 'Precio'
+                            : 'Precio cliente final'
                           
                           return (
                             <div

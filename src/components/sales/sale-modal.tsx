@@ -386,8 +386,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   }, [productCache, products])
 
   useEffect(() => {
-    if (!selectedClient || selectedProducts.length === 0) return
+    if (selectedProducts.length === 0) return
     let cancelled = false
+    const clientType = selectedClient?.type ?? null
     const syncPricesForClient = async () => {
       const updated = await Promise.all(
         selectedProducts.map(async item => {
@@ -395,7 +396,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
           const product = fresh ?? findProductById(item.productId)
           if (!product) return item
           if (fresh) updateProductCache([fresh])
-          const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
+          const unitPrice = getProductUnitPriceForClient(product, clientType)
           return applyLineTotal({ ...item, unitPrice })
         })
       )
@@ -1168,7 +1169,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                               : null
                           const priceTierLabel = selectedClient
                             ? getClientPriceFieldLabel(selectedClient.type)
-                            : 'Precio'
+                            : 'Precio cliente final'
                           return (
                           <div key={item.id} className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-600 rounded-lg p-3">
                             {/* Product Info Header */}
