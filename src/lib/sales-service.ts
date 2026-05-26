@@ -84,6 +84,7 @@ export class SalesService {
             quantity,
             unit_price,
             discount,
+            discount_type,
             total
           ),
           sale_payments (
@@ -254,6 +255,7 @@ export class SalesService {
             quantity,
             unit_price,
             discount,
+            discount_type,
             total
           ),
           sale_payments (
@@ -323,6 +325,7 @@ export class SalesService {
               quantity,
               unit_price,
               discount,
+              discount_type,
               total
             ),
             sale_payments (
@@ -499,6 +502,7 @@ export class SalesService {
             quantity,
             unit_price,
             discount,
+            discount_type,
             total
           ),
           sale_payments (
@@ -608,6 +612,7 @@ export class SalesService {
             quantity,
             unit_price,
             discount,
+            discount_type,
             total
           ),
           sale_payments (
@@ -810,13 +815,14 @@ export class SalesService {
           quantity: item.quantity,
           unit_price: item.unitPrice,
           discount: item.discount || 0,
+          discount_type: item.discountType || 'amount',
           total: item.total
         }))
 
         const { data: insertedItemsData, error: itemsError } = await supabase
           .from('sale_items')
           .insert(saleItems)
-          .select('id, product_id, product_name, product_reference_code, quantity, unit_price, discount, total')
+          .select('id, product_id, product_name, product_reference_code, quantity, unit_price, discount, discount_type, total')
 
         if (itemsError) throw itemsError
         insertedItems = insertedItemsData ?? []
@@ -1060,6 +1066,7 @@ export class SalesService {
           quantity: item.quantity,
           unit_price: item.unitPrice,
           discount: item.discount || 0,
+          discount_type: item.discountType || 'amount',
           total: item.total
         }))
 
@@ -1658,6 +1665,7 @@ export class SalesService {
             quantity,
             unit_price,
             discount,
+            discount_type,
             total
           )
         `)
@@ -1814,6 +1822,7 @@ export class SalesService {
             quantity,
             unit_price,
             discount,
+            discount_type,
             total
           )
         `)

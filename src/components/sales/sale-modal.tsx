@@ -36,6 +36,14 @@ import {
   isWholesaleClientType,
 } from '@/lib/product-pricing'
 import { ClientModal } from '@/components/clients/client-modal'
+import {
+  applyLineTotal,
+  computeSaleAmounts,
+  getLineDiscountAmount,
+  prepareSaleItemsForSave,
+  type SaleDiscountType,
+} from '@/lib/sale-discount'
+import { SaleLineDiscountFields } from '@/components/sales/sale-line-discount-fields'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -386,7 +394,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
           if (!product) return item
           if (fresh) updateProductCache([fresh])
           const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
-          return { ...item, unitPrice, total: unitPrice * item.quantity }
+          return applyLineTotal({ ...item, unitPrice })
         })
       )
       if (!cancelled) setSelectedProducts(updated)
@@ -502,14 +510,13 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     [orderedSelectedProducts]
   )
   
-  // Calcular subtotal (suma de precios)
-  const subtotal = validProducts.reduce((sum, item) => {
-    return sum + (item.quantity * item.unitPrice)
-  }, 0)
-  
-  // IVA automático sobre el total (19% en Colombia)
-  const tax = includeTax ? subtotal * 0.19 : 0
-  const total = subtotal + tax
+  const validProductsForTotal = validProducts.filter(item => item.unitPrice > 0)
+  const saleAmounts = computeSaleAmounts(validProductsForTotal, includeTax)
+  const { subtotal, tax, total } = saleAmounts
+  const totalLineDiscount = validProductsForTotal.reduce(
+    (sum, item) => sum + getLineDiscountAmount(item),
+    0
+  )
 
   const getRemainingAmount = () => {
     // Si no hay productos seleccionados, no hay pago que completar
@@ -553,15 +560,14 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                 addedAt: updatedTimestamp,
                 unitPrice,
               }
-              updatedItem.total = updatedItem.quantity * unitPrice
-              return updatedItem
+              return applyLineTotal({ ...updatedItem, unitPrice })
             }
             return item
           })
         )
       } else {
         const now = Date.now()
-        const newItem: SaleItem = {
+        const newItem = applyLineTotal({
           id: Date.now().toString(),
           productId: pricedProduct.id,
           productName: pricedProduct.name,
@@ -573,7 +579,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
           tax: 0,
           total: unitPrice,
           addedAt: now,
-        }
+        })
         setSelectedProducts(prev => [newItem, ...prev])
       }
       setShowProductDropdown(false)
@@ -599,10 +605,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     setSelectedProducts(prev =>
       prev.map(item => {
         if (item.id === itemId) {
-          const updatedItem = { ...item, unitPrice: newPrice }
-          // Recalcular total
-          updatedItem.total = updatedItem.quantity * newPrice
-          return updatedItem
+          return applyLineTotal({ ...item, unitPrice: newPrice })
         }
         return item
       })
@@ -692,10 +695,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     setSelectedProducts(prev =>
       prev.map(item => {
         if (item.id === itemId) {
-          const updatedItem = { ...item, quantity: newQuantity }
-          // Recalcular total
-          updatedItem.total = newQuantity * updatedItem.unitPrice
-          return updatedItem
+          return applyLineTotal({ ...item, quantity: newQuantity })
         }
         return item
       })
@@ -728,16 +728,30 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     setSelectedProducts(prev =>
       prev.map(item => {
         if (item.id === itemId) {
-          const updatedItem = { ...item, quantity: quantity }
-          // Recalcular total
-          updatedItem.total = quantity * updatedItem.unitPrice
-          return updatedItem
+          return applyLineTotal({ ...item, quantity })
         }
         return item
       })
     )
   }
 
+
+  const handleUpdateDiscount = (itemId: string, discount: number) => {
+    setSelectedProducts(prev =>
+      prev.map(item => (item.id === itemId ? applyLineTotal({ ...item, discount }) : item))
+    )
+  }
+
+  const handleDiscountTypeChange = (itemId: string, discountType: SaleDiscountType) => {
+    setSelectedProducts(prev =>
+      prev.map(item => {
+        if (item.id !== itemId) return item
+        const discount =
+          discountType === 'percentage' && (item.discount || 0) > 100 ? 100 : item.discount || 0
+        return applyLineTotal({ ...item, discountType, discount })
+      })
+    )
+  }
 
   const handleSave = (isDraft: boolean = false) => {
     // Validar que hay cliente, productos, método de pago y que todos tengan cantidad > 0
@@ -775,14 +789,17 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       }
     }
 
-    const saleItems = validProducts.map(({ addedAt, ...item }) => item)
+    const saleItems = prepareSaleItemsForSave(
+      validProductsForTotal.map(({ addedAt, ...item }) => item)
+    )
+    const amounts = computeSaleAmounts(saleItems, includeTax)
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
       clientId: selectedClient.id,
       clientName: selectedClient.name,
-      total: total,
-      subtotal: subtotal,
-      tax: tax,
+      total: amounts.total,
+      subtotal: amounts.subtotal,
+      tax: amounts.tax,
       discount: 0,
       discountType: 'amount',
       status: isDraft ? 'draft' : 'completed',
@@ -1204,38 +1221,49 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                   Stock disponible: <span className="font-medium text-gray-700 dark:text-gray-300">{getAvailableStock(item.productId)} unidades</span>
                                 </div>
-                                <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <label
-                                    className={`text-sm font-medium ${
-                                      selectedClient && isWholesaleClientType(selectedClient.type)
-                                        ? 'text-blue-700 dark:text-blue-300'
-                                        : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                                  >
-                                    {priceTierLabel}:
-                                  </label>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={formatNumber(item.unitPrice)}
-                                    onChange={(e) => {
-                                      const numericValue = parseNumber(e.target.value)
-                                      handleUpdatePrice(item.id, numericValue)
-                                    }}
-                                    onBlur={() => handlePriceBlur(item.id)}
-                                    className={`w-32 h-8 text-sm text-gray-900 dark:text-white border rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-neutral-700 px-2 ${
-                                      (() => {
-                                        const product = findProductById(item.productId)
-                                        if (!product) return false
-                                        const minPrice = product.cost || 0
-                                        return item.unitPrice && item.unitPrice < minPrice
-                                      })()
-                                        ? 'border-red-500 dark:border-red-500'
-                                        : 'border-gray-300 dark:border-neutral-600'
-                                    }`}
-                                    step="100"
-                                    placeholder="0"
+                                <div className="space-y-1.5">
+                                <div className="flex flex-wrap items-end gap-4">
+                                  <div className="flex min-w-[9.5rem] flex-col gap-1.5">
+                                    <label
+                                      className={`text-sm font-medium ${
+                                        selectedClient && isWholesaleClientType(selectedClient.type)
+                                          ? 'text-blue-700 dark:text-blue-300'
+                                          : 'text-gray-600 dark:text-gray-400'
+                                      }`}
+                                    >
+                                      {priceTierLabel}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={formatNumber(item.unitPrice)}
+                                      onChange={(e) => {
+                                        const numericValue = parseNumber(e.target.value)
+                                        handleUpdatePrice(item.id, numericValue)
+                                      }}
+                                      onBlur={() => handlePriceBlur(item.id)}
+                                      className={`h-9 w-36 rounded-md border bg-white px-2.5 text-base text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/25 dark:bg-neutral-700 dark:text-white ${
+                                        (() => {
+                                          const product = findProductById(item.productId)
+                                          if (!product) return false
+                                          const minPrice = product.cost || 0
+                                          return item.unitPrice && item.unitPrice < minPrice
+                                        })()
+                                          ? 'border-red-500 dark:border-red-500'
+                                          : 'border-gray-300 dark:border-neutral-600'
+                                      }`}
+                                      step="100"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  <SaleLineDiscountFields
+                                    stacked
+                                    discount={item.discount || 0}
+                                    discountType={item.discountType || 'amount'}
+                                    onDiscountChange={v => handleUpdateDiscount(item.id, v)}
+                                    onDiscountTypeChange={t => handleDiscountTypeChange(item.id, t)}
+                                    formatNumber={formatNumber}
+                                    parseNumber={parseNumber}
                                   />
                                 </div>
                                 {alternatePrice && alternatePrice.amount > 0 && (
@@ -1506,6 +1534,14 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 </div>
                                 <div className="text-xs text-gray-600 dark:text-gray-300">
                                   {item.quantity} x ${item.unitPrice.toLocaleString('es-CO')}
+                                  {(item.discount || 0) > 0 && (
+                                    <span className="ml-1 text-red-600 dark:text-red-400">
+                                      · desc.{' '}
+                                      {item.discountType === 'percentage'
+                                        ? `${item.discount}%`
+                                        : `$${(item.discount || 0).toLocaleString('es-CO')}`}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="font-semibold text-gray-900 dark:text-white text-sm">
@@ -1516,6 +1552,12 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                         </div>
 
                         <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-neutral-600">
+                          {totalLineDiscount > 0 && (
+                            <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                              <span>Descuentos en líneas</span>
+                              <span>-${totalLineDiscount.toLocaleString('es-CO')}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-700 dark:text-gray-300 font-medium">Subtotal:</span>
                             <span className="font-semibold text-gray-900 dark:text-white">

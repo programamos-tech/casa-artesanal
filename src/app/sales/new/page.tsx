@@ -39,6 +39,14 @@ import {
   isWholesaleClientType,
 } from '@/lib/product-pricing'
 import { ProductsService } from '@/lib/products-service'
+import {
+  applyLineTotal,
+  computeSaleAmounts,
+  getLineDiscountAmount,
+  prepareSaleItemsForSave,
+  type SaleDiscountType,
+} from '@/lib/sale-discount'
+import { SaleLineDiscountFields } from '@/components/sales/sale-line-discount-fields'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -117,7 +125,7 @@ export default function NewSalePage() {
             })
           }
           const unitPrice = getProductUnitPriceForClient(product, selectedClient.type)
-          return { ...item, unitPrice, total: unitPrice * item.quantity }
+          return applyLineTotal({ ...item, unitPrice })
         })
       )
       if (!cancelled) setSelectedProducts(updated)
@@ -423,16 +431,18 @@ export default function NewSalePage() {
       })
 
       const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
-      const newItem: SaleItem = {
+      const newItem: SaleItem = applyLineTotal({
         id: `temp-${Date.now()}`,
         productId: pricedProduct.id,
         productName: pricedProduct.name,
         productReferenceCode: pricedProduct.reference || 'N/A',
         quantity: 1,
         unitPrice,
+        discount: 0,
+        discountType: 'amount',
         total: unitPrice,
         addedAt: Date.now(),
-      }
+      })
 
       setSelectedProducts(prev => [...prev, newItem])
       setProductSearch('')
@@ -487,8 +497,7 @@ export default function NewSalePage() {
 
     setSelectedProducts(selectedProducts.map(i => {
       if (i.id === itemId) {
-        const calculatedTotal = i.unitPrice * newQuantity
-        return { ...i, quantity: newQuantity, total: calculatedTotal }
+        return applyLineTotal({ ...i, quantity: newQuantity })
       }
       return i
     }))
@@ -515,11 +524,27 @@ export default function NewSalePage() {
     
     setSelectedProducts(selectedProducts.map(item => {
       if (item.id === itemId) {
-        const calculatedTotal = newPrice * item.quantity
-        return { ...item, unitPrice: newPrice, total: calculatedTotal }
+        return applyLineTotal({ ...item, unitPrice: newPrice })
       }
       return item
     }))
+  }
+
+  const handleUpdateDiscount = (itemId: string, discount: number) => {
+    setSelectedProducts(prev =>
+      prev.map(item => (item.id === itemId ? applyLineTotal({ ...item, discount }) : item))
+    )
+  }
+
+  const handleDiscountTypeChange = (itemId: string, discountType: SaleDiscountType) => {
+    setSelectedProducts(prev =>
+      prev.map(item => {
+        if (item.id !== itemId) return item
+        const discount =
+          discountType === 'percentage' && (item.discount || 0) > 100 ? 100 : item.discount || 0
+        return applyLineTotal({ ...item, discountType, discount })
+      })
+    )
   }
 
   const handlePriceBlur = (itemId: string) => {
@@ -576,14 +601,7 @@ export default function NewSalePage() {
       return true
     })
     
-    // Recalcular el total para todos los productos (precio 0 = total 0)
-    return filtered.map(item => {
-      const calculatedTotal = (item.unitPrice || 0) * (item.quantity || 0)
-      return { 
-        ...item, 
-        total: calculatedTotal 
-      }
-    })
+    return filtered.map(item => applyLineTotal(item))
   }, [selectedProducts])
 
   // Productos válidos para calcular total (excluye precio 0)
@@ -605,21 +623,17 @@ export default function NewSalePage() {
     )
   }, [selectedProducts])
 
-  const subtotal = useMemo(() => {
-    const calculated = validProductsForTotal.reduce((sum, item) => {
-      const itemTotal = (item.unitPrice || 0) * (item.quantity || 0)
-      return sum + itemTotal
-    }, 0)
-    return calculated
-  }, [validProductsForTotal])
+  const saleAmounts = useMemo(
+    () => computeSaleAmounts(validProductsForTotal, includeTax),
+    [validProductsForTotal, includeTax]
+  )
+  const { subtotal, tax, total } = saleAmounts
 
-  const tax = useMemo(() => {
-    return includeTax ? subtotal * 0.19 : 0
-  }, [subtotal, includeTax])
-
-  const total = useMemo(() => {
-    return subtotal + tax
-  }, [subtotal, tax])
+  const totalLineDiscount = useMemo(
+    () =>
+      validProductsForTotal.reduce((sum, item) => sum + getLineDiscountAmount(item), 0),
+    [validProductsForTotal]
+  )
 
   const getTotalMixedPayments = () => {
     return mixedPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
@@ -771,15 +785,17 @@ export default function NewSalePage() {
       }
     }
 
-    // Usar solo productos con precio > 0 para crear la venta
-    const saleItems = validProductsForTotal.map(({ addedAt, ...item }) => item)
+    const saleItems = prepareSaleItemsForSave(
+      validProductsForTotal.map(({ addedAt, ...item }) => item)
+    )
+    const amounts = computeSaleAmounts(saleItems, includeTax)
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
       clientId: selectedClient.id,
       clientName: selectedClient.name,
-      total: total,
-      subtotal: subtotal,
-      tax: tax,
+      total: amounts.total,
+      subtotal: amounts.subtotal,
+      tax: amounts.tax,
       discount: 0,
       discountType: 'amount',
       status: 'completed',
@@ -1012,51 +1028,64 @@ export default function NewSalePage() {
                                   <div className="mb-2 text-sm text-zinc-500 dark:text-zinc-400">
                                     Ref: {reference} · Bodega: {warehouseStock} · Local: {localStock}
                                   </div>
-                                  <div className="space-y-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <label
-                                        className={cn(
-                                          'text-sm font-medium',
-                                          selectedClient && isWholesaleClientType(selectedClient.type)
-                                            ? 'text-blue-700 dark:text-blue-300'
-                                            : 'text-zinc-600 dark:text-zinc-400'
-                                        )}
-                                      >
-                                        {priceTierLabel}
-                                      </label>
-                                      {selectedClient && (
-                                        <Badge
-                                          variant="outline"
-                                          className={cn(
-                                            'text-[10px] font-medium',
-                                            isWholesaleClientType(selectedClient.type)
-                                              ? 'border-blue-300 text-blue-800 dark:border-blue-700 dark:text-blue-200'
-                                              : 'border-violet-300 text-violet-800 dark:border-violet-700 dark:text-violet-200'
+                                  <div className="space-y-1.5">
+                                    <div className="flex flex-wrap items-end gap-4">
+                                      <div className="flex min-w-[9.5rem] flex-col gap-1.5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <label
+                                            className={cn(
+                                              'text-sm font-medium',
+                                              selectedClient && isWholesaleClientType(selectedClient.type)
+                                                ? 'text-blue-700 dark:text-blue-300'
+                                                : 'text-zinc-600 dark:text-zinc-400'
+                                            )}
+                                          >
+                                            {priceTierLabel}
+                                          </label>
+                                          {selectedClient && (
+                                            <Badge
+                                              variant="outline"
+                                              className={cn(
+                                                'text-[10px] font-medium',
+                                                isWholesaleClientType(selectedClient.type)
+                                                  ? 'border-blue-300 text-blue-800 dark:border-blue-700 dark:text-blue-200'
+                                                  : 'border-violet-300 text-violet-800 dark:border-violet-700 dark:text-violet-200'
+                                              )}
+                                            >
+                                              {getClientPriceTierLabel(selectedClient.type)}
+                                            </Badge>
                                           )}
-                                        >
-                                          {getClientPriceTierLabel(selectedClient.type)}
-                                        </Badge>
-                                      )}
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={formatNumber(item.unitPrice)}
-                                        onChange={(e) => {
-                                          const numericValue = parseNumber(e.target.value)
-                                          if (numericValue >= 0) {
-                                            handleUpdatePrice(item.id, numericValue)
-                                          }
-                                        }}
-                                        onBlur={() => handlePriceBlur(item.id)}
-                                        className={cn(
-                                          'h-8 w-32 rounded-md border bg-white px-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 dark:bg-zinc-900 dark:text-zinc-100',
-                                          selectedClient && isWholesaleClientType(selectedClient.type)
-                                            ? 'border-blue-300 focus:border-blue-400 focus:ring-blue-400/25 dark:border-blue-700'
-                                            : 'border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400/25 dark:border-zinc-600'
-                                        )}
-                                        min={product?.cost || 0}
-                                        step="100"
-                                        placeholder="0"
+                                        </div>
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={formatNumber(item.unitPrice)}
+                                          onChange={(e) => {
+                                            const numericValue = parseNumber(e.target.value)
+                                            if (numericValue >= 0) {
+                                              handleUpdatePrice(item.id, numericValue)
+                                            }
+                                          }}
+                                          onBlur={() => handlePriceBlur(item.id)}
+                                          className={cn(
+                                            'h-9 w-36 rounded-md border bg-white px-2.5 text-base text-zinc-900 focus:outline-none focus:ring-2 dark:bg-zinc-900 dark:text-zinc-100',
+                                            selectedClient && isWholesaleClientType(selectedClient.type)
+                                              ? 'border-blue-300 focus:border-blue-400 focus:ring-blue-400/25 dark:border-blue-700'
+                                              : 'border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400/25 dark:border-zinc-600'
+                                          )}
+                                          min={product?.cost || 0}
+                                          step="100"
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                      <SaleLineDiscountFields
+                                        stacked
+                                        discount={item.discount || 0}
+                                        discountType={item.discountType || 'amount'}
+                                        onDiscountChange={v => handleUpdateDiscount(item.id, v)}
+                                        onDiscountTypeChange={t => handleDiscountTypeChange(item.id, t)}
+                                        formatNumber={formatNumber}
+                                        parseNumber={parseNumber}
                                       />
                                     </div>
                                     {alternatePrice && alternatePrice.amount > 0 && (
@@ -1564,6 +1593,14 @@ export default function NewSalePage() {
                                 </div>
                                 <div className="text-xs text-zinc-500 dark:text-zinc-400">
                                   {item.quantity} × {formatCurrency(item.unitPrice || 0)}
+                                  {(item.discount || 0) > 0 && (
+                                    <span className="ml-1 text-red-600 dark:text-red-400">
+                                      · desc.{' '}
+                                      {item.discountType === 'percentage'
+                                        ? `${item.discount}%`
+                                        : formatCurrency(item.discount || 0)}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div
@@ -1580,6 +1617,12 @@ export default function NewSalePage() {
                       </div>
 
                       <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                        {totalLineDiscount > 0 && (
+                          <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                            <span>Descuentos en líneas</span>
+                            <span className="tabular-nums">-{formatCurrency(totalLineDiscount)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-sm">
                           <span className="text-zinc-500 dark:text-zinc-400">Subtotal</span>
                           <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
