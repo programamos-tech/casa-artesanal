@@ -2,20 +2,20 @@
 
 import { cn } from '@/lib/utils'
 import type { SaleDiscountType } from '@/lib/sale-discount'
+import { CopIntegerInput } from '@/components/sales/cop-integer-input'
 
 const inputClass =
-  'h-9 w-32 rounded-md border border-zinc-200 bg-white px-2.5 text-base text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100'
+  'h-9 w-32 rounded-md border border-zinc-200 bg-white px-2.5 text-base tabular-nums text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100'
 
 interface SaleLineDiscountFieldsProps {
   discount: number
   discountType: SaleDiscountType
   onDiscountChange: (value: number) => void
   onDiscountTypeChange: (type: SaleDiscountType) => void
-  formatNumber: (value: number) => string
-  parseNumber: (value: string) => number
   className?: string
-  /** Etiqueta arriba del control (para fila horizontal junto a Precio) */
   stacked?: boolean
+  hideLabel?: boolean
+  hasError?: boolean
 }
 
 export function SaleLineDiscountFields({
@@ -23,13 +23,19 @@ export function SaleLineDiscountFields({
   discountType,
   onDiscountChange,
   onDiscountTypeChange,
-  formatNumber,
-  parseNumber,
   className,
   stacked = false,
+  hideLabel = false,
+  hasError = false,
 }: SaleLineDiscountFieldsProps) {
+  const handleDiscountChange = (numericValue: number) => {
+    if (numericValue < 0) return
+    const capped = discountType === 'percentage' ? Math.min(100, numericValue) : numericValue
+    onDiscountChange(capped)
+  }
+
   const controls = (
-    <div className="flex items-center gap-2">
+    <div className={cn('flex h-9 items-center gap-2', hideLabel && className)}>
       <div className="inline-flex overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-600">
         <button
           type="button"
@@ -56,28 +62,27 @@ export function SaleLineDiscountFields({
           %
         </button>
       </div>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={discount > 0 ? formatNumber(discount) : ''}
-        onChange={(e) => {
-          const numericValue = parseNumber(e.target.value)
-          if (numericValue >= 0) {
-            const capped =
-              discountType === 'percentage' ? Math.min(100, numericValue) : numericValue
-            onDiscountChange(capped)
-          }
-        }}
+      <CopIntegerInput
+        value={discount}
+        onValueChange={handleDiscountChange}
         placeholder={discountType === 'percentage' ? '0 %' : '0'}
-        className={inputClass}
+        aria-label="Descuento"
+        className={cn(
+          inputClass,
+          hasError && 'border-red-400 focus:border-red-500 focus:ring-red-500/25 dark:border-red-700'
+        )}
       />
     </div>
   )
 
+  if (hideLabel) {
+    return controls
+  }
+
   if (stacked) {
     return (
       <div className={cn('flex min-w-[10.5rem] flex-col gap-1.5', className)}>
-        <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Descuento</span>
+        <span className="text-sm font-medium leading-5 text-zinc-600 dark:text-zinc-400">Descuento</span>
         {controls}
       </div>
     )

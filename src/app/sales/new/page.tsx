@@ -46,7 +46,15 @@ import {
   prepareSaleItemsForSave,
   type SaleDiscountType,
 } from '@/lib/sale-discount'
+import { getProductAcquisitionCost } from '@/lib/sale-acquisition-cost'
 import { SaleLineDiscountFields } from '@/components/sales/sale-line-discount-fields'
+import { SaleLinePriceInput } from '@/components/sales/sale-line-price-input'
+import { SaleLinePricingAlerts } from '@/components/sales/sale-line-pricing-alerts'
+import {
+  collectAcquisitionCostSaveViolations,
+  getSaleLineAcquisitionAlerts,
+  hasBlockingAcquisitionCostIssues,
+} from '@/lib/sale-line-pricing-validation'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -497,12 +505,11 @@ export default function NewSalePage() {
       return
     }
 
-    setSelectedProducts(selectedProducts.map(i => {
-      if (i.id === itemId) {
-        return applyLineTotal({ ...i, quantity: newQuantity })
-      }
-      return i
-    }))
+    setSelectedProducts(prev =>
+      prev.map(i =>
+        i.id === itemId ? applyLineTotal({ ...i, quantity: newQuantity }) : i
+      )
+    )
   }
 
   const handleQuantityInputChange = (itemId: string, value: string) => {
@@ -521,9 +528,18 @@ export default function NewSalePage() {
     return cleaned === '' ? 0 : parseFloat(cleaned) || 0
   }
 
+  const handleUpdatePrice = (itemId: string, newPrice: number) => {
+    if (newPrice < 0) return
+    setSelectedProducts(prev =>
+      prev.map(i => (i.id === itemId ? applyLineTotal({ ...i, unitPrice: newPrice }) : i))
+    )
+  }
+
   const handleUpdateDiscount = (itemId: string, discount: number) => {
     setSelectedProducts(prev =>
-      prev.map(item => (item.id === itemId ? applyLineTotal({ ...item, discount }) : item))
+      prev.map(item =>
+        item.id === itemId ? applyLineTotal({ ...item, discount }) : item
+      )
     )
   }
 
@@ -631,6 +647,15 @@ export default function NewSalePage() {
     }).format(amount)
   }
 
+  const hasAcquisitionCostIssues = useMemo(
+    () =>
+      hasBlockingAcquisitionCostIssues(validProducts, productId => {
+        const product = findProductById(productId)
+        return product ? getProductAcquisitionCost(product) : undefined
+      }),
+    [validProducts, selectedClient?.type, products, productsInSaleCache]
+  )
+
   const moveHighlightedProduct = (direction: 1 | -1) => {
     if (visibleProducts.length === 0) return
 
@@ -715,18 +740,9 @@ export default function NewSalePage() {
       return
     }
 
-    // Verificar que los precios sean >= costo de adquisición (en Sincelejo y microtiendas)
-    const invalidProducts: string[] = []
-    validProducts.forEach(item => {
-      const product = findProductById(item.productId)
-      if (!product) return
-      
-      const minPrice = product.cost || 0
-      const priceType = 'costo de adquisición'
-      
-      if (item.unitPrice < minPrice) {
-        invalidProducts.push(`${item.productName} no puede ser vendido por menos de ${formatCurrency(minPrice)} (${priceType})`)
-      }
+    const invalidProducts = collectAcquisitionCostSaveViolations(validProducts, productId => {
+      const product = findProductById(productId)
+      return product ? getProductAcquisitionCost(product) : undefined
     })
 
     if (invalidProducts.length > 0) {
@@ -980,7 +996,13 @@ export default function NewSalePage() {
                           const priceTierLabel = selectedClient
                             ? getClientPriceFieldLabel(selectedClient.type)
                             : 'Precio cliente final'
-                          
+                          const listPrice = product
+                            ? getProductUnitPriceForClient(product, selectedClient?.type ?? null)
+                            : item.unitPrice
+                          const acquisitionCost = product ? getProductAcquisitionCost(product) : 0
+                          const linePricingAlerts = product
+                            ? getSaleLineAcquisitionAlerts(item, acquisitionCost)
+                            : []
                           return (
                             <div
                               key={item.id}
@@ -995,59 +1017,62 @@ export default function NewSalePage() {
                                     Ref: {reference} · Bodega: {warehouseStock} · Local: {localStock}
                                   </div>
                                   <div className="space-y-1.5">
-                                    <div className="flex flex-wrap items-end gap-4">
+                                    <div className="flex flex-wrap items-start gap-6">
                                       <div className="flex min-w-[9.5rem] flex-col gap-1.5">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <label
-                                            className={cn(
-                                              'text-sm font-medium',
-                                              selectedClient && isWholesaleClientType(selectedClient.type)
-                                                ? 'text-blue-700 dark:text-blue-300'
-                                                : 'text-zinc-600 dark:text-zinc-400'
-                                            )}
-                                          >
-                                            {priceTierLabel}
-                                          </label>
-                                          {selectedClient && (
-                                            <Badge
-                                              variant="outline"
-                                              className={cn(
-                                                'text-[10px] font-medium',
-                                                isWholesaleClientType(selectedClient.type)
-                                                  ? 'border-blue-300 text-blue-800 dark:border-blue-700 dark:text-blue-200'
-                                                  : 'border-violet-300 text-violet-800 dark:border-violet-700 dark:text-violet-200'
-                                              )}
-                                            >
-                                              {getClientPriceTierLabel(selectedClient.type)}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <input
-                                          type="text"
-                                          readOnly
-                                          disabled
-                                          tabIndex={-1}
-                                          value={formatNumber(item.unitPrice)}
-                                          title="Precio según tipo de cliente. Usa el campo Descuento para rebajas."
-                                          aria-label={`${priceTierLabel} (solo lectura)`}
+                                        <label
                                           className={cn(
-                                            'h-9 w-36 cursor-not-allowed rounded-md border bg-zinc-100 px-2.5 text-base tabular-nums text-zinc-700 opacity-100 dark:bg-zinc-900/90 dark:text-zinc-200',
+                                            'min-h-5 text-sm font-medium leading-5',
                                             selectedClient && isWholesaleClientType(selectedClient.type)
-                                              ? 'border-blue-200 dark:border-blue-800'
-                                              : 'border-zinc-200 dark:border-zinc-600'
+                                              ? 'text-blue-700 dark:text-blue-300'
+                                              : 'text-zinc-600 dark:text-zinc-400'
                                           )}
+                                        >
+                                          {priceTierLabel}
+                                        </label>
+                                        {product ? (
+                                          <SaleLinePriceInput
+                                            itemId={item.id}
+                                            unitPrice={item.unitPrice}
+                                            listPrice={listPrice}
+                                            label={priceTierLabel}
+                                            formatCurrency={formatCurrency}
+                                            onPriceChange={handleUpdatePrice}
+                                            hasError={linePricingAlerts.length > 0}
+                                            isWholesale={Boolean(
+                                              selectedClient &&
+                                                isWholesaleClientType(selectedClient.type)
+                                            )}
+                                          />
+                                        ) : (
+                                          <input
+                                            type="text"
+                                            readOnly
+                                            disabled
+                                            value={formatNumber(item.unitPrice)}
+                                            className="h-9 w-36 rounded-md border border-zinc-200 bg-zinc-100 px-2.5 text-base dark:border-zinc-600 dark:bg-zinc-900/90"
+                                          />
+                                        )}
+                                      </div>
+                                      <div className="flex min-w-[10.5rem] flex-col gap-1.5">
+                                        <span className="text-sm font-medium leading-5 text-zinc-600 dark:text-zinc-400">
+                                          Descuento
+                                        </span>
+                                        <SaleLineDiscountFields
+                                          hideLabel
+                                          discount={item.discount || 0}
+                                          discountType={item.discountType || 'amount'}
+                                          onDiscountChange={v => handleUpdateDiscount(item.id, v)}
+                                          onDiscountTypeChange={t =>
+                                            handleDiscountTypeChange(item.id, t)
+                                          }
+                                          hasError={linePricingAlerts.length > 0}
                                         />
                                       </div>
-                                      <SaleLineDiscountFields
-                                        stacked
-                                        discount={item.discount || 0}
-                                        discountType={item.discountType || 'amount'}
-                                        onDiscountChange={v => handleUpdateDiscount(item.id, v)}
-                                        onDiscountTypeChange={t => handleDiscountTypeChange(item.id, t)}
-                                        formatNumber={formatNumber}
-                                        parseNumber={parseNumber}
-                                      />
                                     </div>
+                                    <SaleLinePricingAlerts
+                                      alerts={linePricingAlerts}
+                                      className="mt-1.5 flex max-w-md flex-col gap-1"
+                                    />
                                     {alternatePrice && alternatePrice.amount > 0 && (
                                       <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                         {alternatePrice.label}:{' '}
@@ -1242,20 +1267,11 @@ export default function NewSalePage() {
                           </Button>
                         </div>
                       </div>
-                      <p
-                        className={cn(
-                          'mt-2 rounded-md border px-2.5 py-1.5 text-xs',
-                          isWholesaleClientType(selectedClient.type)
-                            ? 'border-blue-200/90 bg-blue-50/90 text-blue-900 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-200'
-                            : 'border-violet-200/90 bg-violet-50/90 text-violet-900 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200'
-                        )}
-                      >
-                        Precios de lista:{' '}
-                        <span className="font-semibold">{getClientPriceTierLabel(selectedClient.type)}</span>
-                        {selectedClient.type === 'minorista' && (
-                          <span className="text-zinc-600 dark:text-zinc-400"> (mismo que cliente final)</span>
-                        )}
-                      </p>
+                      {selectedClient.type === 'minorista' && (
+                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                          Precio de lista igual al de cliente final.
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1625,7 +1641,8 @@ export default function NewSalePage() {
                             validProducts.length === 0 || 
                             !paymentMethod ||
                             !selectedSellerId ||
-                            validProducts.some(item => !item.unitPrice || item.unitPrice <= 0)
+                            validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) ||
+                            hasAcquisitionCostIssues
                           }
                           className="w-full"
                           size="lg"
@@ -1646,6 +1663,12 @@ export default function NewSalePage() {
                           <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-700 dark:text-amber-400">
                             <AlertTriangle className="h-4 w-4 shrink-0" />
                             <span>Asigna precio a todos los productos</span>
+                          </div>
+                        )}
+                        {hasAcquisitionCostIssues && (
+                          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-red-700 dark:text-red-400">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            <span>Hay productos por debajo del costo de adquisición. Corrígelos antes de crear la venta.</span>
                           </div>
                         )}
                       </div>

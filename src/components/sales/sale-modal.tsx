@@ -43,7 +43,15 @@ import {
   prepareSaleItemsForSave,
   type SaleDiscountType,
 } from '@/lib/sale-discount'
+import { getProductAcquisitionCost } from '@/lib/sale-acquisition-cost'
 import { SaleLineDiscountFields } from '@/components/sales/sale-line-discount-fields'
+import { SaleLinePriceInput } from '@/components/sales/sale-line-price-input'
+import { SaleLinePricingAlerts } from '@/components/sales/sale-line-pricing-alerts'
+import {
+  collectAcquisitionCostSaveViolations,
+  getSaleLineAcquisitionAlerts,
+  hasBlockingAcquisitionCostIssues,
+} from '@/lib/sale-line-pricing-validation'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -609,6 +617,15 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     }).format(amount)
   }
 
+  const hasAcquisitionCostIssues = useMemo(
+    () =>
+      hasBlockingAcquisitionCostIssues(validProducts, productId => {
+        const product = findProductById(productId)
+        return product ? getProductAcquisitionCost(product) : undefined
+      }),
+    [validProducts, selectedClient?.type, products, productCache]
+  )
+
   const handleRemoveProduct = (itemId: string) => {
     const item = selectedProducts.find(i => i.id === itemId)
     // Si el producto que se está quitando tiene una alerta activa, ocultarla
@@ -642,12 +659,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     }
 
     setSelectedProducts(prev =>
-      prev.map(item => {
-        if (item.id === itemId) {
-          return applyLineTotal({ ...item, quantity: newQuantity })
-        }
-        return item
-      })
+      prev.map(i =>
+        i.id === itemId ? applyLineTotal({ ...i, quantity: newQuantity }) : i
+      )
     )
   }
 
@@ -673,21 +687,24 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       hideStockAlert()
     }
     
-    // Permitir 0, no eliminar el producto
     setSelectedProducts(prev =>
-      prev.map(item => {
-        if (item.id === itemId) {
-          return applyLineTotal({ ...item, quantity })
-        }
-        return item
-      })
+      prev.map(i => (i.id === itemId ? applyLineTotal({ ...i, quantity }) : i))
     )
   }
 
 
+  const handleUpdatePrice = (itemId: string, newPrice: number) => {
+    if (newPrice < 0) return
+    setSelectedProducts(prev =>
+      prev.map(i => (i.id === itemId ? applyLineTotal({ ...i, unitPrice: newPrice }) : i))
+    )
+  }
+
   const handleUpdateDiscount = (itemId: string, discount: number) => {
     setSelectedProducts(prev =>
-      prev.map(item => (item.id === itemId ? applyLineTotal({ ...item, discount }) : item))
+      prev.map(item =>
+        item.id === itemId ? applyLineTotal({ ...item, discount }) : item
+      )
     )
   }
 
@@ -707,18 +724,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     // Validar que hay cliente, productos, método de pago y que todos tengan cantidad > 0
     if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
 
-    // Validar que todos los precios de venta sean >= costo de adquisición (en Sincelejo y microtiendas)
-    const invalidProducts: string[] = []
-    validProducts.forEach(item => {
-      const product = findProductById(item.productId)
-      if (!product) return
-      
-      const minPrice = product.cost || 0
-      const priceType = 'costo de adquisición'
-      
-      if (item.unitPrice < minPrice) {
-        invalidProducts.push(`${item.productName} no puede ser vendido por menos de ${formatCurrency(minPrice)} (${priceType})`)
-      }
+    const invalidProducts = collectAcquisitionCostSaveViolations(validProducts, productId => {
+      const product = findProductById(productId)
+      return product ? getProductAcquisitionCost(product) : undefined
     })
 
     if (invalidProducts.length > 0) {
@@ -966,16 +974,11 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                           </Button>
                         </div>
                       </div>
-                      <p
-                        className={`mt-2 rounded-md border px-2 py-1 text-xs ${
-                          isWholesaleClientType(selectedClient.type)
-                            ? 'border-blue-200 bg-blue-50/80 text-blue-900 dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-200'
-                            : 'border-violet-200 bg-violet-50/80 text-violet-900 dark:border-violet-800/60 dark:bg-violet-950/30 dark:text-violet-200'
-                        }`}
-                      >
-                        Precios de lista:{' '}
-                        <span className="font-semibold">{getClientPriceTierLabel(selectedClient.type)}</span>
-                      </p>
+                      {selectedClient.type === 'minorista' && (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Precio de lista igual al de cliente final.
+                        </p>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -1170,6 +1173,13 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                           const priceTierLabel = selectedClient
                             ? getClientPriceFieldLabel(selectedClient.type)
                             : 'Precio cliente final'
+                          const listPrice = lineProduct
+                            ? getProductUnitPriceForClient(lineProduct, selectedClient?.type ?? null)
+                            : item.unitPrice
+                          const acquisitionCost = lineProduct ? getProductAcquisitionCost(lineProduct) : 0
+                          const linePricingAlerts = lineProduct
+                            ? getSaleLineAcquisitionAlerts(item, acquisitionCost)
+                            : []
                           return (
                           <div key={item.id} className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-600 rounded-lg p-3">
                             {/* Product Info Header */}
@@ -1180,10 +1190,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                   Stock disponible: <span className="font-medium text-gray-700 dark:text-gray-300">{getAvailableStock(item.productId)} unidades</span>
                                 </div>
                                 <div className="space-y-1.5">
-                                <div className="flex flex-wrap items-end gap-4">
+                                <div className="flex flex-wrap items-start gap-6">
                                   <div className="flex min-w-[9.5rem] flex-col gap-1.5">
                                     <label
-                                      className={`text-sm font-medium ${
+                                      className={`min-h-5 text-sm font-medium leading-5 ${
                                         selectedClient && isWholesaleClientType(selectedClient.type)
                                           ? 'text-blue-700 dark:text-blue-300'
                                           : 'text-gray-600 dark:text-gray-400'
@@ -1191,31 +1201,48 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                     >
                                       {priceTierLabel}
                                     </label>
-                                    <input
-                                      type="text"
-                                      readOnly
-                                      disabled
-                                      tabIndex={-1}
-                                      value={formatNumber(item.unitPrice)}
-                                      title="Precio según tipo de cliente. Usa el campo Descuento para rebajas."
-                                      aria-label={`${priceTierLabel} (solo lectura)`}
-                                      className={`h-9 w-36 cursor-not-allowed rounded-md border bg-zinc-100 px-2.5 text-base tabular-nums text-gray-700 opacity-100 dark:bg-neutral-800 dark:text-zinc-200 ${
-                                        selectedClient && isWholesaleClientType(selectedClient.type)
-                                          ? 'border-blue-200 dark:border-blue-800'
-                                          : 'border-gray-300 dark:border-neutral-600'
-                                      }`}
+                                    {lineProduct ? (
+                                      <SaleLinePriceInput
+                                        itemId={item.id}
+                                        unitPrice={item.unitPrice}
+                                        listPrice={listPrice}
+                                        label={priceTierLabel}
+                                        formatCurrency={formatCurrency}
+                                        onPriceChange={handleUpdatePrice}
+                                        hasError={linePricingAlerts.length > 0}
+                                        isWholesale={Boolean(
+                                          selectedClient &&
+                                            isWholesaleClientType(selectedClient.type)
+                                        )}
+                                      />
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        readOnly
+                                        disabled
+                                        value={formatNumber(item.unitPrice)}
+                                        className="h-9 w-36 rounded-md border border-gray-300 bg-zinc-100 px-2.5 text-base dark:border-neutral-600 dark:bg-neutral-800"
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex min-w-[10.5rem] flex-col gap-1.5">
+                                    <span className="text-sm font-medium leading-5 text-gray-600 dark:text-gray-400">
+                                      Descuento
+                                    </span>
+                                    <SaleLineDiscountFields
+                                      hideLabel
+                                      discount={item.discount || 0}
+                                      discountType={item.discountType || 'amount'}
+                                      onDiscountChange={v => handleUpdateDiscount(item.id, v)}
+                                      onDiscountTypeChange={t => handleDiscountTypeChange(item.id, t)}
+                                      hasError={linePricingAlerts.length > 0}
                                     />
                                   </div>
-                                  <SaleLineDiscountFields
-                                    stacked
-                                    discount={item.discount || 0}
-                                    discountType={item.discountType || 'amount'}
-                                    onDiscountChange={v => handleUpdateDiscount(item.id, v)}
-                                    onDiscountTypeChange={t => handleDiscountTypeChange(item.id, t)}
-                                    formatNumber={formatNumber}
-                                    parseNumber={parseNumber}
-                                  />
                                 </div>
+                                <SaleLinePricingAlerts
+                                  alerts={linePricingAlerts}
+                                  className="mt-1.5 flex max-w-md flex-col gap-1"
+                                />
                                 {alternatePrice && alternatePrice.amount > 0 && (
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
                                     {alternatePrice.label}:{' '}
@@ -1646,7 +1673,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                   !selectedClient ||
                   selectedProducts.length === 0 ||
                   validProducts.length === 0 ||
-                  !paymentMethod
+                  !paymentMethod ||
+                  hasAcquisitionCostIssues
                 }
                 className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
               >
@@ -1661,7 +1689,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                   !selectedClient ||
                   selectedProducts.length === 0 ||
                   validProducts.length === 0 ||
-                  !paymentMethod
+                  !paymentMethod ||
+                  hasAcquisitionCostIssues
                 }
                 className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
               >
