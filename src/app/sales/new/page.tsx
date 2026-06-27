@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +38,6 @@ import {
   getProductUnitPriceForClient,
   isWholesaleClientType,
 } from '@/lib/product-pricing'
-import { ProductsService } from '@/lib/products-service'
 import {
   applyLineTotal,
   computeSaleAmounts,
@@ -55,6 +54,8 @@ import {
   getSaleLineAcquisitionAlerts,
   hasBlockingAcquisitionCostIssues,
 } from '@/lib/sale-line-pricing-validation'
+import { syncSaleLinePricesForClient } from '@/lib/sale-line-pricing-sync'
+import { useSaleClientSearch } from '@/hooks/use-sale-client-search'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -68,8 +69,8 @@ const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 
 export default function NewSalePage() {
   const router = useRouter()
-  const { clients, getAllClients } = useClients()
-  const { products, refreshProducts, searchProducts } = useProducts()
+  const { clients, searchClients } = useClients()
+  const { products, searchProducts } = useProducts()
   const { createSale } = useSales()
   const { user, getAllUsers } = useAuth()
   
@@ -81,7 +82,13 @@ export default function NewSalePage() {
   const [paymentMethod, setPaymentMethod] = useState<
     'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'warranty' | 'mixed' | ''
   >('')
-  const [clientSearch, setClientSearch] = useState('')
+  const {
+    clientSearch,
+    setClientSearch,
+    displayClients,
+    isSearchingClients,
+    debouncedClientSearch,
+  } = useSaleClientSearch(clients, searchClients)
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [showClientDropdown, setShowClientDropdown] = useState(false)
@@ -98,6 +105,10 @@ export default function NewSalePage() {
   const isSubmittingRef = useRef(false)
   // Cache de productos agregados a la venta para mantener su información de stock
   const [productsInSaleCache, setProductsInSaleCache] = useState<Map<string, Product>>(new Map())
+  const productsInSaleCacheRef = useRef(productsInSaleCache)
+  const productsRef = useRef(products)
+  productsInSaleCacheRef.current = productsInSaleCache
+  productsRef.current = products
   
   const [mixedPayments, setMixedPayments] = useState<SalePayment[]>([])
   const [showMixedPayments, setShowMixedPayments] = useState(false)
@@ -110,40 +121,13 @@ export default function NewSalePage() {
   const [selectedSellerId, setSelectedSellerId] = useState<string>('')
 
   useEffect(() => {
-    getAllClients()
-    refreshProducts()
-  }, [getAllClients, refreshProducts])
-
-  useEffect(() => {
     if (selectedProducts.length === 0) return
-    let cancelled = false
-    const clientType = selectedClient?.type ?? null
-    const syncPricesForClient = async () => {
-      const updated = await Promise.all(
-        selectedProducts.map(async item => {
-          const fresh = await ProductsService.getProductById(item.productId)
-          const product =
-            fresh ??
-            productsInSaleCache.get(item.productId) ??
-            products.find(p => p.id === item.productId)
-          if (!product) return item
-          if (fresh) {
-            setProductsInSaleCache(prev => {
-              const next = new Map(prev)
-              next.set(fresh.id, fresh)
-              return next
-            })
-          }
-          const unitPrice = getProductUnitPriceForClient(product, clientType)
-          return applyLineTotal({ ...item, unitPrice })
-        })
+    setSelectedProducts(prev =>
+      syncSaleLinePricesForClient(prev, selectedClient?.type ?? null, productId =>
+        productsInSaleCacheRef.current.get(productId) ??
+        productsRef.current.find(p => p.id === productId)
       )
-      if (!cancelled) setSelectedProducts(updated)
-    }
-    void syncPricesForClient()
-    return () => {
-      cancelled = true
-    }
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular precios al cambiar o quitar cliente
   }, [selectedClient?.id, selectedClient?.type])
 
@@ -278,34 +262,6 @@ export default function NewSalePage() {
     }
   }, [highlightedProductIndex])
 
-  // Función helper para identificar si un cliente es una tienda
-  const isStoreClient = (client: Client): boolean => {
-    if (!client || !client.name) return false
-    const nameLower = client.name.toLowerCase()
-    // Filtrar clientes que sean tiendas (ZonaT, Zonat, Corozal, Sahagun, etc.)
-    const storeKeywords = ['casa artesanal', 'casaartesanal', 'corozal', 'sahagun', 'sincelejo', 'store', 'tienda', 'microtienda', 'micro tienda', 'sucursal']
-    return storeKeywords.some(keyword => nameLower.includes(keyword))
-  }
-
-  // Filtrar clientes (excluir clientes de tiendas)
-  const filteredClients = useMemo(() => {
-    // Primero filtrar clientes de tiendas
-    const nonStoreClients = clients.filter(client => !isStoreClient(client))
-    
-    if (!clientSearch.trim()) {
-      // Si no hay búsqueda, mostrar todos los clientes (limitado)
-      return nonStoreClients.slice(0, 10)
-    }
-    const searchLower = clientSearch.toLowerCase().trim()
-    return nonStoreClients.filter(client =>
-      client && (
-        (client.name && client.name.toLowerCase().includes(searchLower)) ||
-        (client.email && client.email.toLowerCase().includes(searchLower)) ||
-        (client.phone && client.phone.toLowerCase().includes(searchLower))
-      )
-    )
-  }, [clients, clientSearch])
-
   // Filtrar productos - SIMPLIFICADO como en credit-modal
   const filteredProducts = useMemo(() => {
     const searchTerm = debouncedProductSearch.trim()
@@ -415,50 +371,48 @@ export default function NewSalePage() {
   }
 
   const handleAddProduct = (product: Product) => {
-    void (async () => {
-      const existingItem = selectedProducts.find(item => item.productId === product.id)
-      if (existingItem) {
-        handleUpdateQuantity(existingItem.id, existingItem.quantity + 1)
-        return
-      }
+    const existingItem = selectedProducts.find(item => item.productId === product.id)
+    if (existingItem) {
+      handleUpdateQuantity(existingItem.id, existingItem.quantity + 1)
+      return
+    }
 
-      const pricedProduct = (await ProductsService.getProductById(product.id)) ?? product
-      const availableStock =
-        (pricedProduct.stock.store || 0) + (pricedProduct.stock.warehouse || 0)
-      if (availableStock === 0) {
-        setStockAlert({
-          show: true,
-          message: 'Este producto no tiene stock disponible',
-          productId: product.id,
-        })
-        return
-      }
-
-      setProductsInSaleCache(prev => {
-        const newCache = new Map(prev)
-        newCache.set(pricedProduct.id, pricedProduct)
-        return newCache
+    const pricedProduct = productsInSaleCache.get(product.id) ?? product
+    const availableStock =
+      (pricedProduct.stock.store || 0) + (pricedProduct.stock.warehouse || 0)
+    if (availableStock === 0) {
+      setStockAlert({
+        show: true,
+        message: 'Este producto no tiene stock disponible',
+        productId: product.id,
       })
+      return
+    }
 
-      const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
-      const newItem: SaleItem = applyLineTotal({
-        id: `temp-${Date.now()}`,
-        productId: pricedProduct.id,
-        productName: pricedProduct.name,
-        productReferenceCode: pricedProduct.reference || 'N/A',
-        quantity: 1,
-        unitPrice,
-        discount: 0,
-        discountType: 'amount',
-        total: unitPrice,
-        addedAt: Date.now(),
-      })
+    setProductsInSaleCache(prev => {
+      const newCache = new Map(prev)
+      newCache.set(pricedProduct.id, pricedProduct)
+      return newCache
+    })
 
-      setSelectedProducts(prev => [...prev, newItem])
-      setProductSearch('')
-      setShowProductDropdown(false)
-      setHighlightedProductIndex(-1)
-    })()
+    const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
+    const newItem: SaleItem = applyLineTotal({
+      id: `temp-${Date.now()}`,
+      productId: pricedProduct.id,
+      productName: pricedProduct.name,
+      productReferenceCode: pricedProduct.reference || 'N/A',
+      quantity: 1,
+      unitPrice,
+      discount: 0,
+      discountType: 'amount',
+      total: unitPrice,
+      addedAt: Date.now(),
+    })
+
+    setSelectedProducts(prev => [...prev, newItem])
+    setProductSearch('')
+    setShowProductDropdown(false)
+    setHighlightedProductIndex(-1)
   }
 
   const handleRemoveProduct = (itemId: string) => {
@@ -554,11 +508,11 @@ export default function NewSalePage() {
     )
   }
 
-  const findProductById = (productId: string) => {
+  const findProductById = useCallback((productId: string) => {
     const productInCache = productsInSaleCache.get(productId)
     if (productInCache) return productInCache
     return products.find(p => p.id === productId)
-  }
+  }, [products, productsInSaleCache])
 
   const getAvailableStock = (productId: string) => {
     const product = findProductById(productId)
@@ -1184,10 +1138,10 @@ export default function NewSalePage() {
                         className={cn(inputClass, 'pl-10')}
                       />
                       
-                      {showClientDropdown && !selectedClient && filteredClients.length > 0 && (
+                      {showClientDropdown && !selectedClient && displayClients.length > 0 && (
                         <div className="scrollbar-hide absolute left-0 right-0 top-full z-[130] mt-1 max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-600 dark:bg-zinc-950">
                           <div className="rounded-[inherit] bg-white p-2 dark:bg-zinc-950">
-                            {filteredClients.map((client) => (
+                            {displayClients.map((client) => (
                               <button
                                 key={client.id}
                                 type="button"
@@ -1228,7 +1182,7 @@ export default function NewSalePage() {
                         </div>
                       )}
                       
-                      {showClientDropdown && !selectedClient && filteredClients.length === 0 && clientSearch.trim().length > 0 && (
+                      {showClientDropdown && !selectedClient && displayClients.length === 0 && debouncedClientSearch.length >= 2 && !isSearchingClients && (
                         <div className="absolute left-0 right-0 top-full z-[130] mt-1 rounded-xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-600 dark:bg-zinc-950">
                           <div className="text-center">
                             <User className="mx-auto mb-2 h-8 w-8 text-zinc-400" />

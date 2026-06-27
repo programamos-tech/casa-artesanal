@@ -52,6 +52,8 @@ import {
   getSaleLineAcquisitionAlerts,
   hasBlockingAcquisitionCostIssues,
 } from '@/lib/sale-line-pricing-validation'
+import { syncSaleLinePricesForClient } from '@/lib/sale-line-pricing-sync'
+import { useSaleClientSearch } from '@/hooks/use-sale-client-search'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -67,8 +69,8 @@ interface SaleModalProps {
 }
 
 export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModalProps) {
-  const { clients, createClient, getAllClients } = useClients()
-  const { products, refreshProducts } = useProducts()
+  const { clients, createClient, searchClients } = useClients()
+  const { products } = useProducts()
   const { user } = useAuth()
   
   // Detectar si es tienda principal o microtienda
@@ -79,7 +81,13 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   const [paymentMethod, setPaymentMethod] = useState<
     'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'credit' | 'warranty' | 'mixed' | ''
   >('')
-  const [clientSearch, setClientSearch] = useState('')
+  const {
+    clientSearch,
+    setClientSearch,
+    displayClients,
+    isSearchingClients,
+    debouncedClientSearch,
+  } = useSaleClientSearch(clients, searchClients)
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [showClientDropdown, setShowClientDropdown] = useState(false)
@@ -101,10 +109,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
 
   // Cargar clientes y productos cuando se abre el modal
   useEffect(() => {
-    if (isOpen) {
-      getAllClients()
-      refreshProducts()
-      
+    if (!isOpen) return
+
       // Si hay una venta para editar (modo edición)
       if (sale && sale.status === 'draft') {
         // Cargar cliente
@@ -154,7 +160,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         setShowMixedPayments(false)
         setIncludeTax(false)
       }
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale]) // Ejecutar cuando se abre/cierra el modal o cambia la venta
 
@@ -182,25 +187,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     }, 300)
     return () => clearTimeout(timer)
   }, [productSearch])
-
-  // Función helper para identificar si un cliente es una tienda
-  const isStoreClient = (client: Client): boolean => {
-    if (!client || !client.name) return false
-    const nameLower = client.name.toLowerCase()
-    // Filtrar clientes que sean tiendas (ZonaT, Zonat, Corozal, Sahagun, etc.)
-    const storeKeywords = ['casa artesanal', 'casaartesanal', 'corozal', 'sahagun', 'sincelejo']
-    return storeKeywords.some(keyword => nameLower.includes(keyword))
-  }
-
-  const filteredClients = useMemo(() => {
-    // Primero filtrar clientes de tiendas
-    const nonStoreClients = clients.filter(client => !isStoreClient(client))
-    
-    if (!clientSearch.trim()) return nonStoreClients
-    return nonStoreClients.filter(client =>
-      client && client.name && client.name.toLowerCase().includes(clientSearch.toLowerCase())
-    )
-  }, [clients, clientSearch])
 
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([])
   const [isSearchingProducts, setIsSearchingProducts] = useState(false)
@@ -395,26 +381,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
 
   useEffect(() => {
     if (selectedProducts.length === 0) return
-    let cancelled = false
-    const clientType = selectedClient?.type ?? null
-    const syncPricesForClient = async () => {
-      const updated = await Promise.all(
-        selectedProducts.map(async item => {
-          const fresh = await ProductsService.getProductById(item.productId)
-          const product = fresh ?? findProductById(item.productId)
-          if (!product) return item
-          if (fresh) updateProductCache([fresh])
-          const unitPrice = getProductUnitPriceForClient(product, clientType)
-          return applyLineTotal({ ...item, unitPrice })
-        })
-      )
-      if (!cancelled) setSelectedProducts(updated)
-    }
-    void syncPricesForClient()
-    return () => {
-      cancelled = true
-    }
-  }, [selectedClient?.id, selectedClient?.type, findProductById, updateProductCache])
+    setSelectedProducts(prev =>
+      syncSaleLinePricesForClient(prev, selectedClient?.type ?? null, findProductById)
+    )
+  }, [selectedClient?.id, selectedClient?.type, findProductById])
 
   const getAvailableStock = (productId: string) => {
     const product = findProductById(productId)
@@ -539,44 +509,43 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   }
 
   const handleAddProduct = (product: Product) => {
-    void (async () => {
-      const pricedProduct = (await ProductsService.getProductById(product.id)) ?? product
-      updateProductCache([pricedProduct])
+    const pricedProduct = productCache[product.id] ?? product
+    updateProductCache([pricedProduct])
 
-      const availableStock =
-        (pricedProduct.stock.warehouse || 0) + (pricedProduct.stock.store || 0)
-      const selectedQuantity = getSelectedQuantity(pricedProduct.id)
+    const availableStock =
+      (pricedProduct.stock.warehouse || 0) + (pricedProduct.stock.store || 0)
+    const selectedQuantity = getSelectedQuantity(pricedProduct.id)
 
-      if (availableStock <= 0) {
-        showStockAlert('No hay stock disponible para este producto', pricedProduct.id)
-        return
-      }
+    if (availableStock <= 0) {
+      showStockAlert('No hay stock disponible para este producto', pricedProduct.id)
+      return
+    }
 
-      if (selectedQuantity >= availableStock) {
-        showStockAlert(`Solo hay ${availableStock} unidades disponibles de este producto`, pricedProduct.id)
-        return
-      }
+    if (selectedQuantity >= availableStock) {
+      showStockAlert(`Solo hay ${availableStock} unidades disponibles de este producto`, pricedProduct.id)
+      return
+    }
 
-      const existingItem = selectedProducts.find(item => item.productId === pricedProduct.id)
-      const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
+    const existingItem = selectedProducts.find(item => item.productId === pricedProduct.id)
+    const unitPrice = getProductUnitPriceForClient(pricedProduct, selectedClient?.type)
 
-      if (existingItem) {
-        const updatedTimestamp = Date.now()
-        setSelectedProducts(prev =>
-          prev.map(item => {
-            if (item.productId === pricedProduct.id) {
-              const updatedItem = {
-                ...item,
-                quantity: item.quantity + 1,
-                addedAt: updatedTimestamp,
-                unitPrice,
-              }
-              return applyLineTotal({ ...updatedItem, unitPrice })
+    if (existingItem) {
+      const updatedTimestamp = Date.now()
+      setSelectedProducts(prev =>
+        prev.map(item => {
+          if (item.productId === pricedProduct.id) {
+            const updatedItem = {
+              ...item,
+              quantity: item.quantity + 1,
+              addedAt: updatedTimestamp,
+              unitPrice,
             }
-            return item
-          })
-        )
-      } else {
+            return applyLineTotal({ ...updatedItem, unitPrice })
+          }
+          return item
+        })
+      )
+    } else {
         const now = Date.now()
         const newItem = applyLineTotal({
           id: Date.now().toString(),
@@ -595,7 +564,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       }
       setShowProductDropdown(false)
       setProductSearch('')
-    })()
   }
 
   const formatNumber = (value: number): string => {
@@ -896,7 +864,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                         onChange={(e) => {
                           const value = e.target.value
                           setClientSearch(value)
-                          setShowClientDropdown(value.length > 0)
+                          setShowClientDropdown(true)
                         }}
                           onFocus={() => setShowClientDropdown(true)}
                           className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-neutral-800"
@@ -908,13 +876,13 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                     
                     {showClientDropdown && (
                       <div className="mt-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-600 rounded-lg shadow-xl max-h-64 overflow-y-auto relative z-[100]">
-                        {filteredClients.length === 0 ? (
+                        {displayClients.length === 0 && debouncedClientSearch.length >= 2 && !isSearchingClients ? (
                           <div className="px-4 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
                             No se encontraron clientes
                           </div>
-                        ) : (
+                        ) : displayClients.length === 0 ? null : (
                           <div className="py-1">
-                            {filteredClients.map(client => (
+                            {displayClients.map(client => (
                               <button
                                 key={client.id}
                                 onClick={() => {

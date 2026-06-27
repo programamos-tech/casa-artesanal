@@ -343,7 +343,7 @@ export class ClientsService {
       let dbQuery = supabase
         .from('clients')
         .select('*')
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,document.ilike.%${query}%`)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,document.ilike.%${query}%,phone.ilike.%${query}%`)
 
       // Filtrar por store_id:
       // - Si storeId es null o MAIN_STORE_ID, solo mostrar clientes de la tienda principal (store_id = MAIN_STORE_ID o null)
@@ -356,7 +356,9 @@ export class ClientsService {
         dbQuery = dbQuery.eq('store_id', storeId)
       }
 
-      const { data, error } = await dbQuery.order('created_at', { ascending: false })
+      const { data, error } = await dbQuery
+        .order('created_at', { ascending: false })
+        .limit(25)
 
       if (error) {
       // Error silencioso en producción
