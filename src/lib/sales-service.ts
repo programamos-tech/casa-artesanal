@@ -813,6 +813,7 @@ export class SalesService {
           tax: saleData.tax,
           transport_price: saleData.transportPrice ?? 0,
           discount: saleData.discount,
+          discount_type: saleData.discountType || 'amount',
           status: saleData.status,
           payment_method: saleData.paymentMethod,
           invoice_number: invoiceNumber,
@@ -1086,6 +1087,7 @@ export class SalesService {
           tax: saleData.tax,
           transport_price: saleData.transportPrice ?? 0,
           discount: saleData.discount,
+          discount_type: saleData.discountType || 'amount',
           status: saleData.status,
           payment_method: saleData.paymentMethod,
           updated_at: new Date().toISOString()

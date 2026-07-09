@@ -93,8 +93,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
-  const [includeTax, setIncludeTax] = useState(false)
   const [transportPrice, setTransportPrice] = useState(0)
+  const [orderDiscount, setOrderDiscount] = useState(0)
+  const [orderDiscountType, setOrderDiscountType] = useState<SaleDiscountType>('amount')
   const [invoiceNumber, setInvoiceNumber] = useState<string>('Pendiente') // Número de factura
   const [isClientModalOpen, setIsClientModalOpen] = useState(false)
   const [stockAlert, setStockAlert] = useState<{show: boolean, message: string, productId?: string}>({show: false, message: ''})
@@ -145,13 +146,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         if (sale.invoiceNumber) {
           setInvoiceNumber(sale.invoiceNumber)
         }
-        
-        // Cargar impuestos
-        if (sale.tax && sale.tax > 0) {
-          setIncludeTax(true)
-        }
 
         setTransportPrice(sale.transportPrice ?? 0)
+        setOrderDiscount(sale.discount ?? 0)
+        setOrderDiscountType(sale.discountType ?? 'amount')
       } else {
         // Resetear formulario si no hay venta para editar
         setSelectedClient(null)
@@ -162,8 +160,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         setInvoiceNumber('Pendiente')
         setMixedPayments([])
         setShowMixedPayments(false)
-        setIncludeTax(false)
         setTransportPrice(0)
+        setOrderDiscount(0)
+        setOrderDiscountType('amount')
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale]) // Ejecutar cuando se abre/cierra el modal o cambia la venta
@@ -497,8 +496,12 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   )
   
   const validProductsForTotal = validProducts.filter(item => item.unitPrice > 0)
-  const saleAmounts = computeSaleAmounts(validProductsForTotal, includeTax, transportPrice)
-  const { subtotal, tax, total } = saleAmounts
+  const saleAmounts = computeSaleAmounts(validProductsForTotal, false, {
+    transportPrice,
+    discount: orderDiscount,
+    discountType: orderDiscountType,
+  })
+  const { itemsSubtotal, orderDiscountAmount, subtotal, total } = saleAmounts
   const totalLineDiscount = validProductsForTotal.reduce(
     (sum, item) => sum + getLineDiscountAmount(item),
     0
@@ -723,7 +726,11 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     const saleItems = prepareSaleItemsForSave(
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
-    const amounts = computeSaleAmounts(saleItems, includeTax, transportPrice)
+    const amounts = computeSaleAmounts(saleItems, false, {
+      transportPrice,
+      discount: orderDiscount,
+      discountType: orderDiscountType,
+    })
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
       clientId: selectedClient.id,
@@ -732,8 +739,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       subtotal: amounts.subtotal,
       tax: amounts.tax,
       transportPrice: amounts.transportPrice,
-      discount: 0,
-      discountType: 'amount',
+      discount: amounts.discount,
+      discountType: amounts.discountType,
       status: isDraft ? 'draft' : 'completed',
       paymentMethod,
       payments: paymentMethod === 'mixed' ? mixedPayments : undefined,
@@ -780,8 +787,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     setDebouncedProductSearch('')
     setShowClientDropdown(false)
     setShowProductDropdown(false)
-    setIncludeTax(false)
     setTransportPrice(0)
+    setOrderDiscount(0)
+    setOrderDiscountType('amount')
     setInvoiceNumber('Pendiente')
     setMixedPayments([])
     setShowMixedPayments(false)
@@ -1511,34 +1519,41 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                             </div>
                           )}
                           <div className="flex justify-between">
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">Subtotal:</span>
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">Subtotal productos:</span>
                             <span className="font-semibold text-gray-900 dark:text-white">
-                              ${subtotal.toLocaleString()}
+                              ${itemsSubtotal.toLocaleString()}
                             </span>
                           </div>
 
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-700 dark:text-gray-300 font-medium">IVA (19%):</span>
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={includeTax}
-                                  onChange={(e) => setIncludeTax(e.target.checked)}
-                                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700"
-                                />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  Incluir IVA
-                                </span>
-                              </div>
+                          <SaleLineDiscountFields
+                            label="Descuento al total"
+                            stacked
+                            discount={orderDiscount}
+                            discountType={orderDiscountType}
+                            onDiscountChange={setOrderDiscount}
+                            onDiscountTypeChange={(type) => {
+                              setOrderDiscountType(type)
+                              if (type === 'percentage' && orderDiscount > 100) {
+                                setOrderDiscount(100)
+                              }
+                            }}
+                          />
+
+                          {orderDiscountAmount > 0 && (
+                            <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                              <span>Descuento aplicado</span>
+                              <span>-${orderDiscountAmount.toLocaleString()}</span>
                             </div>
-                            {includeTax && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600 dark:text-gray-400">IVA calculado:</span>
-                                <span className="font-medium text-gray-900 dark:text-white">${tax.toLocaleString()}</span>
-                              </div>
-                            )}
-                          </div>
+                          )}
+
+                          {(orderDiscountAmount > 0) && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-700 dark:text-gray-300 font-medium">Subtotal con descuento:</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                ${subtotal.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-between gap-3 text-sm">
                             <span className="text-gray-700 dark:text-gray-300 font-medium">Precio del transporte:</span>

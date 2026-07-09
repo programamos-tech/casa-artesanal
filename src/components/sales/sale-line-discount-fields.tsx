@@ -16,6 +16,7 @@ interface SaleLineDiscountFieldsProps {
   stacked?: boolean
   hideLabel?: boolean
   hasError?: boolean
+  label?: string
 }
 
 export function SaleLineDiscountFields({
@@ -27,6 +28,7 @@ export function SaleLineDiscountFields({
   stacked = false,
   hideLabel = false,
   hasError = false,
+  label = 'Descuento',
 }: SaleLineDiscountFieldsProps) {
   const handleDiscountChange = (numericValue: number) => {
     if (numericValue < 0) return
@@ -82,7 +84,7 @@ export function SaleLineDiscountFields({
   if (stacked) {
     return (
       <div className={cn('flex min-w-[10.5rem] flex-col gap-1.5', className)}>
-        <span className="text-sm font-medium leading-5 text-zinc-600 dark:text-zinc-400">Descuento</span>
+        <span className="text-sm font-medium leading-5 text-zinc-600 dark:text-zinc-400">{label}</span>
         {controls}
       </div>
     )
@@ -90,7 +92,7 @@ export function SaleLineDiscountFields({
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Descuento</span>
+      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{label}</span>
       {controls}
     </div>
   )

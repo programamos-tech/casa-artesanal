@@ -735,9 +735,9 @@ export default function SaleDetailModal({
                 </div>
                 ${sale.discount && sale.discount > 0.001 ? `
                   <div class="summary-row" style="color: #d32f2f;">
-                    <span>Descuento por total:</span>
-                    <span>${sale.discountType === 'percentage' ? `-${sale.discount}%` : `-${formatCurrency(sale.discount)}`}</span>
-                  </div>
+                  <span>Descuento al total:</span>
+                  <span>${sale.discountType === 'percentage' ? `-${sale.discount}%` : `-${formatCurrency(sale.discount)}`}</span>
+                </div>
                 ` : ''}
                 <div class="summary-row" style="border-top: 1px solid #ccc; padding-top: 5px;">
                   <span>Subtotal después de descuentos:</span>

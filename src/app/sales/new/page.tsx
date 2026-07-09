@@ -94,8 +94,9 @@ export default function NewSalePage() {
   const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
-  const [includeTax, setIncludeTax] = useState(false)
   const [transportPrice, setTransportPrice] = useState(0)
+  const [orderDiscount, setOrderDiscount] = useState(0)
+  const [orderDiscountType, setOrderDiscountType] = useState<SaleDiscountType>('amount')
   const [invoiceNumber, setInvoiceNumber] = useState<string>('Pendiente')
   const [stockAlert, setStockAlert] = useState<{show: boolean, message: string, productId?: string}>({show: false, message: ''})
   const [highlightedProductIndex, setHighlightedProductIndex] = useState<number>(-1)
@@ -560,10 +561,15 @@ export default function NewSalePage() {
   }, [selectedProducts])
 
   const saleAmounts = useMemo(
-    () => computeSaleAmounts(validProductsForTotal, includeTax, transportPrice),
-    [validProductsForTotal, includeTax, transportPrice]
+    () =>
+      computeSaleAmounts(validProductsForTotal, false, {
+        transportPrice,
+        discount: orderDiscount,
+        discountType: orderDiscountType,
+      }),
+    [validProductsForTotal, transportPrice, orderDiscount, orderDiscountType]
   )
-  const { subtotal, tax, total } = saleAmounts
+  const { itemsSubtotal, orderDiscountAmount, subtotal, total } = saleAmounts
 
   const totalLineDiscount = useMemo(
     () =>
@@ -725,7 +731,11 @@ export default function NewSalePage() {
     const saleItems = prepareSaleItemsForSave(
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
-    const amounts = computeSaleAmounts(saleItems, includeTax, transportPrice)
+    const amounts = computeSaleAmounts(saleItems, false, {
+      transportPrice,
+      discount: orderDiscount,
+      discountType: orderDiscountType,
+    })
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
       clientId: selectedClient.id,
@@ -734,8 +744,8 @@ export default function NewSalePage() {
       subtotal: amounts.subtotal,
       tax: amounts.tax,
       transportPrice: amounts.transportPrice,
-      discount: 0,
-      discountType: 'amount',
+      discount: amounts.discount,
+      discountType: amounts.discountType,
       status: 'completed',
       paymentMethod,
       payments: paymentMethod === 'mixed' ? mixedPayments : undefined,
@@ -1557,27 +1567,36 @@ export default function NewSalePage() {
                           </div>
                         )}
                         <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500 dark:text-zinc-400">Subtotal</span>
+                          <span className="text-zinc-500 dark:text-zinc-400">Subtotal productos</span>
                           <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                            {formatCurrency(subtotal)}
+                            {formatCurrency(itemsSubtotal)}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-zinc-500 dark:text-zinc-400">IVA (19%)</span>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={includeTax}
-                              onChange={(e) => setIncludeTax(e.target.checked)}
-                              className="h-3.5 w-3.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400 dark:border-zinc-600"
-                            />
-                            <span className="text-xs text-zinc-500">Incluir</span>
+                        <SaleLineDiscountFields
+                          label="Descuento al total"
+                          stacked
+                          discount={orderDiscount}
+                          discountType={orderDiscountType}
+                          onDiscountChange={setOrderDiscount}
+                          onDiscountTypeChange={(type) => {
+                            setOrderDiscountType(type)
+                            if (type === 'percentage' && orderDiscount > 100) {
+                              setOrderDiscount(100)
+                            }
+                          }}
+                        />
+                        {orderDiscountAmount > 0 && (
+                          <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                            <span>Descuento aplicado</span>
+                            <span className="tabular-nums">-{formatCurrency(orderDiscountAmount)}</span>
                           </div>
-                        </div>
-                        {includeTax && (
-                          <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                            <span>IVA calculado</span>
-                            <span className="tabular-nums">{formatCurrency(tax)}</span>
+                        )}
+                        {orderDiscountAmount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-zinc-500 dark:text-zinc-400">Subtotal con descuento</span>
+                            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                              {formatCurrency(subtotal)}
+                            </span>
                           </div>
                         )}
                         <div className="flex items-center justify-between gap-3 text-sm">

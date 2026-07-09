@@ -211,7 +211,7 @@ export function InvoiceTemplate({ sale, company, client }: InvoiceTemplateProps)
 
                 {sale.discount && sale.discount > 0.001 && (
                   <div className="flex justify-between text-red-600">
-                    <span>Descuento por total:</span>
+                    <span>Descuento al total:</span>
                     <span>
                       {sale.discountType === 'percentage' 
                         ? `-${sale.discount}%` 

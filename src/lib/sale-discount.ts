@@ -24,6 +24,24 @@ export function getLineTotalAfterDiscount(
   return Math.max(0, getLineBaseTotal(item) - getLineDiscountAmount(item))
 }
 
+export function getOrderDiscountAmount(
+  baseSubtotal: number,
+  discount: number,
+  discountType: SaleDiscountType = 'amount'
+): number {
+  if (discount <= 0 || baseSubtotal <= 0) return 0
+  if (discountType === 'percentage') {
+    return Math.min(baseSubtotal, (baseSubtotal * discount) / 100)
+  }
+  return Math.min(baseSubtotal, discount)
+}
+
+export type ComputeSaleAmountsOptions = {
+  transportPrice?: number
+  discount?: number
+  discountType?: SaleDiscountType
+}
+
 /** Aplica total de línea coherente con descuento (para guardar en BD). */
 export function applyLineTotal<T extends SaleItem>(item: T): T {
   return { ...item, total: getLineTotalAfterDiscount(item) }
@@ -38,12 +56,36 @@ export function computeSubtotalFromItems(
 export function computeSaleAmounts(
   items: Pick<SaleItem, 'quantity' | 'unitPrice' | 'discount' | 'discountType'>[],
   includeTax: boolean,
-  transportPrice = 0
-): { subtotal: number; tax: number; transportPrice: number; total: number } {
-  const subtotal = computeSubtotalFromItems(items)
+  options: ComputeSaleAmountsOptions = {}
+): {
+  itemsSubtotal: number
+  orderDiscountAmount: number
+  subtotal: number
+  tax: number
+  transportPrice: number
+  total: number
+  discount: number
+  discountType: SaleDiscountType
+} {
+  const itemsSubtotal = computeSubtotalFromItems(items)
+  const discountType = options.discountType || 'amount'
+  const rawDiscount = Math.max(0, options.discount || 0)
+  const discount =
+    discountType === 'percentage' ? Math.min(100, rawDiscount) : rawDiscount
+  const orderDiscountAmount = getOrderDiscountAmount(itemsSubtotal, discount, discountType)
+  const subtotal = Math.max(0, itemsSubtotal - orderDiscountAmount)
   const tax = includeTax ? subtotal * 0.19 : 0
-  const transport = Math.max(0, transportPrice || 0)
-  return { subtotal, tax, transportPrice: transport, total: subtotal + tax + transport }
+  const transport = Math.max(0, options.transportPrice || 0)
+  return {
+    itemsSubtotal,
+    orderDiscountAmount,
+    subtotal,
+    tax,
+    transportPrice: transport,
+    total: subtotal + tax + transport,
+    discount,
+    discountType,
+  }
 }
 
 export function prepareSaleItemsForSave(items: SaleItem[]): SaleItem[] {

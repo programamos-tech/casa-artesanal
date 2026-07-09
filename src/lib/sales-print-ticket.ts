@@ -543,7 +543,7 @@ export async function printSaleTicket(sale: Sale): Promise<void> {
                 sale.discount && sale.discount > 0.001
                   ? `
                 <div class="summary-row" style="color: #d32f2f;">
-                  <span>Descuento:</span>
+                  <span>Descuento al total:</span>
                   <span>${sale.discountType === 'percentage' ? `-${sale.discount}%` : `-${formatCurrency(sale.discount)}`}</span>
                 </div>
               `
