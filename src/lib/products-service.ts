@@ -2109,14 +2109,14 @@ export class ProductsService {
           else offset += limit
         }
       } else {
-        // Microtienda: sumar solo stock de esta tienda desde store_stock
+        // Microtienda: inversión = quantity × store_stock.cost (sin fallback a products.cost)
         let hasMore = true
         let offset = 0
         const limit = 1000
         while (hasMore) {
           const { data: rows, error } = await supabase
             .from('store_stock')
-            .select('quantity, cost, product_id, products(cost)')
+            .select('quantity, cost')
             .eq('store_id', storeId)
             .range(offset, offset + limit - 1)
 
@@ -2128,11 +2128,9 @@ export class ProductsService {
             hasMore = false
             break
           }
-          rows.forEach((row: { quantity: number; cost?: number | null; products?: { cost: number } | null }) => {
+          rows.forEach((row: { quantity: number; cost?: number | null }) => {
             const qty = row.quantity || 0
-            const cost = row.cost != null && row.cost > 0
-              ? Number(row.cost)
-              : (row.products?.cost != null ? Number(row.products.cost) : 0)
+            const cost = this.microStoreAcquisitionCost(row)
             totalStockUnits += qty
             totalStockInvestment += cost * qty
             if (qty > 0 && qty <= 5) lowStockCount++
