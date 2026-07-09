@@ -27,7 +27,6 @@ import {
   Eye,
   EyeOff,
   ChevronDown,
-  Truck,
 } from 'lucide-react'
 import {
   XAxis,
@@ -52,6 +51,67 @@ import { cardShell } from '@/lib/card-shell'
 import { isWholesaleClientType } from '@/lib/product-pricing'
 
 type DateFilter = 'today' | 'specific' | 'all' | 'range'
+
+type PaymentChannel = 'cash' | 'nequi' | 'bancolombia' | 'transfer' | 'card'
+
+type ChannelRevenue = {
+  total: number
+  products: number
+  transport: number
+}
+
+function emptyChannelRevenue(): ChannelRevenue {
+  return { total: 0, products: 0, transport: 0 }
+}
+
+function mapPaymentChannel(type: string | undefined): PaymentChannel | null {
+  if (type === 'cash') return 'cash'
+  if (type === 'nequi') return 'nequi'
+  if (type === 'bancolombia') return 'bancolombia'
+  if (type === 'transfer') return 'transfer'
+  if (type === 'card') return 'card'
+  return null
+}
+
+function splitSalePayment(
+  sale: Sale,
+  paymentAmount: number
+): { products: number; transport: number } {
+  const productAmount = Math.max(0, (sale.subtotal || 0) + (sale.tax || 0))
+  const transportAmount = Math.max(0, sale.transportPrice || 0)
+  const totalSale = Math.max(0, sale.total || 0)
+  if (totalSale <= 0 || paymentAmount <= 0) return { products: 0, transport: 0 }
+  const ratio = paymentAmount / totalSale
+  return {
+    products: productAmount * ratio,
+    transport: transportAmount * ratio,
+  }
+}
+
+function addChannelPayment(
+  channels: Record<PaymentChannel, ChannelRevenue>,
+  channel: PaymentChannel,
+  amount: number,
+  productsPart: number,
+  transportPart: number
+) {
+  channels[channel].total += amount
+  channels[channel].products += productsPart
+  channels[channel].transport += transportPart
+}
+
+function revenueMixSubtitle(
+  products: number,
+  transport: number,
+  formatCurrency: (amount: number) => string
+): string {
+  const p = Math.round(products)
+  const t = Math.round(transport)
+  if (p <= 0 && t <= 0) return 'Sin movimientos'
+  if (t <= 0) return `${formatCurrency(p)} en ventas`
+  if (p <= 0) return `${formatCurrency(t)} en domicilios`
+  return `Ventas ${formatCurrency(p)} · Domicilios ${formatCurrency(t)}`
+}
 
 const dashCardBase =
   'casa-artesanal-card-surface max-w-full min-w-0 rounded-xl border border-solid border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 md:p-6'
@@ -857,69 +917,70 @@ export default function DashboardPage() {
     // Ingresos por abonos de créditos (solo de facturas/créditos activos)
     const creditPaymentsRevenue = validPaymentRecords.reduce((sum, payment) => sum + payment.amount, 0)
 
-    // Ingresos por método de pago (ventas + abonos válidos)
-    // Excluir ventas canceladas y borradores del cálculo de ingresos
+    // Ingresos por método de pago (ventas + abonos); domicilio incluido en el total, desglosado en products/transport
     const activeSales = sales.filter(sale => sale.status !== 'cancelled' && sale.status !== 'draft')
 
-    let cashRevenue = 0
-    let nequiRevenue = 0
-    let bancolombiaRevenue = 0
-    let otherTransferRevenue = 0
-    let cardRevenue = 0
+    const channels: Record<PaymentChannel, ChannelRevenue> = {
+      cash: emptyChannelRevenue(),
+      nequi: emptyChannelRevenue(),
+      bancolombia: emptyChannelRevenue(),
+      transfer: emptyChannelRevenue(),
+      card: emptyChannelRevenue(),
+    }
 
-    // Procesar solo ventas activas (no canceladas)
     activeSales.forEach(sale => {
-      // Priorizar usar sale.payments si están disponibles (más preciso)
       if (sale.payments && sale.payments.length > 0) {
-        // Usar los registros de pagos (más preciso, especialmente para transferencias)
         sale.payments.forEach(payment => {
-          if (payment.paymentType === 'cash') {
-            cashRevenue += payment.amount || 0
-          } else if (payment.paymentType === 'nequi') {
-            nequiRevenue += payment.amount || 0
-          } else if (payment.paymentType === 'bancolombia') {
-            bancolombiaRevenue += payment.amount || 0
-          } else if (payment.paymentType === 'transfer') {
-            otherTransferRevenue += payment.amount || 0
-          } else if (payment.paymentType === 'card') {
-            cardRevenue += payment.amount || 0
-          }
+          const channel = mapPaymentChannel(payment.paymentType)
+          if (!channel) return
+          const amount = payment.amount || 0
+          const split = splitSalePayment(sale, amount)
+          addChannelPayment(channels, channel, amount, split.products, split.transport)
         })
       } else {
-        // Fallback: usar paymentMethod si no hay registros de payments
-        if (sale.paymentMethod === 'cash') {
-          cashRevenue += sale.total
-        } else if (sale.paymentMethod === 'nequi') {
-          nequiRevenue += sale.total
-        } else if (sale.paymentMethod === 'bancolombia') {
-          bancolombiaRevenue += sale.total
-        } else if (sale.paymentMethod === 'transfer') {
-          otherTransferRevenue += sale.total
-        } else if (sale.paymentMethod === 'card') {
-          cardRevenue += sale.total
-        } else if (sale.paymentMethod === 'mixed') {
-          // Si es mixed pero no tiene payments, loguear para debugging
-          console.warn('[DASHBOARD] Sale with mixed payment method but no payments:', {
-            saleId: sale.id,
-            invoiceNumber: sale.invoiceNumber,
-            total: sale.total,
-            payments: sale.payments
-          })
-        }
+        const amount = sale.total || 0
+        const channel = mapPaymentChannel(sale.paymentMethod)
+        if (!channel || amount <= 0) return
+        const split = splitSalePayment(sale, amount)
+        addChannelPayment(channels, channel, amount, split.products, split.transport)
       }
     })
 
-    // Agregar abonos de créditos (efectivo y transferencia) al total de ingresos
     const isCash = (p: { paymentMethod?: string }) => p.paymentMethod === 'cash' || p.paymentMethod === 'efectivo'
     const isNequi = (p: { paymentMethod?: string }) => p.paymentMethod === 'nequi'
     const isBancolombia = (p: { paymentMethod?: string }) => p.paymentMethod === 'bancolombia'
     const isOtherTransfer = (p: { paymentMethod?: string }) => p.paymentMethod === 'transfer'
     const isCard = (p: { paymentMethod?: string }) => p.paymentMethod === 'card'
-    cashRevenue += validPaymentRecords.filter(isCash).reduce((sum, payment) => sum + payment.amount, 0)
-    nequiRevenue += validPaymentRecords.filter(isNequi).reduce((sum, payment) => sum + payment.amount, 0)
-    bancolombiaRevenue += validPaymentRecords.filter(isBancolombia).reduce((sum, payment) => sum + payment.amount, 0)
-    otherTransferRevenue += validPaymentRecords.filter(isOtherTransfer).reduce((sum, payment) => sum + payment.amount, 0)
-    cardRevenue += validPaymentRecords.filter(isCard).reduce((sum, payment) => sum + payment.amount, 0)
+
+    validPaymentRecords.filter(isCash).forEach(payment => {
+      addChannelPayment(channels, 'cash', payment.amount, payment.amount, 0)
+    })
+    validPaymentRecords.filter(isNequi).forEach(payment => {
+      addChannelPayment(channels, 'nequi', payment.amount, payment.amount, 0)
+    })
+    validPaymentRecords.filter(isBancolombia).forEach(payment => {
+      addChannelPayment(channels, 'bancolombia', payment.amount, payment.amount, 0)
+    })
+    validPaymentRecords.filter(isOtherTransfer).forEach(payment => {
+      addChannelPayment(channels, 'transfer', payment.amount, payment.amount, 0)
+    })
+    validPaymentRecords.filter(isCard).forEach(payment => {
+      addChannelPayment(channels, 'card', payment.amount, payment.amount, 0)
+    })
+
+    const cashRevenue = channels.cash.total
+    const nequiRevenue = channels.nequi.total
+    const bancolombiaRevenue = channels.bancolombia.total
+    const otherTransferRevenue = channels.transfer.total
+    const cardRevenue = channels.card.total
+    const cashProductsRevenue = channels.cash.products
+    const cashTransportRevenue = channels.cash.transport
+    const transferProductsRevenue =
+      channels.nequi.products + channels.bancolombia.products + channels.transfer.products
+    const transferTransportRevenue =
+      channels.nequi.transport + channels.bancolombia.transport + channels.transfer.transport
+    const cardProductsRevenue = channels.card.products
+    const cardTransportRevenue = channels.card.transport
 
     const transferRevenue = nequiRevenue + bancolombiaRevenue + otherTransferRevenue
 
@@ -1323,6 +1384,12 @@ export default function DashboardPage() {
       salesRevenue: salesRevenue,
       productsSalesRevenue,
       transportRevenue,
+      cashProductsRevenue,
+      cashTransportRevenue,
+      transferProductsRevenue,
+      transferTransportRevenue,
+      cardProductsRevenue,
+      cardTransportRevenue,
       creditPaymentsRevenue,
       cashRevenue,
       transferRevenue,
@@ -1754,45 +1821,16 @@ export default function DashboardPage() {
                   <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
                     {formatCurrency(metrics.totalRevenue)}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{metrics.totalSales} ventas</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push('/sales')}
-              className={cn(dashKpiCard, dashMetricTileInteractive)}
-            >
-              <div className="flex gap-3">
-                <div className={dashKpiIconWrap} aria-hidden>
-                  <Package className={cn(dashMetricIconEm, kpiIconTone.products)} strokeWidth={1.5} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Ventas productos</span>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.productsSalesRevenue)}
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {metrics.totalSales} ventas
+                    {metrics.transportRevenue > 0
+                      ? ` · ${revenueMixSubtitle(
+                          metrics.productsSalesRevenue,
+                          metrics.transportRevenue,
+                          formatCurrency
+                        )}`
+                      : ''}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Sin domicilios</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push('/sales')}
-              className={cn(dashKpiCard, dashMetricTileInteractive)}
-            >
-              <div className="flex gap-3">
-                <div className={dashKpiIconWrap} aria-hidden>
-                  <Truck className={cn(dashMetricIconEm, kpiIconTone.transport)} strokeWidth={1.5} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Domicilios</span>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.transportRevenue)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Transporte cobrado</p>
                 </div>
               </div>
             </button>
@@ -1812,9 +1850,11 @@ export default function DashboardPage() {
                     {formatCurrency(metrics.cashRevenue)}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {(metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue) > 0
-                      ? `${((metrics.cashRevenue / (metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue)) * 100).toFixed(1)}% del total`
-                      : '0% del total'}
+                    {revenueMixSubtitle(
+                      metrics.cashProductsRevenue,
+                      metrics.cashTransportRevenue,
+                      formatCurrency
+                    )}
                   </p>
                 </div>
               </div>
@@ -1841,9 +1881,11 @@ export default function DashboardPage() {
                     {formatCurrency(metrics.transferRevenue)}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {(metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue) > 0
-                      ? `${((metrics.transferRevenue / (metrics.cashRevenue + metrics.transferRevenue + metrics.cardRevenue)) * 100).toFixed(1)}% del total`
-                      : '0% del total'}
+                    {revenueMixSubtitle(
+                      metrics.transferProductsRevenue,
+                      metrics.transferTransportRevenue,
+                      formatCurrency
+                    )}
                   </p>
                   <p className="mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Clic para ver desglose</p>
                 </div>
@@ -2550,6 +2592,23 @@ export default function DashboardPage() {
                   ]
                   return (
                     <ul className="space-y-1.5">
+                      <li className="rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-2 dark:border-zinc-700/60 dark:bg-zinc-800/40">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Total transferencias
+                          </span>
+                          <span className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                            {formatCurrency(metrics.transferRevenue)}
+                          </span>
+                        </div>
+                        <span className="mt-1 block text-[10px] text-zinc-500 dark:text-zinc-400">
+                          {revenueMixSubtitle(
+                            metrics.transferProductsRevenue,
+                            metrics.transferTransportRevenue,
+                            formatCurrency
+                          )}
+                        </span>
+                      </li>
                       {rows.map((row) => (
                         <li
                           key={row.label}
