@@ -239,6 +239,8 @@ export interface Sale {
   total: number
   subtotal: number
   tax: number
+  /** Cobro por domicilio/transporte (no incluido en subtotal de productos). */
+  transportPrice?: number
   discount: number
   discountType?: 'percentage' | 'amount'
   status: 'pending' | 'completed' | 'cancelled' | 'draft'

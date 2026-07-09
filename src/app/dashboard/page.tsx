@@ -26,7 +26,8 @@ import {
   Home,
   Eye,
   EyeOff,
-  ChevronDown
+  ChevronDown,
+  Truck,
 } from 'lucide-react'
 import {
   XAxis,
@@ -74,6 +75,8 @@ const kpiIconTone = {
   warranties: 'text-amber-600 dark:text-amber-400',
   profit: 'text-teal-600 dark:text-teal-400',
   stock: 'text-indigo-600 dark:text-indigo-400',
+  products: 'text-emerald-600 dark:text-emerald-400',
+  transport: 'text-orange-600 dark:text-orange-400',
 } as const
 
 const dashMetricIconEm = 'h-5 w-5 shrink-0'
@@ -836,6 +839,14 @@ export default function DashboardPage() {
     // Ingresos por ventas (nuevas ventas) - excluir canceladas y borradores
     const activeSalesForRevenue = sales.filter(sale => sale.status !== 'cancelled' && sale.status !== 'draft')
     const salesRevenue = activeSalesForRevenue.reduce((sum, sale) => sum + sale.total, 0)
+    const productsSalesRevenue = activeSalesForRevenue.reduce(
+      (sum, sale) => sum + (sale.subtotal || 0) + (sale.tax || 0),
+      0
+    )
+    const transportRevenue = activeSalesForRevenue.reduce(
+      (sum, sale) => sum + (sale.transportPrice || 0),
+      0
+    )
 
     // Filtrar abonos cancelados (los abonos de facturas canceladas se marcan como 'cancelled' en payment_records)
     const validPaymentRecords = paymentRecords.filter(payment => {
@@ -1310,6 +1321,8 @@ export default function DashboardPage() {
       // Total y por método deben incluir SIEMPRE ventas + abonos (no usar solo resumen de ventas)
       totalRevenue,
       salesRevenue: salesRevenue,
+      productsSalesRevenue,
+      transportRevenue,
       creditPaymentsRevenue,
       cashRevenue,
       transferRevenue,
@@ -1742,6 +1755,44 @@ export default function DashboardPage() {
                     {formatCurrency(metrics.totalRevenue)}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{metrics.totalSales} ventas</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push('/sales')}
+              className={cn(dashKpiCard, dashMetricTileInteractive)}
+            >
+              <div className="flex gap-3">
+                <div className={dashKpiIconWrap} aria-hidden>
+                  <Package className={cn(dashMetricIconEm, kpiIconTone.products)} strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={dashMetricLabelClass}>Ventas productos</span>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                    {formatCurrency(metrics.productsSalesRevenue)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Sin domicilios</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push('/sales')}
+              className={cn(dashKpiCard, dashMetricTileInteractive)}
+            >
+              <div className="flex gap-3">
+                <div className={dashKpiIconWrap} aria-hidden>
+                  <Truck className={cn(dashMetricIconEm, kpiIconTone.transport)} strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={dashMetricLabelClass}>Domicilios</span>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
+                    {formatCurrency(metrics.transportRevenue)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Transporte cobrado</p>
                 </div>
               </div>
             </button>

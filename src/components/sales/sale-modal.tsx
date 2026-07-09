@@ -53,6 +53,7 @@ import {
   hasBlockingAcquisitionCostIssues,
 } from '@/lib/sale-line-pricing-validation'
 import { syncSaleLinePricesForClient } from '@/lib/sale-line-pricing-sync'
+import { CopIntegerInput } from '@/components/sales/cop-integer-input'
 import { useSaleClientSearch } from '@/hooks/use-sale-client-search'
 
 // Constante para identificar la tienda principal
@@ -93,6 +94,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [includeTax, setIncludeTax] = useState(false)
+  const [transportPrice, setTransportPrice] = useState(0)
   const [invoiceNumber, setInvoiceNumber] = useState<string>('Pendiente') // Número de factura
   const [isClientModalOpen, setIsClientModalOpen] = useState(false)
   const [stockAlert, setStockAlert] = useState<{show: boolean, message: string, productId?: string}>({show: false, message: ''})
@@ -148,6 +150,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         if (sale.tax && sale.tax > 0) {
           setIncludeTax(true)
         }
+
+        setTransportPrice(sale.transportPrice ?? 0)
       } else {
         // Resetear formulario si no hay venta para editar
         setSelectedClient(null)
@@ -159,6 +163,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         setMixedPayments([])
         setShowMixedPayments(false)
         setIncludeTax(false)
+        setTransportPrice(0)
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale]) // Ejecutar cuando se abre/cierra el modal o cambia la venta
@@ -492,7 +497,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   )
   
   const validProductsForTotal = validProducts.filter(item => item.unitPrice > 0)
-  const saleAmounts = computeSaleAmounts(validProductsForTotal, includeTax)
+  const saleAmounts = computeSaleAmounts(validProductsForTotal, includeTax, transportPrice)
   const { subtotal, tax, total } = saleAmounts
   const totalLineDiscount = validProductsForTotal.reduce(
     (sum, item) => sum + getLineDiscountAmount(item),
@@ -718,7 +723,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     const saleItems = prepareSaleItemsForSave(
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
-    const amounts = computeSaleAmounts(saleItems, includeTax)
+    const amounts = computeSaleAmounts(saleItems, includeTax, transportPrice)
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
       clientId: selectedClient.id,
@@ -726,6 +731,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       total: amounts.total,
       subtotal: amounts.subtotal,
       tax: amounts.tax,
+      transportPrice: amounts.transportPrice,
       discount: 0,
       discountType: 'amount',
       status: isDraft ? 'draft' : 'completed',
@@ -775,6 +781,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     setShowClientDropdown(false)
     setShowProductDropdown(false)
     setIncludeTax(false)
+    setTransportPrice(0)
     setInvoiceNumber('Pendiente')
     setMixedPayments([])
     setShowMixedPayments(false)
@@ -1531,6 +1538,17 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 <span className="font-medium text-gray-900 dark:text-white">${tax.toLocaleString()}</span>
                               </div>
                             )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">Precio del transporte:</span>
+                            <CopIntegerInput
+                              value={transportPrice}
+                              onValueChange={setTransportPrice}
+                              aria-label="Precio del transporte"
+                              className="w-32 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-right text-sm font-medium text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/25 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white"
+                              placeholder="0"
+                            />
                           </div>
 
                           <div className="border-t border-gray-200 dark:border-neutral-600 pt-2">

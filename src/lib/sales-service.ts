@@ -4,6 +4,10 @@ import { AuthService } from './auth-service'
 import { ProductsService } from './products-service'
 import { getCurrentUserStoreId, canAccessAllStores, getCurrentUser } from './store-helper'
 
+function readTransportPrice(row: { transport_price?: number | string | null } | null | undefined): number {
+  return Math.max(0, Number(row?.transport_price ?? 0) || 0)
+}
+
 /** Tamaño de página de la lista de ventas (contexto + servicio + tabla). */
 export const SALES_PAGE_SIZE = 20
 
@@ -244,6 +248,7 @@ export class SalesService {
           total: sale.total,
           subtotal: sale.subtotal,
           tax: sale.tax,
+          transportPrice: readTransportPrice(sale),
           discount: sale.discount,
           discountType: sale.discount_type || 'amount',
           status: sale.status,
@@ -490,6 +495,7 @@ export class SalesService {
           total: sale.total,
           subtotal: sale.subtotal,
           tax: sale.tax,
+          transportPrice: readTransportPrice(sale),
           discount: sale.discount,
           discountType: sale.discount_type || 'amount',
           status: sale.status,
@@ -602,6 +608,7 @@ export class SalesService {
         total: sale.total,
         subtotal: sale.subtotal,
         tax: sale.tax,
+        transportPrice: readTransportPrice(sale),
         discount: sale.discount,
         discountType: sale.discount_type || 'amount',
         status: sale.status,
@@ -730,6 +737,7 @@ export class SalesService {
         total: data.total,
         subtotal: data.subtotal,
         tax: data.tax,
+        transportPrice: readTransportPrice(data),
         discount: data.discount,
         discountType: data.discount_type || 'amount',
         cancellationReason: data.cancellation_reason || undefined,
@@ -803,6 +811,7 @@ export class SalesService {
           total: saleData.total,
           subtotal: saleData.subtotal,
           tax: saleData.tax,
+          transport_price: saleData.transportPrice ?? 0,
           discount: saleData.discount,
           status: saleData.status,
           payment_method: saleData.paymentMethod,
@@ -1008,6 +1017,7 @@ export class SalesService {
         total: sale.total,
         subtotal: sale.subtotal,
         tax: sale.tax,
+        transportPrice: readTransportPrice(sale),
         discount: sale.discount,
         discountType: (sale as any).discount_type || 'amount',
         status: sale.status,
@@ -1074,6 +1084,7 @@ export class SalesService {
           total: saleData.total,
           subtotal: saleData.subtotal,
           tax: saleData.tax,
+          transport_price: saleData.transportPrice ?? 0,
           discount: saleData.discount,
           status: saleData.status,
           payment_method: saleData.paymentMethod,
@@ -1790,6 +1801,7 @@ export class SalesService {
         total: sale.total,
         subtotal: sale.subtotal,
         tax: sale.tax,
+        transportPrice: readTransportPrice(sale),
         discount: sale.discount,
         discountType: sale.discount_type || 'amount',
         status: sale.status,
@@ -1963,6 +1975,7 @@ export class SalesService {
           total: sale.total,
           subtotal: sale.subtotal,
           tax: sale.tax,
+          transportPrice: readTransportPrice(sale),
           discount: sale.discount,
           discountType: sale.discount_type || 'amount',
           status: sale.status,
@@ -2137,6 +2150,7 @@ export class SalesService {
           total: sale.total,
           subtotal: sale.subtotal,
           tax: sale.tax,
+          transportPrice: readTransportPrice(sale),
           discount: sale.discount,
           discountType: sale.discount_type || 'amount',
           status: sale.status,

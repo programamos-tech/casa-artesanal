@@ -56,6 +56,7 @@ import {
 } from '@/lib/sale-line-pricing-validation'
 import { syncSaleLinePricesForClient } from '@/lib/sale-line-pricing-sync'
 import { useSaleClientSearch } from '@/hooks/use-sale-client-search'
+import { CopIntegerInput } from '@/components/sales/cop-integer-input'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -94,6 +95,7 @@ export default function NewSalePage() {
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [includeTax, setIncludeTax] = useState(false)
+  const [transportPrice, setTransportPrice] = useState(0)
   const [invoiceNumber, setInvoiceNumber] = useState<string>('Pendiente')
   const [stockAlert, setStockAlert] = useState<{show: boolean, message: string, productId?: string}>({show: false, message: ''})
   const [highlightedProductIndex, setHighlightedProductIndex] = useState<number>(-1)
@@ -558,8 +560,8 @@ export default function NewSalePage() {
   }, [selectedProducts])
 
   const saleAmounts = useMemo(
-    () => computeSaleAmounts(validProductsForTotal, includeTax),
-    [validProductsForTotal, includeTax]
+    () => computeSaleAmounts(validProductsForTotal, includeTax, transportPrice),
+    [validProductsForTotal, includeTax, transportPrice]
   )
   const { subtotal, tax, total } = saleAmounts
 
@@ -723,7 +725,7 @@ export default function NewSalePage() {
     const saleItems = prepareSaleItemsForSave(
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
-    const amounts = computeSaleAmounts(saleItems, includeTax)
+    const amounts = computeSaleAmounts(saleItems, includeTax, transportPrice)
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
       clientId: selectedClient.id,
@@ -731,6 +733,7 @@ export default function NewSalePage() {
       total: amounts.total,
       subtotal: amounts.subtotal,
       tax: amounts.tax,
+      transportPrice: amounts.transportPrice,
       discount: 0,
       discountType: 'amount',
       status: 'completed',
@@ -1577,6 +1580,16 @@ export default function NewSalePage() {
                             <span className="tabular-nums">{formatCurrency(tax)}</span>
                           </div>
                         )}
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="text-zinc-500 dark:text-zinc-400">Precio del transporte</span>
+                          <CopIntegerInput
+                            value={transportPrice}
+                            onValueChange={setTransportPrice}
+                            aria-label="Precio del transporte"
+                            className="w-32 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-right text-sm tabular-nums text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                            placeholder="0"
+                          />
+                        </div>
                         <div className="flex justify-between border-t border-zinc-200 pt-2 text-base font-bold dark:border-zinc-800">
                           <span className="text-zinc-900 dark:text-zinc-50">Total</span>
                           <span className="tabular-nums text-brand-700 dark:text-brand-400">{formatCurrency(total)}</span>

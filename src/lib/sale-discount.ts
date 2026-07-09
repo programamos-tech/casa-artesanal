@@ -37,11 +37,13 @@ export function computeSubtotalFromItems(
 
 export function computeSaleAmounts(
   items: Pick<SaleItem, 'quantity' | 'unitPrice' | 'discount' | 'discountType'>[],
-  includeTax: boolean
-): { subtotal: number; tax: number; total: number } {
+  includeTax: boolean,
+  transportPrice = 0
+): { subtotal: number; tax: number; transportPrice: number; total: number } {
   const subtotal = computeSubtotalFromItems(items)
   const tax = includeTax ? subtotal * 0.19 : 0
-  return { subtotal, tax, total: subtotal + tax }
+  const transport = Math.max(0, transportPrice || 0)
+  return { subtotal, tax, transportPrice: transport, total: subtotal + tax + transport }
 }
 
 export function prepareSaleItemsForSave(items: SaleItem[]): SaleItem[] {

@@ -559,6 +559,16 @@ export async function printSaleTicket(sale: Sale): Promise<void> {
               `
                   : ''
               }
+              ${
+                sale.transportPrice && sale.transportPrice > 0
+                  ? `
+                <div class="summary-row">
+                  <span>Transporte / domicilio:</span>
+                  <span>${formatCurrency(sale.transportPrice)}</span>
+                </div>
+              `
+                  : ''
+              }
               <div class="summary-row total-row">
                 <span><strong>TOTAL:</strong></span>
                 <span><strong>${formatCurrency(sale.total)}</strong></span>

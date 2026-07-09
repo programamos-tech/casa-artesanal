@@ -749,6 +749,12 @@ export default function SaleDetailModal({
                     <span>${formatCurrency(sale.tax)}</span>
                   </div>
                 ` : ''}
+                ${sale.transportPrice && sale.transportPrice > 0 ? `
+                  <div class="summary-row">
+                    <span>Transporte / domicilio:</span>
+                    <span>${formatCurrency(sale.transportPrice)}</span>
+                  </div>
+                ` : ''}
                 <div class="summary-row total-row">
                   <span>TOTAL:</span>
                   <span>${formatCurrency(sale.total)}</span>
