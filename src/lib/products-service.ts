@@ -22,9 +22,9 @@ export type CategoryFilter = 'all' | string
 const PRODUCT_SELECT_WITH_CATEGORY =
   '*, categories:category_id ( id, name )'
 
-/** Listado: sin join (más rápido; la categoría se resuelve en el cliente) */
+/** Listado: categoría embebida para mostrar nombre sin depender solo del contexto */
 const PRODUCT_LIST_SELECT =
-  'id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at'
+  'id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at, categories:category_id ( id, name )'
 
 type DbProductRow = {
   id: string
@@ -55,6 +55,22 @@ export class ProductsService {
     return [...products].sort(
       (a, b) => this.referenceSortKey(a.reference) - this.referenceSortKey(b.reference)
     )
+  }
+
+  /** Microtienda: costo de adquisición solo desde store_stock (0 si no está configurado). */
+  private static microStoreAcquisitionCost(
+    storeStock: { cost?: number | null } | null | undefined
+  ): number {
+    if (!storeStock || storeStock.cost == null) return 0
+    return Number(storeStock.cost)
+  }
+
+  /** Microtienda: precio de venta/mayorista desde store_stock. */
+  private static microStoreSalePrice(
+    storeStock: { price?: number | null } | null | undefined
+  ): number {
+    if (!storeStock || storeStock.price == null) return 0
+    return Number(storeStock.price)
   }
 
   private static mapDbProduct(
@@ -105,15 +121,10 @@ export class ProductsService {
     if (isMainStore) {
       return { cost: productCost }
     }
-    const row = product as DbProductRow
-    const dbWholesale =
-      row.wholesale_price != null
-        ? Number(row.wholesale_price)
-        : Number(row.price ?? microStoreSalePrice)
     return {
       cost: productCost,
       retailPrice: microStoreSalePrice,
-      wholesalePrice: dbWholesale,
+      wholesalePrice: microStoreSalePrice,
     }
   }
 
@@ -507,12 +518,10 @@ export class ProductsService {
           const storeStockCostPrice = costPriceMap.get(product.id)
 
           if (storeStockCostPrice) {
-            productCost = (storeStockCostPrice.cost !== null && storeStockCostPrice.cost !== 0)
-              ? storeStockCostPrice.cost
-              : product.price
-            productPrice = storeStockCostPrice.price !== null ? storeStockCostPrice.price : 0
+            productCost = this.microStoreAcquisitionCost(storeStockCostPrice)
+            productPrice = this.microStoreSalePrice(storeStockCostPrice)
           } else {
-            productCost = product.price
+            productCost = 0
             productPrice = 0
           }
         }
@@ -836,18 +845,11 @@ export class ProductsService {
           .single()
 
         if (storeStock) {
-          // Si existe store_stock con cost/price, usarlos
-          // Si cost es null o 0, usar el price de Sincelejo como cost por defecto
-          productCost = (storeStock.cost !== null && storeStock.cost !== 0)
-            ? storeStock.cost
-            : data.price // Precio de venta de Sincelejo como cost por defecto
-          productPrice = storeStock.price !== null ? storeStock.price : 0
-          // console.log('[PRODUCTS SERVICE] Using store_stock cost/price:', { cost: productCost, price: productPrice })
+          productCost = this.microStoreAcquisitionCost(storeStock)
+          productPrice = this.microStoreSalePrice(storeStock)
         } else {
-          // Sin registro: usar price de Sincelejo como cost por defecto
-          productCost = data.price
+          productCost = 0
           productPrice = 0
-          // console.log('[PRODUCTS SERVICE] No store_stock entry, using price from Sincelejo as cost:', productCost)
         }
       }
 
@@ -915,12 +917,10 @@ export class ProductsService {
       if (!isMainStore && currentStoreId) {
         const storeStockCostPrice = costPriceMap.get(product.id)
         if (storeStockCostPrice) {
-          productCost = (storeStockCostPrice.cost !== null && storeStockCostPrice.cost !== 0)
-            ? storeStockCostPrice.cost
-            : (product.price != null ? Number(product.price) : 0)
-          productPrice = storeStockCostPrice.price !== null ? storeStockCostPrice.price : 0
+          productCost = this.microStoreAcquisitionCost(storeStockCostPrice)
+          productPrice = this.microStoreSalePrice(storeStockCostPrice)
         } else {
-          productCost = product.price != null ? Number(product.price) : 0
+          productCost = 0
           productPrice = 0
         }
       }
@@ -1060,32 +1060,30 @@ export class ProductsService {
         }
       } else {
         // Microtienda: actualizar cost/price en store_stock, stock también en store_stock
-        if (updates.price !== undefined || updates.cost !== undefined || updates.stock) {
-          const storeStockUpdate: any = {}
+        const storeStockUpdate: Record<string, unknown> = {}
+        const salePrice =
+          updates.wholesalePrice ?? updates.retailPrice ?? updates.price
+        if (salePrice !== undefined) storeStockUpdate.price = salePrice
+        if (updates.cost !== undefined) storeStockUpdate.cost = updates.cost
 
-          if (updates.price !== undefined) storeStockUpdate.price = updates.price
-          if (updates.cost !== undefined) storeStockUpdate.cost = updates.cost
+        if (updates.stock) {
+          const totalStock = (updates.stock.store || 0) + (updates.stock.warehouse || 0)
+          storeStockUpdate.quantity = totalStock
+        }
 
-          // Para stock en microtiendas, actualizar quantity en store_stock
-          if (updates.stock) {
-            // En microtiendas, el stock total es solo "local" (quantity en store_stock)
-            const totalStock = (updates.stock.store || 0) + (updates.stock.warehouse || 0)
-            storeStockUpdate.quantity = totalStock
-          }
-
-          // Upsert en store_stock para la microtienda actual
+        if (Object.keys(storeStockUpdate).length > 0) {
           const { error: storeStockError } = await supabaseAdmin
             .from('store_stock')
-            .upsert({
-              store_id: currentStoreId,
-              product_id: id,
-              ...storeStockUpdate
-            }, {
-              onConflict: 'store_id,product_id'
-            })
+            .upsert(
+              {
+                store_id: currentStoreId,
+                product_id: id,
+                ...storeStockUpdate,
+              },
+              { onConflict: 'store_id,product_id' }
+            )
 
           if (storeStockError) {
-            // console.error('[PRODUCTS SERVICE] Error updating store_stock:', storeStockError)
             return false
           }
         }
@@ -1292,12 +1290,10 @@ export class ProductsService {
           const storeStockCostPrice = costPriceMap.get(product.id)
 
           if (storeStockCostPrice) {
-            productCost = (storeStockCostPrice.cost !== null && storeStockCostPrice.cost !== 0)
-              ? storeStockCostPrice.cost
-              : product.price
-            productPrice = storeStockCostPrice.price !== null ? storeStockCostPrice.price : 0
+            productCost = this.microStoreAcquisitionCost(storeStockCostPrice)
+            productPrice = this.microStoreSalePrice(storeStockCostPrice)
           } else {
-            productCost = product.price
+            productCost = 0
             productPrice = 0
           }
         }
