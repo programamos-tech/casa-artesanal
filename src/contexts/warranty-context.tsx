@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { Warranty } from '@/types'
-import { WarrantyService } from '@/lib/warranty-service'
+import { WarrantyService, type CreateWarrantyInput } from '@/lib/warranty-service'
 import { useAuth } from './auth-context'
 
 interface WarrantyContextType {
@@ -11,7 +11,7 @@ interface WarrantyContextType {
   currentPage: number
   totalWarranties: number
   hasMore: boolean
-  createWarranty: (warrantyData: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  createWarranty: (warrantyData: CreateWarrantyInput) => Promise<void>
   updateWarrantyStatus: (warrantyId: string, newStatus: string, notes?: string) => Promise<void>
   searchWarranties: (searchTerm: string) => Promise<Warranty[]>
   refreshWarranties: () => Promise<void>
@@ -57,7 +57,7 @@ export function WarrantyProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const createWarranty = useCallback(async (warrantyData: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const createWarranty = useCallback(async (warrantyData: CreateWarrantyInput) => {
     try {
       const newWarranty = await WarrantyService.createWarranty({
         ...warrantyData,

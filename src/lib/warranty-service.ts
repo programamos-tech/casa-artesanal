@@ -2,6 +2,106 @@ import { supabase } from './supabase'
 import { Warranty, WarrantyProduct, WarrantyStatusHistory } from '@/types'
 import { AuthService } from './auth-service'
 import { getCurrentUserStoreId, canAccessAllStores, getCurrentUser } from './store-helper'
+import { sumWarrantyLineTotals, type WarrantyLineInput } from './warranty-lines'
+
+export type CreateWarrantyInput = Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'> & {
+  receivedLines?: WarrantyLineInput[]
+  deliveredLines?: WarrantyLineInput[]
+  replacementQuantity?: number
+  quantityReceived?: number
+  productReceivedReference?: string
+  productReceivedPrice?: number
+  productDeliveredReference?: string
+  productDeliveredPrice?: number
+}
+
+const WARRANTY_PRODUCT_SELECT = `
+  id,
+  product_id,
+  product_name,
+  serial_number,
+  role,
+  quantity,
+  unit_price,
+  line_total,
+  sale_item_id,
+  condition,
+  notes,
+  created_at,
+  updated_at,
+  product:products (
+    id,
+    name,
+    reference,
+    price
+  )
+`
+
+function mapWarrantyProductRow(wp: Record<string, unknown>): WarrantyProduct {
+  return {
+    id: wp.id as string,
+    warrantyId: wp.warranty_id as string,
+    productId: wp.product_id as string,
+    productName: (wp.product_name as string) || undefined,
+    serialNumber: (wp.serial_number as string) || undefined,
+    role: ((wp.role as string) || 'received') as 'received' | 'delivered',
+    quantity: Number(wp.quantity ?? 1),
+    unitPrice: Number(wp.unit_price ?? 0),
+    lineTotal: Number(wp.line_total ?? 0),
+    saleItemId: (wp.sale_item_id as string) || undefined,
+    condition: wp.condition as WarrantyProduct['condition'],
+    notes: (wp.notes as string) || undefined,
+    createdAt: wp.created_at as string,
+    updatedAt: (wp.updated_at as string) || (wp.created_at as string),
+    product: wp.product as WarrantyProduct['product'],
+  }
+}
+
+async function deductProductStock(productId: string, quantityToDeduct: number): Promise<boolean> {
+  if (quantityToDeduct <= 0) return true
+
+  const { data: productData, error: productError } = await supabase
+    .from('products')
+    .select('stock_store, stock_warehouse')
+    .eq('id', productId)
+    .single()
+
+  if (productError || !productData) return false
+
+  const storeStock = Number(productData.stock_store) || 0
+  const warehouseStock = Number(productData.stock_warehouse) || 0
+  const currentStock = storeStock + warehouseStock
+  if (currentStock < quantityToDeduct) return false
+
+  let newStoreStock = storeStock
+  let newWarehouseStock = warehouseStock
+  let remaining = quantityToDeduct
+
+  if (storeStock > 0 && remaining > 0) {
+    const storeDeduction = Math.min(storeStock, remaining)
+    newStoreStock = storeStock - storeDeduction
+    remaining -= storeDeduction
+  }
+
+  if (remaining > 0 && warehouseStock > 0) {
+    const warehouseDeduction = Math.min(warehouseStock, remaining)
+    newWarehouseStock = warehouseStock - warehouseDeduction
+    remaining -= warehouseDeduction
+  }
+
+  const { data: updateData, error: updateError } = await supabase
+    .from('products')
+    .update({
+      stock_store: newStoreStock,
+      stock_warehouse: newWarehouseStock,
+    })
+    .eq('id', productId)
+    .eq('stock_store', storeStock)
+    .eq('stock_warehouse', warehouseStock)
+    .select()
+
+  return !updateError && !!updateData && updateData.length > 0
+}
 
 export class WarrantyService {
   // Obtener todas las garantías con paginación
@@ -45,17 +145,7 @@ export class WarrantyService {
             price
           ),
           warranty_products (
-            id,
-            product_id,
-            serial_number,
-            condition,
-            notes,
-            created_at,
-            product:products (
-              id,
-              name,
-              reference
-            )
+            ${WARRANTY_PRODUCT_SELECT}
           ),
           warranty_status_history (
             id,
@@ -134,6 +224,7 @@ export class WarrantyService {
         createdBy: warranty.created_by,
         quantityReceived: warranty.quantity_received ?? 1,
         quantityDelivered: warranty.quantity_delivered ?? 1,
+        saleTotalSnapshot: Number(warranty.sale_total_snapshot ?? warranty.original_sale?.total ?? 0),
         // Relaciones
         originalSale: warranty.original_sale ? {
           id: warranty.original_sale.id,
@@ -144,17 +235,7 @@ export class WarrantyService {
         client: warranty.client,
         productReceived: warranty.product_received,
         productDelivered: warranty.product_delivered,
-        warrantyProducts: warranty.warranty_products?.map(wp => ({
-          id: wp.id,
-          warrantyId: wp.warranty_id,
-          productId: wp.product_id,
-          serialNumber: wp.serial_number,
-          condition: wp.condition,
-          notes: wp.notes,
-          createdAt: wp.created_at,
-          updatedAt: wp.updated_at,
-          product: wp.product
-        })),
+        warrantyProducts: warranty.warranty_products?.map((wp: Record<string, unknown>) => mapWarrantyProductRow(wp)),
         statusHistory: warranty.warranty_status_history?.map(sh => ({
           id: sh.id,
           warrantyId: sh.warranty_id,
@@ -214,17 +295,7 @@ export class WarrantyService {
             price
           ),
           warranty_products (
-            id,
-            product_id,
-            serial_number,
-            condition,
-            notes,
-            created_at,
-            product:products (
-              id,
-              name,
-              reference
-            )
+            ${WARRANTY_PRODUCT_SELECT}
           ),
           warranty_status_history (
             id,
@@ -301,6 +372,7 @@ export class WarrantyService {
         createdBy: warranty.created_by,
         quantityReceived: warranty.quantity_received ?? 1,
         quantityDelivered: warranty.quantity_delivered ?? 1,
+        saleTotalSnapshot: Number(warranty.sale_total_snapshot ?? warranty.original_sale?.total ?? 0),
         originalSale: warranty.original_sale ? {
           id: warranty.original_sale.id,
           invoiceNumber: warranty.original_sale.invoice_number,
@@ -310,16 +382,7 @@ export class WarrantyService {
         client: warranty.client,
         productReceived: warranty.product_received,
         productDelivered: warranty.product_delivered,
-        warrantyProducts: warranty.warranty_products?.map(wp => ({
-          id: wp.id,
-          warrantyId: wp.warranty_id,
-          productId: wp.product_id,
-          serialNumber: wp.serial_number,
-          condition: wp.condition,
-          notes: wp.notes,
-          createdAt: wp.created_at,
-          product: wp.product
-        })) || [],
+        warrantyProducts: warranty.warranty_products?.map((wp: Record<string, unknown>) => mapWarrantyProductRow(wp)) || [],
         statusHistory: warranty.warranty_status_history?.map(sh => ({
           id: sh.id,
           warrantyId: sh.warranty_id,
@@ -375,17 +438,7 @@ export class WarrantyService {
             price
           ),
           warranty_products (
-            id,
-            product_id,
-            serial_number,
-            condition,
-            notes,
-            created_at,
-            product:products (
-              id,
-              name,
-              reference
-            )
+            ${WARRANTY_PRODUCT_SELECT}
           ),
           warranty_status_history (
             id,
@@ -443,11 +496,12 @@ export class WarrantyService {
         createdBy: data.created_by,
         quantityReceived: data.quantity_received ?? 1,
         quantityDelivered: data.quantity_delivered ?? 1,
+        saleTotalSnapshot: Number(data.sale_total_snapshot ?? data.original_sale?.total ?? 0),
         originalSale: data.original_sale,
         client: data.client,
         productReceived: data.product_received,
         productDelivered: data.product_delivered,
-        warrantyProducts: data.warranty_products,
+        warrantyProducts: (data.warranty_products || []).map((wp: Record<string, unknown>) => mapWarrantyProductRow(wp)),
         statusHistory: data.warranty_status_history
       }
     } catch (error) {
@@ -457,13 +511,75 @@ export class WarrantyService {
   }
 
   // Crear nueva garantía
-  static async createWarranty(warrantyData: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'> & { replacementQuantity?: number, quantityReceived?: number, productReceivedReference?: string, productReceivedPrice?: number, productDeliveredReference?: string, productDeliveredPrice?: number }): Promise<Warranty> {
+  static async createWarranty(warrantyData: CreateWarrantyInput): Promise<Warranty> {
     try {
-      const quantityReceived = warrantyData.quantityReceived || 1
-      const quantityDelivered = warrantyData.replacementQuantity || 1
-
-      // Obtener store_id del usuario actual
       const storeId = warrantyData.storeId || getCurrentUserStoreId() || '00000000-0000-0000-0000-000000000001'
+
+      const receivedLines: WarrantyLineInput[] = warrantyData.receivedLines?.length
+        ? warrantyData.receivedLines
+        : warrantyData.productReceivedId
+          ? [{
+              productId: warrantyData.productReceivedId,
+              productName: warrantyData.productReceivedName,
+              productReference: warrantyData.productReceivedReference,
+              quantity: warrantyData.quantityReceived || 1,
+              unitPrice: warrantyData.productReceivedPrice || 0,
+              lineTotal: (warrantyData.productReceivedPrice || 0) * (warrantyData.quantityReceived || 1),
+              role: 'received',
+              serialNumber: warrantyData.productReceivedSerial,
+            }]
+          : []
+
+      const deliveredLines: WarrantyLineInput[] = warrantyData.deliveredLines?.length
+        ? warrantyData.deliveredLines
+        : warrantyData.productDeliveredId
+          ? [{
+              productId: warrantyData.productDeliveredId,
+              productName: warrantyData.productDeliveredName || 'Producto',
+              productReference: warrantyData.productDeliveredReference,
+              quantity: warrantyData.replacementQuantity || warrantyData.quantityDelivered || 1,
+              unitPrice: warrantyData.productDeliveredPrice || 0,
+              lineTotal: (warrantyData.productDeliveredPrice || 0) * (warrantyData.replacementQuantity || warrantyData.quantityDelivered || 1),
+              role: 'delivered',
+            }]
+          : []
+
+      if (receivedLines.length === 0) {
+        throw new Error('Debe incluir al menos un producto recibido')
+      }
+      if (deliveredLines.length === 0) {
+        throw new Error('Debe incluir al menos un producto de reemplazo')
+      }
+
+      const saleTotalSnapshot = warrantyData.saleTotalSnapshot ?? 0
+      const deliveredTotal = sumWarrantyLineTotals(deliveredLines)
+      if (saleTotalSnapshot > 0 && Math.round(deliveredTotal) !== Math.round(saleTotalSnapshot)) {
+        throw new Error('El total de productos entregados debe coincidir con el total de la factura')
+      }
+
+      if (warrantyData.originalSaleId) {
+        const { data: existing } = await supabase
+          .from('warranties')
+          .select('id')
+          .eq('original_sale_id', warrantyData.originalSaleId)
+          .maybeSingle()
+        if (existing) {
+          throw new Error('Ya existe una garantía registrada para esta factura')
+        }
+      }
+
+      const firstReceived = receivedLines[0]
+      const firstDelivered = deliveredLines[0]
+      const quantityReceived = receivedLines.reduce((sum, line) => sum + line.quantity, 0)
+      const quantityDelivered = deliveredLines.reduce((sum, line) => sum + line.quantity, 0)
+      const receivedSummary =
+        receivedLines.length === 1
+          ? firstReceived.productName
+          : `${firstReceived.productName} +${receivedLines.length - 1} más`
+      const deliveredSummary =
+        deliveredLines.length === 1
+          ? firstDelivered.productName
+          : `${firstDelivered.productName} +${deliveredLines.length - 1} más`
 
       const { data, error } = await supabase
         .from('warranties')
@@ -471,256 +587,77 @@ export class WarrantyService {
           original_sale_id: warrantyData.originalSaleId ?? null,
           client_id: warrantyData.clientId ?? null,
           client_name: warrantyData.clientName ?? 'Cliente sin factura',
-          product_received_id: warrantyData.productReceivedId,
-          product_received_name: warrantyData.productReceivedName,
-          product_received_serial: warrantyData.productReceivedSerial,
-          product_delivered_id: warrantyData.productDeliveredId,
-          product_delivered_name: warrantyData.productDeliveredName,
+          product_received_id: firstReceived.productId,
+          product_received_name: receivedSummary,
+          product_received_serial: firstReceived.serialNumber,
+          product_delivered_id: firstDelivered.productId,
+          product_delivered_name: deliveredSummary,
           reason: warrantyData.reason,
           status: warrantyData.status,
           notes: warrantyData.notes,
           created_by: warrantyData.createdBy,
           quantity_received: quantityReceived,
           quantity_delivered: quantityDelivered,
-          store_id: storeId
+          sale_total_snapshot: saleTotalSnapshot,
+          store_id: storeId,
+          completed_at: warrantyData.status === 'completed' ? new Date().toISOString() : null,
         }])
         .select()
         .single()
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
-      // Crear entrada en el historial de estados
       await this.addStatusHistory(data.id, null, warrantyData.status, 'Garantía creada', warrantyData.createdBy)
 
-      // Obtener referencias, precios y información de stock para el log
-      // Usar las referencias y precios pasados directamente desde el modal si están disponibles
-      let productReceivedReference = warrantyData.productReceivedReference
-      let productReceivedPrice = warrantyData.productReceivedPrice
-      let productDeliveredReference = warrantyData.productDeliveredReference
-      let productDeliveredPrice = warrantyData.productDeliveredPrice
-      let stockInfo: any = null
+      const lineRows = [...receivedLines, ...deliveredLines].map((line) => ({
+        warranty_id: data.id,
+        product_id: line.productId,
+        product_name: line.productName,
+        serial_number: line.serialNumber ?? null,
+        role: line.role,
+        quantity: line.quantity,
+        unit_price: line.unitPrice,
+        line_total: line.lineTotal,
+        sale_item_id: line.saleItemId ?? null,
+        condition: line.role === 'received' ? 'defective' : 'repaired',
+        notes: warrantyData.reason,
+      }))
 
-      // Siempre obtener información del producto defectuoso desde la BD para asegurar datos actualizados
-      if (warrantyData.productReceivedId) {
-        try {
-          const { data: receivedProduct } = await supabase
-            .from('products')
-            .select('reference, price')
-            .eq('id', warrantyData.productReceivedId)
-            .single()
-          if (receivedProduct) {
-            // Usar la referencia de la BD si está disponible, sino usar la pasada desde el modal
-            const dbReference = receivedProduct.reference
-            productReceivedReference = (dbReference && dbReference.trim() !== '') ? dbReference : (productReceivedReference || 'N/A')
-            // Usar el precio de la BD si no se pasó desde el modal o es 0
-            if (!productReceivedPrice || productReceivedPrice === 0) {
-              productReceivedPrice = Number(receivedProduct.price) || 0
-            }
+      const { error: linesError } = await supabase.from('warranty_products').insert(lineRows)
+      if (linesError) throw linesError
+
+      if (warrantyData.status === 'completed') {
+        for (const line of deliveredLines) {
+          const ok = await deductProductStock(line.productId, line.quantity)
+          if (!ok) {
+            throw new Error(`Stock insuficiente para entregar: ${line.productName}`)
           }
-        } catch (error) {
-          // Error silencioso - usar valores pasados desde el modal
         }
       }
-      
-      // Asegurar valores por defecto (convertir null/undefined a string)
-      if (!productReceivedReference || productReceivedReference === null || productReceivedReference === undefined) {
-        productReceivedReference = 'N/A'
-      }
-      if (!productReceivedPrice || productReceivedPrice === null || productReceivedPrice === undefined) {
-        productReceivedPrice = 0
-      }
 
-      // Obtener información del producto de reemplazo y stock ANTES del descuento
-      if (warrantyData.productDeliveredId && warrantyData.status === 'completed') {
-        try {
-          // Leer stock ANTES de descontarlo (esto se hace antes del descuento en el código siguiente)
-          const { data: deliveredProductBefore } = await supabase
-            .from('products')
-            .select('reference, price, stock_store, stock_warehouse')
-            .eq('id', warrantyData.productDeliveredId)
-            .single()
-          
-          if (deliveredProductBefore) {
-            // Usar la referencia de la BD si está disponible, sino usar la pasada desde el modal
-            const dbReference = deliveredProductBefore.reference
-            productDeliveredReference = (dbReference && dbReference.trim() !== '') ? dbReference : (productDeliveredReference || 'N/A')
-            // Usar el precio de la BD si no se pasó desde el modal o es 0
-            if (!productDeliveredPrice || productDeliveredPrice === 0) {
-              productDeliveredPrice = Number(deliveredProductBefore.price) || 0
-            }
-            
-            const previousStoreStock = Number(deliveredProductBefore.stock_store) || 0
-            const previousWarehouseStock = Number(deliveredProductBefore.stock_warehouse) || 0
-            
-            // Determinar de dónde se descontará (local primero, luego warehouse)
-            let storeDeduction = 0
-            let warehouseDeduction = 0
-            let remainingToDeduct = quantityDelivered
-            
-            if (previousStoreStock > 0 && remainingToDeduct > 0) {
-              storeDeduction = Math.min(previousStoreStock, remainingToDeduct)
-              remainingToDeduct -= storeDeduction
-            }
-            
-            if (remainingToDeduct > 0 && previousWarehouseStock > 0) {
-              warehouseDeduction = Math.min(previousWarehouseStock, remainingToDeduct)
-              remainingToDeduct -= warehouseDeduction
-            }
-            
-            stockInfo = {
-              storeDeduction,
-              warehouseDeduction,
-              previousStoreStock,
-              previousWarehouseStock,
-              newStoreStock: previousStoreStock - storeDeduction,
-              newWarehouseStock: previousWarehouseStock - warehouseDeduction
-            }
-          }
-        } catch (error) {
-          // Error silencioso
-        }
-      } else if (warrantyData.productDeliveredId) {
-        // Si no está completada, obtener referencia y precio desde la BD
-        try {
-          const { data: deliveredProduct } = await supabase
-            .from('products')
-            .select('reference, price')
-            .eq('id', warrantyData.productDeliveredId)
-            .single()
-          if (deliveredProduct) {
-            // Usar la referencia de la BD si está disponible, sino usar la pasada desde el modal
-            const dbReference = deliveredProduct.reference
-            productDeliveredReference = (dbReference && dbReference.trim() !== '') ? dbReference : (productDeliveredReference || 'N/A')
-            // Usar el precio de la BD si no se pasó desde el modal o es 0
-            if (!productDeliveredPrice || productDeliveredPrice === 0) {
-              productDeliveredPrice = Number(deliveredProduct.price) || 0
-            }
-          }
-        } catch (error) {
-          // Error silencioso - usar valores pasados desde el modal
-        }
-      }
-      
-      // Asegurar valores por defecto para producto entregado (convertir null/undefined a string)
-      if (!productDeliveredReference || productDeliveredReference === null || productDeliveredReference === undefined) {
-        productDeliveredReference = 'N/A'
-      }
-      if (!productDeliveredPrice || productDeliveredPrice === null || productDeliveredPrice === undefined) {
-        productDeliveredPrice = 0
-      }
-
-      // Log de actividad
       if (warrantyData.createdBy) {
         await AuthService.logActivity(
           warrantyData.createdBy,
           'warranty_create',
           'warranties',
           {
-            description: `Nueva garantía creada: ${warrantyData.clientName} - Producto defectuoso: ${warrantyData.productReceivedName} (Ref: ${productReceivedReference})${warrantyData.productDeliveredName ? ` - Producto entregado: ${warrantyData.productDeliveredName} (Ref: ${productDeliveredReference})` : ''}`,
+            description: `Garantía factura ${warrantyData.clientName}: entregado $${deliveredTotal.toLocaleString('es-CO')} / total factura $${saleTotalSnapshot.toLocaleString('es-CO')}`,
             warrantyId: data.id,
             clientName: warrantyData.clientName,
-            clientId: warrantyData.clientId || null,
-            productReceivedId: warrantyData.productReceivedId,
-            productReceivedName: warrantyData.productReceivedName,
-            productReceivedReference: productReceivedReference,
-            productReceivedPrice: productReceivedPrice,
-            quantityReceived: quantityReceived,
-            productDeliveredId: warrantyData.productDeliveredId || null,
-            productDeliveredName: warrantyData.productDeliveredName || null,
-            productDeliveredReference: productDeliveredReference,
-            productDeliveredPrice: productDeliveredPrice,
-            quantityDelivered: quantityDelivered,
+            originalSaleId: warrantyData.originalSaleId,
+            saleTotalSnapshot,
+            deliveredTotal,
+            receivedCount: receivedLines.length,
+            deliveredCount: deliveredLines.length,
             status: warrantyData.status,
             reason: warrantyData.reason,
             notes: warrantyData.notes || null,
-            stockInfo: stockInfo
           }
         )
       }
 
-      // Crear entrada en warranty_products para el producto defectuoso
-      await supabase
-        .from('warranty_products')
-        .insert([{
-          warranty_id: data.id,
-          product_id: warrantyData.productReceivedId,
-          serial_number: warrantyData.productReceivedSerial,
-          condition: 'defective',
-          notes: warrantyData.reason
-        }])
-
-      // Si la garantía está completada y tiene producto de reemplazo, descontar del inventario
-      if (warrantyData.status === 'completed' && warrantyData.productDeliveredId) {
-        try {
-          // Descontar la cantidad especificada
-          const quantityToDeduct = quantityDelivered
-          
-          // Leer directamente desde la base de datos para obtener el stock más reciente
-          const { data: productData, error: productError } = await supabase
-            .from('products')
-            .select('stock_store, stock_warehouse')
-            .eq('id', warrantyData.productDeliveredId)
-            .single()
-          
-          if (!productError && productData) {
-            const storeStock = Number(productData.stock_store) || 0
-            const warehouseStock = Number(productData.stock_warehouse) || 0
-            const currentStock = storeStock + warehouseStock
-            
-            if (currentStock >= quantityToDeduct) {
-              // Calcular los nuevos valores de stock descontando la cantidad especificada
-              // Inicializar con los valores actuales
-              let newStoreStock = storeStock
-              let newWarehouseStock = warehouseStock
-              let remainingToDeduct = quantityToDeduct
-              
-              // Descontar primero del local, luego del warehouse
-              if (storeStock > 0 && remainingToDeduct > 0) {
-                const storeDeduction = Math.min(storeStock, remainingToDeduct)
-                newStoreStock = storeStock - storeDeduction
-                remainingToDeduct -= storeDeduction
-              }
-              
-              // Si aún falta, descontar del warehouse
-              if (remainingToDeduct > 0 && warehouseStock > 0) {
-                const warehouseDeduction = Math.min(warehouseStock, remainingToDeduct)
-                newWarehouseStock = warehouseStock - warehouseDeduction
-                remainingToDeduct -= warehouseDeduction
-              }
-              
-              // Actualizar directamente en la base de datos
-              // Usar condiciones para evitar actualizaciones concurrentes
-              const { data: updateData, error: updateError } = await supabase
-                .from('products')
-                .update({
-                  stock_store: newStoreStock,
-                  stock_warehouse: newWarehouseStock
-                })
-                .eq('id', warrantyData.productDeliveredId)
-                .eq('stock_store', storeStock) // Solo actualizar si el stock local no ha cambiado
-                .eq('stock_warehouse', warehouseStock) // Solo actualizar si el stock warehouse no ha cambiado
-                .select()
-              
-              // Si no se actualizó ninguna fila, significa que el stock cambió entre la lectura y la actualización
-              // Esto previene deducciones múltiples
-              if (updateError || !updateData || updateData.length === 0) {
-                // Error silencioso en producción - el stock probablemente cambió entre la lectura y la actualización
-              }
-            } else {
-              // No hay suficiente stock, pero no lanzamos error para no interrumpir la creación
-            }
-          }
-        } catch (stockError) {
-      // Error silencioso en producción
-          // No lanzar el error para no interrumpir la creación de la garantía
-        }
-      }
-
       return this.getWarrantyById(data.id) as Promise<Warranty>
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }
@@ -801,6 +738,7 @@ export class WarrantyService {
       throw error
     }
   }
+
 
   // Agregar entrada al historial de estados
   static async addStatusHistory(

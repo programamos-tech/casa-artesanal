@@ -18,6 +18,10 @@ import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
 import { Warranty } from '@/types'
 import {
+  formatWarrantyMoney,
+  sumWarrantyLineTotals,
+} from '@/lib/warranty-lines'
+import {
   warrantyStatusBadgeClass,
   warrantyStatusIconColorClass,
 } from '@/lib/warranty-status-ui'
@@ -93,6 +97,11 @@ function Field({
 }
 
 export function WarrantyDetailContent({ warranty }: WarrantyDetailContentProps) {
+  const receivedLines = (warranty.warrantyProducts || []).filter((line) => line.role === 'received' || line.condition === 'defective')
+  const deliveredLines = (warranty.warrantyProducts || []).filter((line) => line.role === 'delivered' || line.condition === 'repaired')
+  const saleTotal = warranty.saleTotalSnapshot ?? warranty.originalSale?.total ?? 0
+  const deliveredTotal = sumWarrantyLineTotals(deliveredLines)
+
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
       <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-80">
@@ -167,6 +176,26 @@ export function WarrantyDetailContent({ warranty }: WarrantyDetailContentProps) 
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             <section className="px-4 py-5 md:px-6">
               <div className="mb-4 flex items-center gap-2">
+                <Hash className={cn('h-4 w-4', sectionIconMuted)} strokeWidth={1.5} />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Factura vinculada</h3>
+              </div>
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-x-8">
+                <Field label="Número de factura">
+                  {warranty.originalSale?.invoiceNumber || '—'}
+                </Field>
+                <Field label="Total de la venta">
+                  <span className="text-lg font-bold tabular-nums">{formatWarrantyMoney(saleTotal)}</span>
+                </Field>
+                <Field label="Total entregado en reemplazo">
+                  <span className={cn('text-lg font-bold tabular-nums', Math.round(deliveredTotal) === Math.round(saleTotal) ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700')}>
+                    {formatWarrantyMoney(deliveredTotal)}
+                  </span>
+                </Field>
+              </dl>
+            </section>
+
+            <section className="px-4 py-5 md:px-6">
+              <div className="mb-4 flex items-center gap-2">
                 <User className={cn('h-4 w-4', sectionIconMuted)} strokeWidth={1.5} />
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Cliente</h3>
               </div>
@@ -190,15 +219,29 @@ export function WarrantyDetailContent({ warranty }: WarrantyDetailContentProps) 
                 </div>
               </div>
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-8">
-                <Field label="Descripción" className="sm:col-span-2">
-                  {warranty.productReceivedName}
-                </Field>
-                {warranty.productReceived?.reference && (
-                  <Field label="Referencia">{warranty.productReceived.reference}</Field>
+                {receivedLines.length > 0 ? (
+                  receivedLines.map((line) => (
+                    <div key={line.id} className="sm:col-span-2 rounded-lg border border-rose-200/80 bg-rose-50/40 p-3 dark:border-rose-900/40 dark:bg-rose-950/20">
+                      <p className="font-medium">{line.productName || line.product?.name}</p>
+                      <p className="text-xs text-zinc-500">
+                        Ref: {line.product?.reference || 'N/A'} · Cant: {line.quantity ?? 1}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold tabular-nums">{formatWarrantyMoney(line.lineTotal || 0)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <Field label="Descripción" className="sm:col-span-2">
+                      {warranty.productReceivedName}
+                    </Field>
+                    {warranty.productReceived?.reference && (
+                      <Field label="Referencia">{warranty.productReceived.reference}</Field>
+                    )}
+                    <Field label="Cantidad">
+                      {warranty.quantityReceived ?? 1} unidad{(warranty.quantityReceived ?? 1) !== 1 ? 'es' : ''}
+                    </Field>
+                  </>
                 )}
-                <Field label="Cantidad">
-                  {warranty.quantityReceived ?? 1} unidad{(warranty.quantityReceived ?? 1) !== 1 ? 'es' : ''}
-                </Field>
                 {warranty.productReceivedSerial && (
                   <Field label="Número de serie">
                     <span className="font-mono">{warranty.productReceivedSerial}</span>
@@ -226,7 +269,19 @@ export function WarrantyDetailContent({ warranty }: WarrantyDetailContentProps) 
                 </div>
               </div>
 
-              {warranty.productDeliveredName ? (
+              {deliveredLines.length > 0 ? (
+                <div className="space-y-2">
+                  {deliveredLines.map((line) => (
+                    <div key={line.id} className="rounded-lg border border-emerald-200/80 bg-emerald-50/40 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                      <p className="font-medium">{line.productName || line.product?.name}</p>
+                      <p className="text-xs text-zinc-500">
+                        Ref: {line.product?.reference || 'N/A'} · Cant: {line.quantity ?? 1} · Unit: {formatWarrantyMoney(line.unitPrice || 0)}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold tabular-nums">{formatWarrantyMoney(line.lineTotal || 0)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : warranty.productDeliveredName ? (
                 <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-8">
                   <Field label="Descripción" className="sm:col-span-2">
                     {warranty.productDeliveredName}

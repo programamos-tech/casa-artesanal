@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { WarrantyTable } from '@/components/warranties/warranty-table'
 import { WarrantyModal } from '@/components/warranties/warranty-modal'
 import { useWarranties } from '@/contexts/warranty-context'
+import type { CreateWarrantyInput } from '@/lib/warranty-service'
 import { Warranty } from '@/types'
 
 export default function WarrantiesPage() {
@@ -44,7 +45,7 @@ export default function WarrantiesPage() {
 
   }
 
-  const handleSaveWarranty = async (warrantyData: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSaveWarranty = async (warrantyData: CreateWarrantyInput) => {
     try {
       await createWarranty(warrantyData)
       setShowCreateModal(false)
@@ -105,15 +106,6 @@ export default function WarrantiesPage() {
             isOpen={showCreateModal}
             onClose={() => setShowCreateModal(false)}
             onSave={handleSaveWarranty}
-          />
-        )}
-
-        {showEditModal && selectedWarranty && (
-          <WarrantyModal
-            isOpen={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            onSave={handleSaveWarranty}
-            warranty={selectedWarranty}
           />
         )}
 

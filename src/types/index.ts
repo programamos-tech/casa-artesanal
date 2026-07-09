@@ -198,6 +198,8 @@ export interface Warranty {
   createdBy?: string
   quantityReceived?: number
   quantityDelivered?: number
+  /** Total de la factura al registrar la garantía. */
+  saleTotalSnapshot?: number
   // Relaciones
   originalSale?: Sale
   client?: Client
@@ -211,7 +213,13 @@ export interface WarrantyProduct {
   id: string
   warrantyId: string
   productId: string
+  productName?: string
   serialNumber?: string
+  role?: 'received' | 'delivered'
+  quantity?: number
+  unitPrice?: number
+  lineTotal?: number
+  saleItemId?: string
   condition: 'defective' | 'repaired' | 'discarded'
   notes?: string
   createdAt: string
