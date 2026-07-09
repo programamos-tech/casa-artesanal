@@ -25,6 +25,7 @@ interface ProductsContextType {
     category?: CategoryFilter
     search?: string
     silent?: boolean
+    filtersOverlay?: boolean
   }) => Promise<void>
   createProduct: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>
   updateProduct: (id: string, updates: Partial<Product>) => Promise<boolean>
@@ -60,7 +61,12 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const { user: currentUser, isLoading: authLoading } = useAuth()
   const storeId = currentUser?.storeId
   const listSearchRef = useRef('')
+  const stockFilterRef = useRef<StockFilter>('all')
+  const categoryFilterRef = useRef<CategoryFilter>('all')
   const fetchSeqRef = useRef(0)
+
+  stockFilterRef.current = stockFilter
+  categoryFilterRef.current = categoryFilter
 
   const applyProductFilters = useCallback(
     async (opts?: {
@@ -69,10 +75,11 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
       category?: CategoryFilter
       search?: string
       silent?: boolean
+      filtersOverlay?: boolean
     }) => {
       const page = opts?.page ?? 1
-      const sf = opts?.stock ?? stockFilter
-      const cf = opts?.category ?? categoryFilter
+      const sf = opts?.stock ?? stockFilterRef.current
+      const cf = opts?.category ?? categoryFilterRef.current
       const term = (opts?.search !== undefined ? opts.search : listSearchRef.current).trim()
       const silent = opts?.silent === true
       const seq = ++fetchSeqRef.current
@@ -81,8 +88,10 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
         listSearchRef.current = opts.search
       }
 
-      if (silent) {
+      if (opts?.filtersOverlay) {
         setFiltersLoading(true)
+      } else if (silent) {
+        // Refresco en segundo plano: no bloquear la barra de filtros ni la tabla completa
       } else {
         setLoading(true)
       }
@@ -116,7 +125,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     },
-    [stockFilter, categoryFilter, storeId]
+    [storeId]
   )
 
   const refreshProducts = useCallback(
@@ -124,7 +133,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
       await applyProductFilters({
         page: 1,
         stock: filter,
-        silent: options?.silent,
+        silent: options?.silent ?? true,
       })
     },
     [applyProductFilters]
@@ -139,11 +148,13 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const setStockFilter = useCallback(
     (filter: StockFilter) => {
       setStockFilterState(filter)
+      stockFilterRef.current = filter
       void applyProductFilters({
         stock: filter,
         page: 1,
         search: listSearchRef.current,
         silent: true,
+        filtersOverlay: true,
       })
     },
     [applyProductFilters]
@@ -152,11 +163,13 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const setCategoryFilter = useCallback(
     (filter: CategoryFilter) => {
       setCategoryFilterState(filter)
+      categoryFilterRef.current = filter
       void applyProductFilters({
         category: filter,
         page: 1,
         search: listSearchRef.current,
         silent: true,
+        filtersOverlay: true,
       })
     },
     [applyProductFilters]
@@ -233,9 +246,9 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
       try {
         const results = await ProductsService.searchProducts(
           searchTerm,
-          stockFilter,
+          stockFilterRef.current,
           storeId,
-          categoryFilter
+          categoryFilterRef.current
         )
         setIsSearching(true)
         setProducts(results)
@@ -249,7 +262,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
         setSearchLoading(false)
       }
     },
-    [stockFilter, categoryFilter, storeId, clearSearch]
+    [storeId, clearSearch]
   )
 
   const goToPage = async (page: number) => {
@@ -258,6 +271,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
         page,
         search: listSearchRef.current,
         silent: true,
+        filtersOverlay: true,
       })
     }
   }
@@ -294,8 +308,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const deductStockForSale = async (productId: string, quantity: number): Promise<boolean> => {
     const result = await ProductsService.deductStockForSale(productId, quantity, currentUser?.id)
     if (result.success) {
-      // Actualizar el estado local - necesitamos refrescar para obtener los valores exactos
-      await refreshProducts()
+      await mergeProductFromServer(productId)
     }
     return result.success
   }
@@ -303,8 +316,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const returnStockFromSale = async (productId: string, quantity: number): Promise<boolean> => {
     const success = await ProductsService.returnStockFromSale(productId, quantity)
     if (success) {
-      // Actualizar el estado local - necesitamos refrescar para obtener los valores exactos
-      await refreshProducts()
+      await mergeProductFromServer(productId)
     }
     return success
   }
@@ -312,7 +324,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const importProductsFromCSV = async (products: any[]): Promise<boolean> => {
     const success = await ProductsService.importProductsFromCSV(products)
     if (success) {
-      await refreshProducts()
+      await refreshProducts(undefined, { silent: true })
     }
     return success
   }

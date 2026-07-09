@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react'
+import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react'
 import { Category } from '@/types'
 import { CategoriesService } from '@/lib/categories-service'
 import { useAuth } from './auth-context'
@@ -13,7 +13,7 @@ interface CategoriesContextType {
   toggleCategoryStatus: (id: string, newStatus: 'active' | 'inactive') => Promise<boolean>
   deleteCategory: (id: string) => Promise<boolean>
   searchCategories: (searchTerm: string) => Promise<Category[]>
-  refreshCategories: () => Promise<void>
+  refreshCategories: (options?: { silent?: boolean }) => Promise<void>
 }
 
 const CategoriesContext = createContext<CategoriesContextType | undefined>(undefined)
@@ -23,16 +23,20 @@ export const CategoriesProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const { user: currentUser } = useAuth()
 
-  const refreshCategories = async () => {
-    setLoading(true)
-    const fetchedCategories = await CategoriesService.getAllCategories()
-    setCategories(fetchedCategories)
-    setLoading(false)
-  }
+  const refreshCategories = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true
+    if (!silent) setLoading(true)
+    try {
+      const fetchedCategories = await CategoriesService.getAllCategories()
+      setCategories(fetchedCategories)
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    refreshCategories()
-  }, [])
+    void refreshCategories()
+  }, [refreshCategories])
 
   const createCategory = async (categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
     // Si no hay usuario, usar un ID por defecto para testing

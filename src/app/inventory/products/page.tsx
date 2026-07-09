@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ProductTable } from '@/components/products/product-table'
 import { ProductModal } from '@/components/products/product-modal'
 import { CategoryModal } from '@/components/categories/category-modal'
@@ -14,18 +14,8 @@ import { Product, Category, StockTransfer } from '@/types'
 import { toast } from 'sonner'
 
 export default function ProductsPage() {
-  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, filtersLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts, productsLastUpdated } = useProducts()
-  const { categories, createCategory, toggleCategoryStatus, deleteCategory, refreshCategories } = useCategories()
-
-  useEffect(() => {
-    void refreshCategories()
-  }, [refreshCategories])
-
-  useEffect(() => {
-    if (productsLastUpdated > 0) {
-      void refreshCategories()
-    }
-  }, [productsLastUpdated, refreshCategories])
+  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, filtersLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts } = useProducts()
+  const { categories, createCategory, toggleCategoryStatus, deleteCategory } = useCategories()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -144,7 +134,7 @@ export default function ProductsPage() {
   }
 
   const handleRefresh = async () => {
-    await refreshProducts()
+    await refreshProducts(undefined, { silent: false })
     toast.success('Productos actualizados')
   }
 

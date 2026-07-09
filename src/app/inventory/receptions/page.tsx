@@ -139,7 +139,7 @@ export default function ReceptionsPage() {
         setIsReceiveModalOpen(false)
         setTransferToReceive(null)
         await loadTransfers()
-        await refreshProducts()
+        await refreshProducts(undefined, { silent: true })
       } else {
         toast.error('Error al recibir la transferencia')
       }

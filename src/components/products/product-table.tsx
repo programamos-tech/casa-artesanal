@@ -145,9 +145,13 @@ export function ProductTable({
     return () => clearTimeout(timeoutId)
   }, [searchTerm])
 
-  const activeCategories = [...categories]
-    .filter((c) => c.status === 'active')
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  const activeCategories = useMemo(
+    () =>
+      categories
+        .filter((c) => c.status === 'active')
+        .sort((a, b) => a.name.localeCompare(b.name, 'es')),
+    [categories]
+  )
 
   const categoryById = useMemo(
     () => new Map(activeCategories.map((c) => [c.id, c.name])),

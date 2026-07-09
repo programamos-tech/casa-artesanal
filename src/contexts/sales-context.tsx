@@ -170,7 +170,7 @@ export function SalesProvider({ children }: { children: ReactNode }) {
 
     try {
       await SalesService.finalizeDraftSale(id, currentUser.id)
-      await refreshProducts()
+      await refreshProducts(undefined, { silent: true })
       await fetchSales(currentPage, false, dateRange)
     } catch (error) {
       throw error
