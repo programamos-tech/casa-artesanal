@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -149,6 +149,11 @@ export function ProductTable({
     .filter((c) => c.status === 'active')
     .sort((a, b) => a.name.localeCompare(b.name, 'es'))
 
+  const categoryById = useMemo(
+    () => new Map(activeCategories.map((c) => [c.id, c.name])),
+    [activeCategories]
+  )
+
   const goProduct = (p: Product) => {
     if (onView) onView(p)
     else router.push(`/inventory/products/${p.id}`)
@@ -156,9 +161,10 @@ export function ProductTable({
 
   const getCategoryLabel = (product: Product) => {
     if (product.categoryName?.trim()) return product.categoryName.trim()
-    if (!product.categoryId) return 'Sin categoría'
-    const category = categories.find((c) => c.id === product.categoryId)
-    return category?.name || 'Sin categoría'
+    if (product.categoryId && categoryById.has(product.categoryId)) {
+      return categoryById.get(product.categoryId)!
+    }
+    return 'Sin categoría'
   }
 
   /** Catálogo: Activo en verde suave; otros estados neutros o alerta */

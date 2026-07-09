@@ -31,7 +31,7 @@ type DbProductRow = {
   name: string
   description?: string | null
   category_id?: string | null
-  categories?: { id?: string; name?: string } | null
+  categories?: { id?: string; name?: string } | { id?: string; name?: string }[] | null
   brand?: string | null
   reference: string
   price?: number | null
@@ -45,6 +45,59 @@ type DbProductRow = {
 }
 
 export class ProductsService {
+  private static categoryNameCache = new Map<string, string>()
+  private static categoryCacheLoadedAt = 0
+  private static categoryCacheLoading: Promise<void> | null = null
+  private static readonly CATEGORY_CACHE_TTL_MS = 10 * 60 * 1000
+
+  /** Carga/resuelve nombres de categoría para el listado (evita “Sin categoría” intermitente). */
+  private static async ensureCategoryCache(): Promise<void> {
+    const now = Date.now()
+    if (
+      this.categoryNameCache.size > 0 &&
+      now - this.categoryCacheLoadedAt < this.CATEGORY_CACHE_TTL_MS
+    ) {
+      return
+    }
+    if (this.categoryCacheLoading) {
+      await this.categoryCacheLoading
+      return
+    }
+    this.categoryCacheLoading = (async () => {
+      const { data, error } = await supabase.from('categories').select('id, name')
+      if (error || !data?.length) return
+      const next = new Map<string, string>()
+      for (const row of data) {
+        if (row.id && row.name) next.set(row.id, row.name)
+      }
+      this.categoryNameCache = next
+      this.categoryCacheLoadedAt = Date.now()
+    })()
+    try {
+      await this.categoryCacheLoading
+    } finally {
+      this.categoryCacheLoading = null
+    }
+  }
+
+  private static resolveEmbeddedCategory(
+    raw: DbProductRow['categories']
+  ): { id?: string; name?: string } | null {
+    if (!raw) return null
+    if (Array.isArray(raw)) {
+      const first = raw[0]
+      return first && typeof first === 'object' ? first : null
+    }
+    return raw
+  }
+
+  private static categoryNameFromRow(row: DbProductRow): string | undefined {
+    const embedded = this.resolveEmbeddedCategory(row.categories)
+    if (embedded?.name?.trim()) return embedded.name.trim()
+    const id = row.category_id ?? embedded?.id
+    if (!id) return undefined
+    return this.categoryNameCache.get(id)
+  }
   /** Orden catálogo inventario: 001, 002, … 010, 011 */
   private static referenceSortKey(reference: string): number {
     const n = Number.parseInt(String(reference ?? '').replace(/\D/g, ''), 10)
@@ -86,8 +139,8 @@ export class ProductsService {
     const wholesalePrice =
       overrides?.wholesalePrice != null ? Number(overrides.wholesalePrice) : dbWholesale
     const cost = overrides?.cost != null ? Number(overrides.cost) : Number(row.cost ?? 0)
-    const embeddedCategory = row.categories
-    const categoryName = embeddedCategory?.name?.trim() || undefined
+    const embeddedCategory = this.resolveEmbeddedCategory(row.categories)
+    const categoryName = this.categoryNameFromRow(row)
     const categoryId =
       (row.category_id ?? embeddedCategory?.id ?? '') as string
 
@@ -425,6 +478,8 @@ export class ProductsService {
       const needsClientPagination = needsStockFilter
       const pageFrom = (page - 1) * limit
 
+      await this.ensureCategoryCache()
+
       let listQuery = supabase
         .from('products')
         .select(PRODUCT_LIST_SELECT)
@@ -560,6 +615,7 @@ export class ProductsService {
   // Obtener todos los productos (sin paginación - para compatibilidad)
   static async getAllProductsLegacy(storeId: string | null = null): Promise<Product[]> {
     try {
+      await this.ensureCategoryCache()
       // Supabase tiene un límite por defecto de 1000 registros, necesitamos obtener todos en lotes
       const allProducts: Product[] = []
       let page = 0
@@ -1223,6 +1279,8 @@ export class ProductsService {
       if (!cleanQuery) {
         return []
       }
+
+      await this.ensureCategoryCache()
 
       // Búsqueda simplificada sin timeout - buscar en referencia y nombre
       let searchQuery = supabase

@@ -20,6 +20,12 @@ export default function ProductsPage() {
   useEffect(() => {
     void refreshCategories()
   }, [refreshCategories])
+
+  useEffect(() => {
+    if (productsLastUpdated > 0) {
+      void refreshCategories()
+    }
+  }, [productsLastUpdated, refreshCategories])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
