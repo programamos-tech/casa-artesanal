@@ -997,6 +997,11 @@ export class SalesService {
         : `${paymentMethodLabel}: ${saleData.clientName} - Total: $${saleData.total.toLocaleString()}`
 
       // No bloquear la respuesta de la venta por el log
+      const creditDueDate =
+        saleData.paymentMethod === 'credit'
+          ? (saleData as Sale & { dueDate?: string }).dueDate || null
+          : null
+
       void AuthService.logActivity(currentUserId, logAction, 'sales', {
         description: logDescription,
         saleId: sale.id,
@@ -1007,7 +1012,7 @@ export class SalesService {
         status: saleData.status,
         itemsCount: itemsWithStockInfo.length,
         items: itemsWithStockInfo,
-        dueDate: saleData.paymentMethod === 'credit' ? saleData.dueDate || null : null
+        dueDate: creditDueDate
       })
 
       const now = new Date().toISOString()
