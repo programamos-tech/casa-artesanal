@@ -29,6 +29,13 @@ import { useClients } from '@/contexts/clients-context'
 import { useProducts } from '@/contexts/products-context'
 import { useSales } from '@/contexts/sales-context'
 import { useAuth } from '@/contexts/auth-context'
+import { ProductsService } from '@/lib/products-service'
+import {
+  compareProductsBySearchRelevance,
+  isReferenceLikeQuery,
+  minSearchLength,
+  productMatchesSearch,
+} from '@/lib/product-search'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
 import {
@@ -71,7 +78,7 @@ const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 export default function NewSalePage() {
   const router = useRouter()
   const { clients, searchClients } = useClients()
-  const { products, searchProducts } = useProducts()
+  const { products } = useProducts()
   const { createSale } = useSales()
   const { user, getAllUsers } = useAuth()
   
@@ -190,55 +197,54 @@ export default function NewSalePage() {
   }, [paymentMethod])
 
   useEffect(() => {
+    const delay = isReferenceLikeQuery(productSearch) ? 80 : 180
     const timer = setTimeout(() => {
       setDebouncedProductSearch(productSearch)
-    }, 300)
+    }, delay)
     return () => clearTimeout(timer)
   }, [productSearch])
 
-  // Buscar productos cuando el usuario escriba - CON PROTECCIÓN CONTRA LOOPS
+  // Buscar productos cuando el usuario escriba — directo al servicio (no muta inventario)
   useEffect(() => {
     let cancelled = false
     const searchTerm = debouncedProductSearch.trim()
+    const minLen = minSearchLength(searchTerm)
     
-    // Si no hay término de búsqueda, limpiar y salir
-    if (searchTerm.length < 2) {
+    if (searchTerm.length < minLen) {
       lastSearchTermRef.current = ''
       setSearchedProducts([])
       setIsSearchingProducts(false)
       return
     }
     
-    // Evitar búsquedas duplicadas del mismo término
     if (searchTerm === lastSearchTermRef.current) {
       return
     }
     
-    // Marcar el término actual ANTES de buscar
     lastSearchTermRef.current = searchTerm
     
     const performSearch = async () => {
-      // Doble verificación antes de buscar
       if (cancelled || lastSearchTermRef.current !== searchTerm) {
         return
       }
       
       setIsSearchingProducts(true)
       try {
-        const results = await searchProducts(searchTerm)
-        // Verificar que el término no haya cambiado antes de actualizar
+        const results = await ProductsService.searchProducts(
+          searchTerm,
+          undefined,
+          user?.storeId
+        )
         if (!cancelled && lastSearchTermRef.current === searchTerm) {
           setSearchedProducts(results)
           setIsSearchingProducts(false)
         }
-      } catch (error) {
-        // Error silencioso
+      } catch {
         if (!cancelled && lastSearchTermRef.current === searchTerm) {
           setSearchedProducts([])
           setIsSearchingProducts(false)
         }
       } finally {
-        // Solo actualizar si el término no ha cambiado
         if (!cancelled && lastSearchTermRef.current === searchTerm) {
           setIsSearchingProducts(false)
         }
@@ -250,9 +256,7 @@ export default function NewSalePage() {
     return () => {
       cancelled = true
     }
-    // SOLO depender de debouncedProductSearch, NO de searchProducts
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedProductSearch])
+  }, [debouncedProductSearch, user?.storeId])
 
   // Scroll automático al elemento resaltado
   useEffect(() => {
@@ -277,62 +281,22 @@ export default function NewSalePage() {
     }
     
     // Si hay búsqueda y hay resultados del servidor, usar esos (TODOS los productos)
-    if (searchTerm.length >= 2 && searchedProducts.length > 0) {
-      return searchedProducts.sort((a, b) => {
-        const searchTermLower = searchTerm.toLowerCase()
-        const aRef = (a.reference || '').toLowerCase()
-        const bRef = (b.reference || '').toLowerCase()
-        const aName = (a.name || '').toLowerCase()
-        const bName = (b.name || '').toLowerCase()
-        
-        // Referencia exacta primero
-        if (aRef === searchTermLower && bRef !== searchTermLower) return -1
-        if (aRef !== searchTermLower && bRef === searchTermLower) return 1
-        
-        // Referencia que empieza con el término
-        if (aRef.startsWith(searchTermLower) && !bRef.startsWith(searchTermLower)) return -1
-        if (!aRef.startsWith(searchTermLower) && bRef.startsWith(searchTermLower)) return 1
-        
-        // Nombre que empieza con el término
-        if (aName.startsWith(searchTermLower) && !bName.startsWith(searchTermLower)) return -1
-        if (!aName.startsWith(searchTermLower) && bName.startsWith(searchTermLower)) return 1
-        
-        return 0
-      })
+    if (searchTerm.length >= minSearchLength(searchTerm) && searchedProducts.length > 0) {
+      return [...searchedProducts].sort((a, b) =>
+        compareProductsBySearchRelevance(a, b, searchTerm)
+      )
     }
     
     // Si la API no devolvió nada (término >= 2), seguir con el filtro local — no vaciar la lista
 
     // Filtro local (también respaldo si el servidor no encuentra coincidencias)
-    return products.filter(product => {
-      if (!product || product.status !== 'active') return false
-      const searchTermLower = searchTerm.toLowerCase()
-      const name = (product.name || '').toLowerCase()
-      const reference = (product.reference || '').toLowerCase()
-      const brand = (product.brand || '').toLowerCase()
-      return name.includes(searchTermLower) || reference.includes(searchTermLower) || brand.includes(searchTermLower)
-    }).sort((a, b) => {
-      const searchTermLower = searchTerm.toLowerCase()
-      const aRef = (a.reference || '').toLowerCase()
-      const bRef = (b.reference || '').toLowerCase()
-      const aName = (a.name || '').toLowerCase()
-      const bName = (b.name || '').toLowerCase()
-      
-      // Referencia exacta primero
-      if (aRef === searchTermLower && bRef !== searchTermLower) return -1
-      if (aRef !== searchTermLower && bRef === searchTermLower) return 1
-      
-      // Referencia que empieza con el término
-      if (aRef.startsWith(searchTermLower) && !bRef.startsWith(searchTermLower)) return -1
-      if (!aRef.startsWith(searchTermLower) && bRef.startsWith(searchTermLower)) return 1
-      
-      // Nombre que empieza con el término
-      if (aName.startsWith(searchTermLower) && !bName.startsWith(searchTermLower)) return -1
-      if (!aName.startsWith(searchTermLower) && bName.startsWith(searchTermLower)) return 1
-      
-      return 0
-    })
-  }, [products, debouncedProductSearch, searchedProducts, isSearchingProducts])
+    return products
+      .filter((product) => {
+        if (!product || product.status !== 'active') return false
+        return productMatchesSearch(product, searchTerm)
+      })
+      .sort((a, b) => compareProductsBySearchRelevance(a, b, searchTerm))
+  }, [products, debouncedProductSearch, searchedProducts])
 
   const visibleProducts = useMemo(() => filteredProducts.slice(0, 15), [filteredProducts])
 
@@ -850,7 +814,7 @@ export default function NewSalePage() {
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                       <input
                         type="text"
-                        placeholder="Nombre, referencia o marca…"
+                        placeholder="Ref., palabras clave o marca…"
                         value={productSearch}
                         onChange={(e) => {
                           setProductSearch(e.target.value)

@@ -29,6 +29,12 @@ import { useProducts } from '@/contexts/products-context'
 import { useAuth } from '@/contexts/auth-context'
 import { ProductsService } from '@/lib/products-service'
 import {
+  compareProductsBySearchRelevance,
+  isReferenceLikeQuery,
+  minSearchLength,
+  productMatchesSearch,
+} from '@/lib/product-search'
+import {
   getClientPriceFieldLabel,
   getClientPriceTierLabel,
   getProductAlternatePriceForClient,
@@ -186,9 +192,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
 
   // Debounce para la búsqueda de productos
   useEffect(() => {
+    const delay = isReferenceLikeQuery(productSearch) ? 80 : 180
     const timer = setTimeout(() => {
       setDebouncedProductSearch(productSearch)
-    }, 300)
+    }, delay)
     return () => clearTimeout(timer)
   }, [productSearch])
 
@@ -219,19 +226,23 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   // Buscar productos cuando el usuario escriba
   useEffect(() => {
     let cancelled = false
+    const term = debouncedProductSearch.trim()
+    const minLen = minSearchLength(term)
     
     const performSearch = async () => {
-      if (debouncedProductSearch.trim().length >= 2) {
+      if (term.length >= minLen) {
         setIsSearchingProducts(true)
         try {
-          // Pasar el storeId del usuario para obtener precios correctos de store_stock
-          const results = await ProductsService.searchProducts(debouncedProductSearch, undefined, user?.storeId)
+          const results = await ProductsService.searchProducts(
+            debouncedProductSearch,
+            undefined,
+            user?.storeId
+          )
           if (!cancelled) {
             updateProductCache(results)
             setSearchedProducts(results)
           }
-        } catch (error) {
-      // Error silencioso en producción
+        } catch {
           if (!cancelled) {
             setSearchedProducts([])
           }
@@ -251,66 +262,31 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     return () => {
       cancelled = true
     }
-  }, [debouncedProductSearch, user?.storeId])
+  }, [debouncedProductSearch, user?.storeId, updateProductCache])
 
   const filteredProducts = useMemo(() => {
-    // Si no hay búsqueda, mostrar solo los primeros 5 productos como sugerencias
     if (!debouncedProductSearch.trim()) {
       const activeProducts = products.filter(product => product && product.status === 'active')
       return activeProducts.slice(0, 5)
     }
-    
-    // Si estamos buscando y aún no hay resultados, mostrar vacío
-    if (debouncedProductSearch.trim().length >= 2 && isSearchingProducts) {
-      return []
+
+    if (
+      debouncedProductSearch.trim().length >= minSearchLength(debouncedProductSearch) &&
+      searchedProducts.length > 0
+    ) {
+      return [...searchedProducts].sort((a, b) =>
+        compareProductsBySearchRelevance(a, b, debouncedProductSearch)
+      )
     }
-    
-    // Si hay búsqueda y tenemos resultados buscados, usar esos productos
-    if (debouncedProductSearch.trim().length >= 2 && searchedProducts.length > 0) {
-      return searchedProducts
-    }
-    
-    // Si hay búsqueda pero no hay resultados buscados y no estamos buscando, usar productos locales
-    const searchTerm = debouncedProductSearch.toLowerCase().trim()
-    const matchingProducts = products.filter(product => {
-      if (!product || product.status !== 'active') return false
-      
-      const name = (product.name || '').toLowerCase()
-      const brand = (product.brand || '').toLowerCase()
-      const reference = (product.reference || '').toLowerCase()
-      
-      return name.includes(searchTerm) || 
-             brand.includes(searchTerm) || 
-             reference.includes(searchTerm)
-    })
-    
-    // Priorizar resultados: primero por referencia exacta, luego por referencia que empieza con, luego nombre que empieza con, luego el resto
-    return matchingProducts.sort((a, b) => {
-      const searchTermLower = searchTerm.toLowerCase()
-      const aRef = (a.reference || '').toLowerCase()
-      const bRef = (b.reference || '').toLowerCase()
-      const aName = (a.name || '').toLowerCase()
-      const bName = (b.name || '').toLowerCase()
-      
-      // Referencia exacta primero
-      if (aRef === searchTermLower && bRef !== searchTermLower) return -1
-      if (aRef !== searchTermLower && bRef === searchTermLower) return 1
-      
-      // Referencia que empieza con el término
-      if (aRef.startsWith(searchTermLower) && !bRef.startsWith(searchTermLower)) return -1
-      if (!aRef.startsWith(searchTermLower) && bRef.startsWith(searchTermLower)) return 1
-      
-      // Nombre que empieza con el término
-      if (aName.startsWith(searchTermLower) && !bName.startsWith(searchTermLower)) return -1
-      if (!aName.startsWith(searchTermLower) && bName.startsWith(searchTermLower)) return 1
-      
-      // Ordenar por referencia que contiene el término
-      if (aRef.includes(searchTermLower) && !bRef.includes(searchTermLower)) return -1
-      if (!aRef.includes(searchTermLower) && bRef.includes(searchTermLower)) return 1
-      
-      return 0
-    })
-  }, [products, debouncedProductSearch, searchedProducts, isSearchingProducts])
+
+    const searchTerm = debouncedProductSearch.trim()
+    return products
+      .filter((product) => {
+        if (!product || product.status !== 'active') return false
+        return productMatchesSearch(product, searchTerm)
+      })
+      .sort((a, b) => compareProductsBySearchRelevance(a, b, searchTerm))
+  }, [products, debouncedProductSearch, searchedProducts])
 
 
   // Scroll automático cuando se selecciona un producto con las flechas
@@ -984,7 +960,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
                       <input
                         type="text"
-                        placeholder="Buscar por nombre o referencia..."
+                        placeholder="Ref., palabras clave o marca…"
                         value={productSearch}
                         onChange={(e) => {
                           const value = e.target.value

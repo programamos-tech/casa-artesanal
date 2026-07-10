@@ -32,6 +32,13 @@ import { useClients } from '@/contexts/clients-context'
 import { useAuth } from '@/contexts/auth-context'
 import { SalesService } from '@/lib/sales-service'
 import { CreditsService } from '@/lib/credits-service'
+import { ProductsService } from '@/lib/products-service'
+import {
+  compareProductsBySearchRelevance,
+  isReferenceLikeQuery,
+  minSearchLength,
+  productMatchesSearch,
+} from '@/lib/product-search'
 import { cn } from '@/lib/utils'
 import { cardShell as cardShellBase } from '@/lib/card-shell'
 
@@ -64,7 +71,7 @@ interface CreditModalProps {
 
 export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProps) {
   const { clients, getAllClients } = useClients()
-  const { products, searchProducts } = useProducts()
+  const { products } = useProducts()
   const { user } = useAuth()
   
   // Función helper para identificar si un cliente es una tienda
@@ -142,26 +149,32 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
 
   // Debounce para la búsqueda de productos
   useEffect(() => {
+    const delay = isReferenceLikeQuery(productSearch) ? 80 : 180
     const timer = setTimeout(() => {
       setDebouncedProductSearch(productSearch)
-    }, 800)
+    }, delay)
     return () => clearTimeout(timer)
   }, [productSearch])
 
   // Buscar productos cuando el usuario escriba
   useEffect(() => {
     let cancelled = false
+    const term = debouncedProductSearch.trim()
+    const minLen = minSearchLength(term)
     
     const performSearch = async () => {
-      if (debouncedProductSearch.trim().length >= 2) {
+      if (term.length >= minLen) {
         setIsSearchingProducts(true)
         try {
-          const results = await searchProducts(debouncedProductSearch)
+          const results = await ProductsService.searchProducts(
+            debouncedProductSearch,
+            undefined,
+            user?.storeId
+          )
           if (!cancelled) {
             setSearchedProducts(results)
           }
-        } catch (error) {
-      // Error silencioso en producción
+        } catch {
           if (!cancelled) {
             setSearchedProducts([])
             setIsSearchingProducts(false)
@@ -182,42 +195,30 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
     return () => {
       cancelled = true
     }
-  }, [debouncedProductSearch])
+  }, [debouncedProductSearch, user?.storeId])
 
   // Filtrar productos — memoizado para no recrear el array en cada render (evitaba resetear el resaltado al primer ítem)
   const filteredProducts = useMemo(() => {
-    if (debouncedProductSearch.trim().length >= 2 && searchedProducts.length > 0) {
-      return searchedProducts
+    const searchTerm = debouncedProductSearch.trim()
+    if (searchTerm.length >= minSearchLength(searchTerm) && searchedProducts.length > 0) {
+      return [...searchedProducts].sort((a, b) =>
+        compareProductsBySearchRelevance(a, b, searchTerm)
+      )
     }
-    if (debouncedProductSearch.trim().length >= 2 && searchedProducts.length === 0 && !isSearchingProducts) {
+    if (
+      searchTerm.length >= minSearchLength(searchTerm) &&
+      searchedProducts.length === 0 &&
+      !isSearchingProducts
+    ) {
       return []
     }
     return products
-      .filter(product => {
+      .filter((product) => {
         if (!product || product.status !== 'active') return false
-        const searchTerm = debouncedProductSearch.toLowerCase().trim()
-        const name = (product.name || '').toLowerCase()
-        const reference = (product.reference || '').toLowerCase()
-        return name.includes(searchTerm) || reference.includes(searchTerm)
+        if (!searchTerm) return true
+        return productMatchesSearch(product, searchTerm)
       })
-      .sort((a, b) => {
-        const searchTermLower = debouncedProductSearch.toLowerCase()
-        const aRef = (a.reference || '').toLowerCase()
-        const bRef = (b.reference || '').toLowerCase()
-        const aName = (a.name || '').toLowerCase()
-        const bName = (b.name || '').toLowerCase()
-
-        if (aRef === searchTermLower && bRef !== searchTermLower) return -1
-        if (aRef !== searchTermLower && bRef === searchTermLower) return 1
-
-        if (aRef.startsWith(searchTermLower) && !bRef.startsWith(searchTermLower)) return -1
-        if (!aRef.startsWith(searchTermLower) && bRef.startsWith(searchTermLower)) return 1
-
-        if (aName.startsWith(searchTermLower) && !bName.startsWith(searchTermLower)) return -1
-        if (!aName.startsWith(searchTermLower) && bName.startsWith(searchTermLower)) return 1
-
-        return 0
-      })
+      .sort((a, b) => compareProductsBySearchRelevance(a, b, searchTerm))
   }, [debouncedProductSearch, searchedProducts, isSearchingProducts, products])
 
   const visibleProducts = useMemo(() => filteredProducts.slice(0, 10), [filteredProducts])

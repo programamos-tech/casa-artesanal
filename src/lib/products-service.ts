@@ -4,6 +4,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { AuthService } from './auth-service'
 import { StoresService } from './stores-service'
 import { getCurrentUserStoreId, isMainStoreUser } from './store-helper'
+import {
+  compareProductsBySearchRelevance,
+  escapeIlike,
+  isReferenceLikeQuery,
+  referenceExactVariants,
+  tokenizeProductSearch,
+} from './product-search'
 
 // Tipo para filtros de stock (funciona tanto para tienda principal como microtiendas)
 export type StockFilter =
@@ -25,6 +32,10 @@ const PRODUCT_SELECT_WITH_CATEGORY =
 /** Listado: categoría embebida para mostrar nombre sin depender solo del contexto */
 const PRODUCT_LIST_SELECT =
   'id, name, description, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at, categories:category_id ( id, name )'
+
+/** Búsqueda POS/inventario: sin description para responder más rápido */
+const PRODUCT_SEARCH_SELECT =
+  'id, name, category_id, brand, reference, price, retail_price, wholesale_price, cost, stock_warehouse, stock_store, status, image_url, created_at, updated_at, categories:category_id ( id, name )'
 
 type DbProductRow = {
   id: string
@@ -1265,8 +1276,11 @@ export class ProductsService {
     }
   }
 
-  // Buscar productos
-  // storeId: opcional, si se pasa se usa ese, si no se intenta obtener del localStorage
+  /**
+   * Buscar productos por nombre, referencia o marca.
+   * - Referencia (ej. "315"): match exacto/prefijo, consulta liviana e index-friendly.
+   * - Nombre largo: tokens (palabras) — "sombrero grande" encuentra nombres compuestos.
+   */
   static async searchProducts(
     query: string,
     stockFilter?: StockFilter,
@@ -1275,31 +1289,46 @@ export class ProductsService {
   ): Promise<Product[]> {
     try {
       const cleanQuery = query.trim()
+      if (!cleanQuery) return []
 
-      if (!cleanQuery) {
-        return []
-      }
+      const tokens = tokenizeProductSearch(cleanQuery)
+      if (tokens.length === 0) return []
 
-      await this.ensureCategoryCache()
+      // No bloquear la búsqueda por el cache de categorías (join embebido basta)
+      void this.ensureCategoryCache()
 
-      // Búsqueda simplificada sin timeout - buscar en referencia y nombre
+      const referenceMode = isReferenceLikeQuery(cleanQuery)
       let searchQuery = supabase
         .from('products')
-        .select(PRODUCT_LIST_SELECT)
+        .select(PRODUCT_SEARCH_SELECT)
         .eq('status', 'active')
-        .or(`reference.ilike.%${cleanQuery}%,name.ilike.%${cleanQuery}%`)
-        .order('reference', { ascending: true })
-        .limit(100)
+
+      if (referenceMode) {
+        // Ruta rápida por código: eq + prefijo (usa índice de reference mejor que %term%)
+        const variants = referenceExactVariants(cleanQuery)
+        const escaped = escapeIlike(cleanQuery)
+        const orParts = [
+          ...variants.map((v) => `reference.eq.${v}`),
+          `reference.ilike.${escaped}%`,
+        ]
+        searchQuery = searchQuery.or(orParts.join(',')).limit(25)
+      } else {
+        // Cada token debe aparecer en nombre, referencia o marca (AND de ORs)
+        for (const token of tokens) {
+          const escaped = escapeIlike(token)
+          searchQuery = searchQuery.or(
+            `reference.ilike.%${escaped}%,name.ilike.%${escaped}%,brand.ilike.%${escaped}%`
+          )
+        }
+        searchQuery = searchQuery.limit(50)
+      }
 
       if (categoryFilter && categoryFilter !== 'all') {
         searchQuery = searchQuery.eq('category_id', categoryFilter)
       }
 
       const { data, error } = await searchQuery
-
-      if (error) {
-        return []
-      }
+      if (error) return []
 
       const currentStoreId = storeId !== undefined ? storeId : getCurrentUserStoreId()
       const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -1307,27 +1336,37 @@ export class ProductsService {
 
       const rows = data ?? []
       const productIds = rows.map((p: { id: string }) => p.id)
-      const stockMap = isMainStore
-        ? new Map<string, { warehouse: number; store: number; total: number }>()
-        : await this.getProductsStockForStore(productIds, currentStoreId)
 
-      // Para microtiendas, obtener cost/price de store_stock
-      let costPriceMap = new Map<string, { cost: number | null, price: number | null }>()
+      let stockMap = new Map<string, { warehouse: number; store: number; total: number }>()
+      let costPriceMap = new Map<string, { cost: number | null; price: number | null }>()
 
-      if (!isMainStore && currentStoreId) {
+      if (!isMainStore && currentStoreId && productIds.length > 0) {
+        // Una sola consulta: stock + costo/precio de la microtienda
         const { data: storeStockData } = await supabaseAdmin
           .from('store_stock')
-          .select('product_id, cost, price')
+          .select('product_id, quantity, cost, price')
           .eq('store_id', currentStoreId)
           .in('product_id', productIds)
 
         if (storeStockData) {
-          storeStockData.forEach((item: any) => {
+          for (const item of storeStockData) {
+            const quantity = Number(item.quantity) || 0
+            stockMap.set(item.product_id, {
+              warehouse: 0,
+              store: quantity,
+              total: quantity,
+            })
             costPriceMap.set(item.product_id, {
               cost: item.cost,
-              price: item.price
+              price: item.price,
             })
-          })
+          }
+        }
+
+        for (const id of productIds) {
+          if (!stockMap.has(id)) {
+            stockMap.set(id, { warehouse: 0, store: 0, total: 0 })
+          }
         }
       }
 
@@ -1346,7 +1385,6 @@ export class ProductsService {
 
         if (!isMainStore) {
           const storeStockCostPrice = costPriceMap.get(product.id)
-
           if (storeStockCostPrice) {
             productCost = this.microStoreAcquisitionCost(storeStockCostPrice)
             productPrice = this.microStoreSalePrice(storeStockCostPrice)
@@ -1364,9 +1402,10 @@ export class ProductsService {
       })
 
       const filteredProducts = this.applyStockFilterToProducts(mappedProducts, stockFilter)
-      return this.sortProductsByReference(filteredProducts)
-    } catch (error) {
-      // Error silencioso en producción
+      return [...filteredProducts].sort((a, b) =>
+        compareProductsBySearchRelevance(a, b, cleanQuery)
+      )
+    } catch {
       return []
     }
   }
