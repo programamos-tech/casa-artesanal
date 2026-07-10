@@ -1605,8 +1605,34 @@ export class ProductsService {
       }
       const productIds = Array.from(byProduct.keys())
 
-      // Una sola lectura de stock para todos los productos
-      const stockMap = await this.getProductsStockForStore(productIds, storeId)
+      // Una sola lectura de stock (consulta directa, sin el helper con reintentos admin)
+      const stockMap = new Map<string, { warehouse: number; store: number; total: number }>()
+      if (isMainStore) {
+        const { data: stockRows } = await supabase
+          .from('products')
+          .select('id, stock_warehouse, stock_store')
+          .in('id', productIds)
+        for (const row of stockRows || []) {
+          const warehouse = Number(row.stock_warehouse) || 0
+          const store = Number(row.stock_store) || 0
+          stockMap.set(row.id, { warehouse, store, total: warehouse + store })
+        }
+      } else if (storeId) {
+        const { data: stockRows } = await supabaseAdmin
+          .from('store_stock')
+          .select('product_id, quantity')
+          .eq('store_id', storeId)
+          .in('product_id', productIds)
+        for (const row of stockRows || []) {
+          const quantity = Number(row.quantity) || 0
+          stockMap.set(row.product_id, { warehouse: 0, store: quantity, total: quantity })
+        }
+      }
+      for (const id of productIds) {
+        if (!stockMap.has(id)) {
+          stockMap.set(id, { warehouse: 0, store: 0, total: 0 })
+        }
+      }
 
       const deductions = new Map<string, { storeDeduction: number; warehouseDeduction: number; previousStoreStock: number; previousWarehouseStock: number; newStoreStock: number; newWarehouseStock: number }>()
       for (const [productId, { totalQty, productName }] of byProduct) {

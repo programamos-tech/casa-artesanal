@@ -56,8 +56,8 @@ function applyCreatedAtRangeFilter<T extends { gte: (col: string, v: string) => 
 export class SalesService {
   /**
    * Siguiente número de factura por tienda.
-   * Sin argumento: usa la tienda del usuario actual (comportamiento previo).
-   * Con `forStoreId`: secuencia para esa tienda (traslados / admin); usa service role para contar bien.
+   * Usa la última venta (por fecha) en lugar de COUNT(*) — mucho más rápido en tablas grandes.
+   * Con `forStoreId`: secuencia para esa tienda (traslados / admin); usa service role.
    */
   static async getNextInvoiceNumber(forStoreId?: string): Promise<string> {
     try {
@@ -66,7 +66,11 @@ export class SalesService {
       const storeId = useExplicit ? forStoreId : getCurrentUserStoreId()
       const db = useExplicit ? supabaseAdmin : supabase
 
-      let query = db.from('sales').select('*', { count: 'exact', head: true })
+      let query = db
+        .from('sales')
+        .select('invoice_number')
+        .order('created_at', { ascending: false })
+        .limit(1)
 
       if (!storeId || storeId === MAIN_STORE_ID) {
         query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
@@ -74,15 +78,20 @@ export class SalesService {
         query = query.eq('store_id', storeId)
       }
 
-      const { count, error } = await query
+      const { data, error } = await query
 
-      if (error) {
+      if (error || !data?.length) {
         return '#001'
       }
 
-      const nextNumber = (count || 0) + 1
+      const last = String(data[0].invoice_number || '')
+      const match = last.match(/(\d+)/)
+      const nextNumber = match ? Number.parseInt(match[1], 10) + 1 : 1
+      if (!Number.isFinite(nextNumber) || nextNumber < 1) {
+        return '#001'
+      }
       return `#${nextNumber.toString().padStart(3, '0')}`
-    } catch (error) {
+    } catch {
       return '#001'
     }
   }
@@ -769,40 +778,36 @@ export class SalesService {
 
   static async createSale(saleData: Omit<Sale, 'id' | 'createdAt'>, currentUserId: string): Promise<Sale> {
     try {
-      // Generar número de factura secuencial
-      const invoiceNumber = await this.getNextInvoiceNumber()
-
-      // Obtener información del usuario actual (cajero / quien crea la factura)
-      const currentUser = await AuthService.getCurrentUser()
-
-      // Obtener store_id del usuario actual
       const storeId = getCurrentUserStoreId()
+      // Sync desde localStorage — evita round-trip a users en cada venta
+      const currentUser = getCurrentUser()
 
-      // Resolver vendedor asignado a la venta:
-      // - Si el cajero eligió un vendedor en el formulario, usamos ese.
-      // - Si no, fallback al usuario logueado (compatibilidad con flujos legacy).
+      const needsSellerLookup =
+        Boolean(saleData.sellerId) && (!saleData.sellerName || !saleData.sellerEmail)
+
+      const [invoiceNumber, sellerLookup] = await Promise.all([
+        this.getNextInvoiceNumber(),
+        needsSellerLookup
+          ? supabase
+              .from('users')
+              .select('id, name, email')
+              .eq('id', saleData.sellerId!)
+              .maybeSingle()
+              .then(({ data }) => data)
+              .catch(() => null)
+          : Promise.resolve(null),
+      ])
+
       let sellerId = saleData.sellerId || currentUser?.id || currentUserId
       let sellerName = saleData.sellerName || currentUser?.name || 'Usuario'
       let sellerEmail = saleData.sellerEmail || currentUser?.email || ''
 
-      if (saleData.sellerId && (!saleData.sellerName || !saleData.sellerEmail)) {
-        try {
-          const { data: sellerRow } = await supabase
-            .from('users')
-            .select('id, name, email')
-            .eq('id', saleData.sellerId)
-            .maybeSingle()
-          if (sellerRow) {
-            sellerId = sellerRow.id
-            sellerName = sellerRow.name || sellerName
-            sellerEmail = sellerRow.email || sellerEmail
-          }
-        } catch {
-          // Si falla la consulta, usamos los valores que vinieron por payload o currentUser
-        }
+      if (sellerLookup) {
+        sellerId = sellerLookup.id
+        sellerName = sellerLookup.name || sellerName
+        sellerEmail = sellerLookup.email || sellerEmail
       }
 
-      // Crear la venta
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert({
@@ -820,129 +825,150 @@ export class SalesService {
           seller_id: sellerId,
           seller_name: sellerName,
           seller_email: sellerEmail,
-          store_id: storeId || '00000000-0000-0000-0000-000000000001' // Tienda principal por defecto
+          store_id: storeId || '00000000-0000-0000-0000-000000000001'
         })
         .select()
         .single()
 
       if (saleError) {
-        // Error silencioso en producción
         throw saleError
       }
 
-      // Crear los items de la venta y descontar stock (solo si no es borrador)
       let itemsWithStockInfo: Array<any> = []
-      let insertedItems: Array<{ id: string; product_id: string; product_name: string; product_reference_code: string | null; quantity: number; unit_price: number; discount: number; total: number }> = []
-      if (saleData.items && saleData.items.length > 0) {
-        if (saleData.status !== 'draft') {
-          const batchResult = await ProductsService.deductStockForSaleBatch(
-            saleData.items.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              productName: item.productName,
-              productReferenceCode: item.productReferenceCode,
-              unitPrice: item.unitPrice,
-              totalPrice: item.totalPrice
-            })),
-            currentUserId
-          )
-          if (!batchResult.success || !batchResult.itemsWithStockInfo) {
-            await supabase.from('sales').delete().eq('id', sale.id)
-            throw new Error(`No hay suficiente stock para el producto: ${batchResult.failedProductName ?? 'desconocido'}`)
-          }
-          itemsWithStockInfo = batchResult.itemsWithStockInfo
-        } else {
-          itemsWithStockInfo = saleData.items.map((item) => ({
-            productName: item.productName,
-            productReference: item.productReferenceCode,
+      let insertedItems: Array<{
+        id: string
+        product_id: string
+        product_name: string
+        product_reference_code: string | null
+        quantity: number
+        unit_price: number
+        discount: number
+        total: number
+      }> = []
+
+      const hasItems = Boolean(saleData.items && saleData.items.length > 0)
+      const isDraft = saleData.status === 'draft'
+
+      if (hasItems && !isDraft) {
+        const batchResult = await ProductsService.deductStockForSaleBatch(
+          saleData.items!.map((item) => ({
+            productId: item.productId,
             quantity: item.quantity,
+            productName: item.productName,
+            productReferenceCode: item.productReferenceCode,
             unitPrice: item.unitPrice,
             totalPrice: item.totalPrice
-          }))
+          })),
+          currentUserId
+        )
+        if (!batchResult.success || !batchResult.itemsWithStockInfo) {
+          await supabase.from('sales').delete().eq('id', sale.id)
+          throw new Error(
+            `No hay suficiente stock para el producto: ${batchResult.failedProductName ?? 'desconocido'}`
+          )
         }
-
-        const saleItems = saleData.items.map((item) => ({
-          sale_id: sale.id,
-          product_id: item.productId,
-          product_name: item.productName,
-          product_reference_code: item.productReferenceCode || null,
+        itemsWithStockInfo = batchResult.itemsWithStockInfo
+      } else if (hasItems) {
+        itemsWithStockInfo = saleData.items!.map((item) => ({
+          productName: item.productName,
+          productReference: item.productReferenceCode,
           quantity: item.quantity,
-          unit_price: item.unitPrice,
-          discount: item.discount || 0,
-          discount_type: item.discountType || 'amount',
-          total: item.total
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
         }))
-
-        const { data: insertedItemsData, error: itemsError } = await supabase
-          .from('sale_items')
-          .insert(saleItems)
-          .select('id, product_id, product_name, product_reference_code, quantity, unit_price, discount, discount_type, total')
-
-        if (itemsError) throw itemsError
-        insertedItems = insertedItemsData ?? []
       }
 
-      // Crear registros de pago según el método (solo si NO es borrador)
-      if (saleData.status !== 'draft') {
-        if (saleData.paymentMethod === 'mixed' && saleData.payments && saleData.payments.length > 0) {
-          // Crear pagos mixtos
-          const paymentRecords = saleData.payments.map(payment => ({
-            sale_id: sale.id,
-            payment_type: payment.paymentType,
-            amount: payment.amount
-          }))
+      // Ítems + pago/crédito en paralelo (no dependen entre sí)
+      const parallelTasks: Promise<void>[] = []
 
-          const { error: paymentsError } = await supabase
-            .from('sale_payments')
-            .insert(paymentRecords)
-
-          if (paymentsError) {
-            // Error silencioso en producción
-            throw paymentsError
-          }
-        } else if (saleData.paymentMethod === 'credit') {
-          // Crear crédito para ventas a crédito
-          const { CreditsService } = await import('./credits-service')
-
-          await CreditsService.createCredit({
-            saleId: sale.id,
-            clientId: saleData.clientId,
-            clientName: saleData.clientName,
-            invoiceNumber: invoiceNumber,
-            totalAmount: saleData.total,
-            paidAmount: 0,
-            pendingAmount: saleData.total,
-            status: 'pending',
-            dueDate: saleData.dueDate || null,
-            lastPaymentAmount: null,
-            lastPaymentDate: null,
-            lastPaymentUser: null,
-            createdBy: currentUserId,
-            createdByName: currentUser?.name || 'Usuario'
-          })
-        } else {
-          // Crear pago único para métodos no mixtos (cash, transfer, etc.)
-          const { error: paymentError } = await supabase
-            .from('payments')
-            .insert({
+      if (hasItems) {
+        parallelTasks.push(
+          (async () => {
+            const saleItems = saleData.items!.map((item) => ({
               sale_id: sale.id,
-              client_id: saleData.clientId,
-              client_name: saleData.clientName,
-              invoice_number: invoiceNumber,
-              total_amount: saleData.total,
-              paid_amount: saleData.paymentMethod === 'cash' ? saleData.total : 0,
-              pending_amount: saleData.paymentMethod === 'cash' ? 0 : saleData.total,
-              status: saleData.paymentMethod === 'cash' ? 'completed' : 'pending'
-            })
+              product_id: item.productId,
+              product_name: item.productName,
+              product_reference_code: item.productReferenceCode || null,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              discount: item.discount || 0,
+              discount_type: item.discountType || 'amount',
+              total: item.total
+            }))
 
-          if (paymentError) {
-            // Error silencioso en producción
-            throw paymentError
-          }
+            const { data: insertedItemsData, error: itemsError } = await supabase
+              .from('sale_items')
+              .insert(saleItems)
+              .select(
+                'id, product_id, product_name, product_reference_code, quantity, unit_price, discount, discount_type, total'
+              )
+
+            if (itemsError) throw itemsError
+            insertedItems = insertedItemsData ?? []
+          })()
+        )
+      }
+
+      if (!isDraft) {
+        if (saleData.paymentMethod === 'mixed' && saleData.payments && saleData.payments.length > 0) {
+          parallelTasks.push(
+            (async () => {
+              const paymentRecords = saleData.payments!.map((payment) => ({
+                sale_id: sale.id,
+                payment_type: payment.paymentType,
+                amount: payment.amount
+              }))
+              const { error: paymentsError } = await supabase
+                .from('sale_payments')
+                .insert(paymentRecords)
+              if (paymentsError) throw paymentsError
+            })()
+          )
+        } else if (saleData.paymentMethod === 'credit') {
+          parallelTasks.push(
+            (async () => {
+              const { CreditsService } = await import('./credits-service')
+              await CreditsService.createCredit({
+                saleId: sale.id,
+                clientId: saleData.clientId,
+                clientName: saleData.clientName,
+                invoiceNumber: invoiceNumber,
+                totalAmount: saleData.total,
+                paidAmount: 0,
+                pendingAmount: saleData.total,
+                status: 'pending',
+                dueDate: saleData.dueDate || null,
+                lastPaymentAmount: null,
+                lastPaymentDate: null,
+                lastPaymentUser: null,
+                createdBy: currentUserId,
+                createdByName: currentUser?.name || 'Usuario'
+              })
+            })()
+          )
+        } else {
+          parallelTasks.push(
+            (async () => {
+              const { error: paymentError } = await supabase.from('payments').insert({
+                sale_id: sale.id,
+                client_id: saleData.clientId,
+                client_name: saleData.clientName,
+                invoice_number: invoiceNumber,
+                total_amount: saleData.total,
+                paid_amount: saleData.paymentMethod === 'cash' ? saleData.total : 0,
+                pending_amount: saleData.paymentMethod === 'cash' ? 0 : saleData.total,
+                status: saleData.paymentMethod === 'cash' ? 'completed' : 'pending'
+              })
+              if (paymentError) throw paymentError
+            })()
+          )
         }
       }
 
-      // Log de actividad
+      if (parallelTasks.length > 0) {
+        await Promise.all(parallelTasks)
+      }
+
       const paymentMethodLabel =
         saleData.paymentMethod === 'credit'
           ? 'Venta a Crédito'
@@ -960,55 +986,29 @@ export class SalesService {
                       ? 'Venta Mixta'
                       : 'Venta'
 
-      // Usar acción diferente según el tipo de venta
-      const logAction = saleData.status === 'draft'
+      const logAction = isDraft
         ? 'sale_draft_create'
         : saleData.paymentMethod === 'credit'
           ? 'credit_sale_create'
           : 'sale_create'
 
-      const logDescription = saleData.status === 'draft'
+      const logDescription = isDraft
         ? `Borrador de ${paymentMethodLabel}: ${saleData.clientName} - Total: $${saleData.total.toLocaleString()}`
         : `${paymentMethodLabel}: ${saleData.clientName} - Total: $${saleData.total.toLocaleString()}`
 
-      // Obtener la fecha de vencimiento del crédito si existe
-      let creditDueDate = null
-      if (saleData.paymentMethod === 'credit') {
-        // Intentar obtener la fecha de saleData (puede no estar en el tipo pero se pasa desde el modal)
-        const saleDataWithDueDate = saleData as any
-        if (saleDataWithDueDate.dueDate) {
-          creditDueDate = saleDataWithDueDate.dueDate
-        } else {
-          // Si no, obtenerla del crédito recién creado
-          try {
-            const { CreditsService } = await import('./credits-service')
-            const credit = await CreditsService.getCreditByInvoiceNumber(invoiceNumber)
-            if (credit && credit.dueDate) {
-              creditDueDate = credit.dueDate
-            }
-          } catch (error) {
-            // Error silencioso
-          }
-        }
-      }
-
-      await AuthService.logActivity(
-        currentUserId,
-        logAction,
-        'sales',
-        {
-          description: logDescription,
-          saleId: sale.id,
-          invoiceNumber: invoiceNumber,
-          clientName: saleData.clientName,
-          total: saleData.total,
-          paymentMethod: saleData.paymentMethod,
-          status: saleData.status,
-          itemsCount: itemsWithStockInfo.length,
-          items: itemsWithStockInfo,
-          dueDate: creditDueDate
-        }
-      )
+      // No bloquear la respuesta de la venta por el log
+      void AuthService.logActivity(currentUserId, logAction, 'sales', {
+        description: logDescription,
+        saleId: sale.id,
+        invoiceNumber: invoiceNumber,
+        clientName: saleData.clientName,
+        total: saleData.total,
+        paymentMethod: saleData.paymentMethod,
+        status: saleData.status,
+        itemsCount: itemsWithStockInfo.length,
+        items: itemsWithStockInfo,
+        dueDate: saleData.paymentMethod === 'credit' ? saleData.dueDate || null : null
+      })
 
       const now = new Date().toISOString()
       const completeSale: Sale = {
@@ -1039,20 +1039,20 @@ export class SalesService {
           discount: row.discount ?? 0,
           total: row.total
         })),
-        payments: saleData.paymentMethod === 'mixed' && saleData.payments?.length
-          ? saleData.payments.map((p, i) => ({
-              id: `temp-${sale.id}-${i}`,
-              saleId: sale.id,
-              paymentType: p.paymentType,
-              amount: p.amount,
-              createdAt: now,
-              updatedAt: now
-            }))
-          : undefined
+        payments:
+          saleData.paymentMethod === 'mixed' && saleData.payments?.length
+            ? saleData.payments.map((p, i) => ({
+                id: `temp-${sale.id}-${i}`,
+                saleId: sale.id,
+                paymentType: p.paymentType,
+                amount: p.amount,
+                createdAt: now,
+                updatedAt: now
+              }))
+            : undefined
       }
       return completeSale
     } catch (error) {
-      // Error silencioso en producción
       throw error
     }
   }

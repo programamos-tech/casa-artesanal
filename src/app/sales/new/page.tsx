@@ -725,7 +725,8 @@ export default function NewSalePage() {
     setInvoiceNumber('Generando...')
     try {
       await createSale(saleData)
-      router.push('/sales')
+      // replace evita historial extra y suele sentirse más ágil al volver al listado
+      router.replace('/sales')
     } catch (error) {
       console.error('Error creating sale:', error)
       setInvoiceNumber('Pendiente')
