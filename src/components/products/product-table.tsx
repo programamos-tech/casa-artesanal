@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { Product, Category } from '@/types'
 import type { StockFilter, CategoryFilter } from '@/lib/products-service'
+import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
@@ -136,12 +137,37 @@ export function ProductTable({
   const [searchTerm, setSearchTerm] = useState('')
   const onSearchRef = useRef(onSearch)
   onSearchRef.current = onSearch
+  const lastSearchedTermRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!searchTerm.trim()) return
+    const term = searchTerm.trim()
+    const delay = isReferenceLikeQuery(term) ? 80 : 180
+
+    // Vacío → volver al listado normal
+    if (!term) {
+      if (lastSearchedTermRef.current === '' || lastSearchedTermRef.current === null) {
+        return
+      }
+      const timeoutId = setTimeout(() => {
+        lastSearchedTermRef.current = ''
+        void onSearchRef.current('')
+      }, 80)
+      return () => clearTimeout(timeoutId)
+    }
+
+    // Esperar longitud mínima (1 para códigos, 2 para texto)
+    if (term.length < minSearchLength(term)) {
+      return
+    }
+
+    if (term === lastSearchedTermRef.current) {
+      return
+    }
+
     const timeoutId = setTimeout(() => {
-      void onSearchRef.current(searchTerm)
-    }, 500)
+      lastSearchedTermRef.current = term
+      void onSearchRef.current(term)
+    }, delay)
     return () => clearTimeout(timeoutId)
   }, [searchTerm])
 
@@ -380,16 +406,26 @@ export function ProductTable({
                 />
                 <input
                   type="search"
-                  placeholder={searchLoading ? 'Buscando...' : 'Buscar producto...'}
+                  placeholder={
+                    searchLoading ? 'Buscando…' : 'Ref., nombre o marca…'
+                  }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
-                      void onSearchRef.current(searchTerm)
+                      const term = searchTerm.trim()
+                      if (!term) {
+                        lastSearchedTermRef.current = ''
+                        void onSearchRef.current('')
+                        return
+                      }
+                      if (term.length < minSearchLength(term)) return
+                      lastSearchedTermRef.current = term
+                      void onSearchRef.current(term)
                     }
                   }}
-                  aria-label="Buscar producto"
+                  aria-label="Buscar producto por referencia, nombre o marca"
                   aria-busy={searchLoading}
                   className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-10 text-sm font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
                 />
@@ -402,6 +438,7 @@ export function ProductTable({
                     type="button"
                     onClick={() => {
                       setSearchTerm('')
+                      lastSearchedTermRef.current = ''
                       void onSearchRef.current('')
                     }}
                     className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"

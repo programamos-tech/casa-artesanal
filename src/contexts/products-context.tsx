@@ -3,6 +3,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { Product } from '@/types'
 import { ProductsService, StockFilter, CategoryFilter } from '@/lib/products-service'
+import { compareProductsBySearchRelevance, minSearchLength } from '@/lib/product-search'
 import { useAuth } from './auth-context'
 
 interface ProductsContextType {
@@ -99,12 +100,18 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         if (term) {
+          if (term.length < minSearchLength(term)) {
+            return
+          }
           setIsSearching(true)
           const results = await ProductsService.searchProducts(term, sf, storeId, cf)
           if (seq !== fetchSeqRef.current) return
-          setProducts(results)
+          const ranked = [...results].sort((a, b) =>
+            compareProductsBySearchRelevance(a, b, term)
+          )
+          setProducts(ranked)
           setCurrentPage(1)
-          setTotalProducts(results.length)
+          setTotalProducts(ranked.length)
           setHasMore(false)
         } else {
           setIsSearching(false)
@@ -236,30 +243,42 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
 
   const searchProducts = useCallback(
     async (searchTerm: string): Promise<Product[]> => {
+      const term = searchTerm.trim()
       listSearchRef.current = searchTerm
-      if (!searchTerm.trim()) {
+      if (!term) {
         await clearSearch()
         return []
       }
 
+      if (term.length < minSearchLength(term)) {
+        return []
+      }
+
+      const seq = ++fetchSeqRef.current
       setSearchLoading(true)
       try {
         const results = await ProductsService.searchProducts(
-          searchTerm,
+          term,
           stockFilterRef.current,
           storeId,
           categoryFilterRef.current
         )
+        if (seq !== fetchSeqRef.current) return results
+        const ranked = [...results].sort((a, b) =>
+          compareProductsBySearchRelevance(a, b, term)
+        )
         setIsSearching(true)
-        setProducts(results)
+        setProducts(ranked)
         setCurrentPage(1)
-        setTotalProducts(results.length)
+        setTotalProducts(ranked.length)
         setHasMore(false)
-        return results
+        return ranked
       } catch {
         return []
       } finally {
-        setSearchLoading(false)
+        if (seq === fetchSeqRef.current) {
+          setSearchLoading(false)
+        }
       }
     },
     [storeId, clearSearch]

@@ -27,6 +27,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { GlobalSearchService, type GlobalSearchHit } from '@/lib/global-search-service'
 import { GlobalSearchDropdown } from '@/components/layout/global-search-dropdown'
+import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
 import { cn } from '@/lib/utils'
 
 /** Altura única de la barra y de todos los controles interactivos */
@@ -121,7 +122,8 @@ export function AppTopNav() {
 
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) {
+    const minLen = minSearchLength(q)
+    if (q.length < minLen) {
       setHits([])
       setSearchOpen(false)
       setSearching(false)
@@ -132,6 +134,7 @@ export function AppTopNav() {
     setSearching(true)
     setSearchOpen(true)
 
+    const delay = isReferenceLikeQuery(q) ? 80 : 180
     const timer = setTimeout(() => {
       void (async () => {
         try {
@@ -151,7 +154,7 @@ export function AppTopNav() {
           if (searchSeqRef.current === seq) setSearching(false)
         }
       })()
-    }, 280)
+    }, delay)
 
     return () => clearTimeout(timer)
   }, [query, user?.id, user?.storeId])
@@ -209,9 +212,9 @@ export function AppTopNav() {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onFocus={() => {
-                if (query.trim().length >= 2) setSearchOpen(true)
+                if (query.trim().length >= minSearchLength(query)) setSearchOpen(true)
               }}
-              placeholder="Clientes, facturas, productos, código…"
+              placeholder="Ref., productos, clientes, facturas…"
               className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-[15px] leading-5 text-zinc-900 placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
               aria-label="Buscar en el sistema"
               autoComplete="off"

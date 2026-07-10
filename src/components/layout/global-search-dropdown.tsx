@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { GlobalSearchHit, GlobalSearchKind } from '@/lib/global-search-service'
+import { minSearchLength } from '@/lib/product-search'
 import { cn } from '@/lib/utils'
 
 const KIND_META: Record<
@@ -61,13 +62,22 @@ const KIND_META: Record<
 }
 
 const SECTION_ORDER: GlobalSearchKind[] = [
-  'client',
   'product',
+  'client',
   'sale',
   'credit',
   'supplier_invoice',
   'transfer',
 ]
+
+function splitProductSubtitle(subtitle: string): { meta: string; stock: string | null } {
+  const stockIdx = subtitle.search(/ · Stock(?:\s| local)/i)
+  if (stockIdx === -1) return { meta: subtitle, stock: null }
+  return {
+    meta: subtitle.slice(0, stockIdx),
+    stock: subtitle.slice(stockIdx + 3),
+  }
+}
 
 type Props = {
   hits: GlobalSearchHit[]
@@ -84,6 +94,8 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
     items: hits.filter(h => h.kind === kind),
   })).filter(g => g.items.length > 0)
 
+  const minLen = minSearchLength(query)
+
   return (
     <div
       className={cn(
@@ -93,7 +105,7 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
     >
       {searching ? (
         <p className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">Buscando…</p>
-      ) : hits.length === 0 && query.trim().length >= 2 ? (
+      ) : hits.length === 0 && query.trim().length >= minLen ? (
         <p className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">Sin resultados</p>
       ) : (
         grouped.map((group, gi) => (
@@ -110,6 +122,8 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
             <ul>
               {group.items.map(hit => {
                 const Icon = group.meta.icon
+                const productParts =
+                  hit.kind === 'product' ? splitProductSubtitle(hit.subtitle) : null
                 return (
                   <li key={`${hit.kind}-${hit.id}`}>
                     <button
@@ -129,9 +143,22 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
                         <span className="block truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
                           {hit.title}
                         </span>
-                        <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
-                          {hit.subtitle}
-                        </span>
+                        {productParts ? (
+                          <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                              {productParts.meta}
+                            </span>
+                            {productParts.stock ? (
+                              <span className="inline-flex shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                {productParts.stock}
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                            {hit.subtitle}
+                          </span>
+                        )}
                       </span>
                       <span
                         className={cn(

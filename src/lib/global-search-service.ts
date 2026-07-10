@@ -1,8 +1,15 @@
 import { supabase } from './supabase'
 import { getCurrentUser, getCurrentUserStoreId, canAccessAllStores } from './store-helper'
+import {
+  compareProductsBySearchRelevance,
+  escapeIlike,
+  minSearchLength,
+} from './product-search'
+import { ProductsService } from './products-service'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 const PER_SECTION = 4
+const PRODUCT_SECTION = 8
 
 export type GlobalSearchKind =
   | 'client'
@@ -27,10 +34,6 @@ export interface GlobalSearchModules {
   credits?: boolean
   transfers?: boolean
   supplier_invoices?: boolean
-}
-
-function escapeIlike(term: string): string {
-  return term.replace(/[%_\\]/g, '\\$&')
 }
 
 function applySalesStoreFilter<T extends { eq: (col: string, val: string) => T; or: (expr: string) => T }>(
@@ -64,33 +67,38 @@ function applyMainOrMicroStoreFilter<T extends { eq: (col: string, val: string) 
   return query.eq('store_id', storeId)
 }
 
+function formatStockCount(n: number): string {
+  return Number(n || 0).toLocaleString('es-CO')
+}
+
 export class GlobalSearchService {
   static async search(term: string, modules: GlobalSearchModules): Promise<GlobalSearchHit[]> {
-    const q = escapeIlike(term.trim())
-    if (q.length < 2) return []
+    const clean = term.trim()
+    if (!clean || clean.length < minSearchLength(clean)) return []
 
     const user = getCurrentUser()
     const storeId = getCurrentUserStoreId()
-    const pattern = `%${q}%`
+    const allowOtherModules = clean.length >= 2
+    const pattern = `%${escapeIlike(clean)}%`
 
     const tasks: Promise<GlobalSearchHit[]>[] = []
 
-    if (modules.clients) {
+    if (modules.products) {
+      tasks.push(this.searchProducts(clean, storeId))
+    }
+    if (allowOtherModules && modules.clients) {
       tasks.push(this.searchClients(pattern, storeId))
     }
-    if (modules.products) {
-      tasks.push(this.searchProducts(pattern, storeId))
-    }
-    if (modules.sales) {
+    if (allowOtherModules && modules.sales) {
       tasks.push(this.searchSales(pattern, storeId, user))
     }
-    if (modules.credits) {
+    if (allowOtherModules && modules.credits) {
       tasks.push(this.searchCredits(pattern, storeId))
     }
-    if (modules.supplier_invoices) {
+    if (allowOtherModules && modules.supplier_invoices) {
       tasks.push(this.searchSupplierInvoices(pattern, storeId))
     }
-    if (modules.transfers) {
+    if (allowOtherModules && modules.transfers) {
       tasks.push(this.searchTransfers(pattern, storeId))
     }
 
@@ -115,22 +123,30 @@ export class GlobalSearchService {
     }))
   }
 
-  private static async searchProducts(pattern: string, storeId: string | null | undefined): Promise<GlobalSearchHit[]> {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, name, reference')
-      .or(`reference.ilike.${pattern},name.ilike.${pattern}`)
-      .order('name')
-      .limit(PER_SECTION)
+  /** Productos: tokens + referencia rápida, siempre con stock de la tienda actual. */
+  private static async searchProducts(
+    term: string,
+    storeId: string | null | undefined
+  ): Promise<GlobalSearchHit[]> {
+    const products = await ProductsService.searchProducts(term, undefined, storeId)
+    const isMainStore = !storeId || storeId === MAIN_STORE_ID
 
-    if (error || !data) return []
-    return data.map(row => ({
-      kind: 'product' as const,
-      id: row.id,
-      title: row.name,
-      subtitle: row.reference ? `Ref. ${row.reference}` : 'Sin referencia',
-      href: `/inventory/products/${row.id}`,
-    }))
+    return [...products]
+      .sort((a, b) => compareProductsBySearchRelevance(a, b, term))
+      .slice(0, PRODUCT_SECTION)
+      .map((p) => {
+        const ref = p.reference?.trim() ? `Ref. ${p.reference}` : 'Sin referencia'
+        const stockLabel = isMainStore
+          ? `Stock local ${formatStockCount(p.stock?.store ?? 0)} · Bodega ${formatStockCount(p.stock?.warehouse ?? 0)}`
+          : `Stock ${formatStockCount(p.stock?.store ?? 0)}`
+        return {
+          kind: 'product' as const,
+          id: p.id,
+          title: p.name,
+          subtitle: `${ref} · ${stockLabel}`,
+          href: `/inventory/products/${p.id}`,
+        }
+      })
   }
 
   private static async searchSales(

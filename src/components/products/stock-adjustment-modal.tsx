@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { X, Package, AlertTriangle, Warehouse, Store, TrendingUp, TrendingDown, FileText } from 'lucide-react'
+import { X, Package, AlertTriangle, Warehouse, Store, TrendingUp, TrendingDown, FileText, Loader2 } from 'lucide-react'
 import { Product } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
@@ -71,6 +71,7 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Función para formatear números con separadores de miles
   const formatNumber = (value: number | string): string => {
@@ -105,8 +106,17 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
         newQuantity: 0,
         reason: ''
       })
+      setErrors({})
+      setIsSubmitting(false)
     }
   }, [product])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsSubmitting(false)
+      setErrors({})
+    }
+  }, [isOpen])
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -118,7 +128,7 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!product) return
+    if (!product || isSubmitting) return
 
     // Validaciones
     const newErrors: Record<string, string> = {}
@@ -137,13 +147,14 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
       return
     }
 
-    // Llamar a onAdjust pero no cerrar el modal automáticamente
-    // El modal se cerrará desde el componente padre si la operación es exitosa
+    setIsSubmitting(true)
     try {
       await onAdjust(product.id, formData.location, formData.newQuantity, formData.reason)
     } catch (error) {
       console.error('Error in stock adjustment:', error)
       // No cerrar el modal si hay error, dejar que el usuario vea el mensaje de error
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -185,6 +196,8 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
             size="sm"
             className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0"
             onClick={onClose}
+            disabled={isSubmitting}
+            aria-label="Cerrar"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -251,11 +264,13 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                     <button
                       type="button"
                       onClick={() => handleInputChange('location', 'store')}
+                      disabled={isSubmitting}
                       className={cn(
                         'rounded-lg border p-3 text-left text-sm font-medium transition-colors',
                         formData.location === 'store'
                           ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50'
-                          : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50'
+                          : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
+                        isSubmitting && 'cursor-not-allowed opacity-60'
                       )}
                     >
                       <div className="flex items-center space-x-3">
@@ -290,11 +305,13 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                       <button
                         type="button"
                         onClick={() => handleInputChange('location', 'warehouse')}
+                        disabled={isSubmitting}
                         className={cn(
                           'rounded-lg border p-3 text-left text-sm font-medium transition-colors',
                           formData.location === 'warehouse'
                             ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50'
-                            : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50'
+                            : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
+                          isSubmitting && 'cursor-not-allowed opacity-60'
                         )}
                       >
                         <div className="flex items-center space-x-3">
@@ -338,10 +355,12 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                       const numericValue = rawValue === '' ? 0 : parseFormattedNumber(rawValue)
                       handleInputChange('newQuantity', numericValue)
                     }}
+                    disabled={isSubmitting}
                     className={cn(
                       inputClass,
                       'mt-2 h-11 py-2 text-sm',
-                      errors.newQuantity && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
+                      errors.newQuantity && 'border-red-500 focus:border-red-500 focus:ring-red-500/25',
+                      isSubmitting && 'cursor-not-allowed opacity-60'
                     )}
                     placeholder="0"
                   />
@@ -353,10 +372,12 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                   <textarea
                     value={formData.reason}
                     onChange={(e) => handleInputChange('reason', e.target.value)}
+                    disabled={isSubmitting}
                     className={cn(
                       inputClass,
                       'mt-2 min-h-[4rem] resize-y py-2.5 text-sm',
-                      errors.reason && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
+                      errors.reason && 'border-red-500 focus:border-red-500 focus:ring-red-500/25',
+                      isSubmitting && 'cursor-not-allowed opacity-60'
                     )}
                     placeholder="Ej: Inventario físico, producto dañado, corrección de error... (opcional)"
                     rows={3}
@@ -413,11 +434,18 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
             </div>
 
             <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-              <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" size="sm">
-                Ajustar stock
+              <Button type="submit" size="sm" disabled={isSubmitting} aria-busy={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+                    Actualizando…
+                  </>
+                ) : (
+                  'Ajustar stock'
+                )}
               </Button>
             </div>
           </form>
