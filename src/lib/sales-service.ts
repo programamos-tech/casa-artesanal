@@ -937,7 +937,7 @@ export class SalesService {
                 paidAmount: 0,
                 pendingAmount: saleData.total,
                 status: 'pending',
-                dueDate: saleData.dueDate || null,
+                dueDate: (saleData as Sale & { dueDate?: string }).dueDate || null,
                 lastPaymentAmount: null,
                 lastPaymentDate: null,
                 lastPaymentUser: null,
