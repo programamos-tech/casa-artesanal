@@ -177,7 +177,7 @@ export function usePermissions() {
     
     const roleNorm = (currentUser.role || '').toLowerCase().trim()
     if (roleNorm === 'superadmin' || (roleNorm.includes('super') && (roleNorm.includes('admin') || roleNorm.includes('administrador')))) {
-      return ['dashboard', 'products', 'transfers', 'receptions', 'clients', 'sales', 'payments', 'supplier_invoices', 'warranties', 'roles', 'logs', 'stores']
+      return ['dashboard', 'products', 'transfers', 'receptions', 'clients', 'sales', 'payments', 'supplier_invoices', 'egresos', 'warranties', 'roles', 'logs', 'stores']
     }
 
     // Inventario: dashboard + solo los módulos que tenga marcados en permisos (ej. solo Productos)

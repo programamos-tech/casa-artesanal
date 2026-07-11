@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Receipt, Package, Users, CreditCard, ShieldCheck, Activity, UserCog, UserCircle, ArrowRightLeft, CheckCircle, Store, FileText } from 'lucide-react'
+import { BarChart3, Receipt, Package, Users, CreditCard, Wallet, Activity, UserCog, UserCircle, ArrowRightLeft, CheckCircle, Store, FileText } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
 import { isMainStoreUser, canAccessAllStores } from '@/lib/store-helper'
@@ -18,7 +18,7 @@ const items = [
   { href: '/inventory/receptions', label: 'Recepciones', icon: CheckCircle, module: 'receptions' },
   { href: '/clients', label: 'Clientes', icon: Users, module: 'clients' },
   { href: '/sales', label: 'Ventas', icon: Receipt, module: 'sales' },
-  { href: '/warranties', label: 'Garantías', icon: ShieldCheck, module: 'warranties' },
+  { href: '/egresos', label: 'Egresos', icon: Wallet, module: 'egresos' },
   { href: '/payments', label: 'Créditos', icon: CreditCard, module: 'payments' },
   { href: '/purchases/invoices', label: 'Facturador', icon: FileText, module: 'supplier_invoices' },
   { href: '/stores', label: 'Tiendas', icon: Store, module: 'roles' },

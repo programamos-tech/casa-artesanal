@@ -187,6 +187,8 @@ export function getModuleBadgeLabel(log: ActivityLogRecord): string {
       return 'Créditos'
     case 'warranties':
       return 'Garantías'
+    case 'egresos':
+      return 'Egresos'
     case 'sales':
       return 'Ventas'
     case 'payments':

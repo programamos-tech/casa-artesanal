@@ -38,6 +38,7 @@ const moduleOptions = [
   { value: 'sales', label: 'Ventas' },
   { value: 'payments', label: 'Créditos' },
   { value: 'supplier_invoices', label: 'Facturador' },
+  { value: 'egresos', label: 'Egresos' },
   { value: 'warranties', label: 'Garantías' },
   { value: 'roles', label: 'Roles' },
   { value: 'logs', label: 'Actividades' }
@@ -62,6 +63,7 @@ const rolePermissions = {
     { module: 'sales', actions: allActions },
     { module: 'payments', actions: allActions },
     { module: 'supplier_invoices', actions: allActions },
+    { module: 'egresos', actions: allActions },
     { module: 'warranties', actions: allActions },
     { module: 'roles', actions: allActions },
     { module: 'logs', actions: allActions }
@@ -70,7 +72,8 @@ const rolePermissions = {
     { module: 'dashboard', actions: allActions },
     { module: 'sales', actions: allActions },
     { module: 'payments', actions: allActions },
-    { module: 'supplier_invoices', actions: allActions }
+    { module: 'supplier_invoices', actions: allActions },
+    { module: 'egresos', actions: allActions }
   ],
   'vendedor': [
     { module: 'dashboard', actions: allActions },
@@ -87,7 +90,8 @@ const rolePermissions = {
     { module: 'clients', actions: allActions },
     { module: 'products', actions: ['view'] }, // Solo ver productos
     { module: 'payments', actions: allActions },
-    { module: 'warranties', actions: allActions }
+    { module: 'warranties', actions: allActions },
+    { module: 'egresos', actions: ['view', 'create'] }
   ],
   'inventario': [
     { module: 'products', actions: allActions },
@@ -96,25 +100,27 @@ const rolePermissions = {
   'contador': [
     { module: 'dashboard', actions: ['view'] },
     { module: 'payments', actions: allActions },
-    { module: 'supplier_invoices', actions: allActions }
+    { module: 'supplier_invoices', actions: allActions },
+    { module: 'egresos', actions: allActions }
   ],
   'supervisor_tienda': [
     { module: 'dashboard', actions: allActions },
     { module: 'products', actions: allActions },
     { module: 'sales', actions: allActions },
-    { module: 'clients', actions: allActions }
+    { module: 'clients', actions: allActions },
+    { module: 'egresos', actions: allActions }
   ],
 }
 
 // Descripciones de cada rol
 const roleDescriptions = {
   'superadmin': 'Propietario: acceso completo a todos los módulos del sistema',
-  'admin': 'Administrador: reportes, ventas, créditos y facturador',
-  'cajero': 'Cajero: ventas, clientes, créditos, garantías y reportes (productos solo lectura)',
+  'admin': 'Administrador: reportes, ventas, créditos, facturador y egresos',
+  'cajero': 'Cajero: ventas, clientes, créditos, egresos (registro), garantías y reportes (productos solo lectura)',
   'vendedor': 'Vendedor: reportes, productos (lectura), traslados, recepciones, clientes, ventas y créditos',
   'inventario': 'Inventario: productos y facturador de proveedores',
-  'contador': 'Contador: reportes (lectura), créditos y facturador',
-  'supervisor_tienda': 'Supervisor: reportes, productos, ventas y clientes en su tienda',
+  'contador': 'Contador: reportes (lectura), créditos, facturador y egresos',
+  'supervisor_tienda': 'Supervisor: reportes, productos, ventas, clientes y egresos en su tienda',
 }
 
 // Estilos compartidos — alineados al formulario "Nueva venta" / "Nuevo producto"

@@ -252,6 +252,7 @@ export function LogsTable({
     { value: 'clients', label: 'Clientes' },
     { value: 'sales', label: 'Ventas' },
     { value: 'credits', label: 'Créditos' },
+    { value: 'egresos', label: 'Egresos' },
     { value: 'warranties', label: 'Garantías' },
     { value: 'transfers', label: 'Transferencias' },
     { value: 'roles', label: 'Roles' }

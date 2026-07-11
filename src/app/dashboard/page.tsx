@@ -13,6 +13,7 @@ import {
   Users,
   Package,
   Shield,
+  Wallet,
   CreditCard,
   ShoppingCart,
   BarChart3,
@@ -133,6 +134,7 @@ const kpiIconTone = {
   cancelled: 'text-rose-600 dark:text-rose-400',
   credit: 'text-sky-600 dark:text-sky-400',
   warranties: 'text-amber-600 dark:text-amber-400',
+  egresos: 'text-rose-600 dark:text-rose-400',
   profit: 'text-teal-600 dark:text-teal-400',
   stock: 'text-indigo-600 dark:text-indigo-400',
   products: 'text-emerald-600 dark:text-emerald-400',
@@ -177,7 +179,10 @@ export default function DashboardPage() {
   // Para usuarios no-Super Admin, forzar el filtro a 'today' y mostrar dashboard completo
   const effectiveDateFilter = isSuperAdmin ? dateFilter : 'today'
   const [allSales, setAllSales] = useState<Sale[]>([])
-  const [allWarranties, setAllWarranties] = useState<any[]>([])
+  const [egresosSummary, setEgresosSummary] = useState<{ totalAmount: number; count: number }>({
+    totalAmount: 0,
+    count: 0,
+  })
   const [allCredits, setAllCredits] = useState<any[]>([])
   const [allClients, setAllClients] = useState<any[]>([])
   const [allProducts, setAllProducts] = useState<any[]>([]) // Solo para productos específicos cargados bajo demanda
@@ -585,7 +590,7 @@ export default function DashboardPage() {
 
       // Importar servicios
       const { SalesService } = await import('@/lib/sales-service')
-      const { WarrantyService } = await import('@/lib/warranty-service')
+      const { EgresosService } = await import('@/lib/egresos-service')
       const { CreditsService } = await import('@/lib/credits-service')
       const { ProductsService } = await import('@/lib/products-service')
 
@@ -632,9 +637,12 @@ export default function DashboardPage() {
       // Si es "Todo el Tiempo", cargar solo el año seleccionado
       const finalEndDate = endDate || new Date()
 
-      const [salesResult, warrantiesResult, creditsResult, paymentRecordsResult, inventoryResult, creditsSummaryResult] = await Promise.allSettled([
+      const [salesResult, egresosResult, creditsResult, paymentRecordsResult, inventoryResult, creditsSummaryResult] = await Promise.allSettled([
         withTimeout(SalesService.getDashboardSales(chartStartDate, finalEndDate), currentFilter === 'all' ? 30000 : 20000),
-        withTimeout(WarrantyService.getWarrantiesByDateRange(startDate || chartStartDate, finalEndDate), 15000),
+        withTimeout(
+          EgresosService.getEgresosSummaryByDateRange(startDate || chartStartDate, finalEndDate),
+          15000
+        ),
         withTimeout(CreditsService.getAllCredits(), 15000),
         withTimeout(CreditsService.getPaymentRecordsByDateRange(chartStartDate, finalEndDate), 15000),
         withTimeout(ProductsService.getInventoryMetrics(), 30000),
@@ -642,7 +650,10 @@ export default function DashboardPage() {
       ])
 
       const sales = salesResult.status === 'fulfilled' ? salesResult.value : []
-      const warranties = warrantiesResult.status === 'fulfilled' ? warrantiesResult.value : []
+      const egresosData =
+        egresosResult.status === 'fulfilled'
+          ? egresosResult.value
+          : { totalAmount: 0, count: 0, items: [] }
       const credits = creditsResult.status === 'fulfilled' ? creditsResult.value : []
       const payments = paymentRecordsResult.status === 'fulfilled' ? paymentRecordsResult.value : []
       const fastInventory = inventoryResult.status === 'fulfilled' ? inventoryResult.value : null
@@ -683,13 +694,16 @@ export default function DashboardPage() {
       })
 
       setAllSales(sales)
-      setAllWarranties(warranties)
+      setEgresosSummary({
+        totalAmount: egresosData.totalAmount || 0,
+        count: egresosData.count || 0,
+      })
       setAllCredits(credits)
       setAllProducts([])
       setAllPaymentRecords(payments)
       setLastUpdated(new Date())
 
-      const errors = [salesResult, warrantiesResult, creditsResult, paymentRecordsResult, inventoryResult, creditsSummaryResult]
+      const errors = [salesResult, egresosResult, creditsResult, paymentRecordsResult, inventoryResult, creditsSummaryResult]
         .filter(result => result.status === 'rejected')
         .map(result => (result as PromiseRejectedResult).reason)
 
@@ -889,7 +903,7 @@ export default function DashboardPage() {
     if (effectiveDateFilter === 'all') {
       return {
         sales: allSales,
-        warranties: allWarranties,
+        egresos: egresosSummary,
         credits: allCredits,
         paymentRecords: allPaymentRecords
       }
@@ -898,12 +912,12 @@ export default function DashboardPage() {
       if (dateRangeStart && dateRangeEnd) {
         return {
           sales: allSales,
-          warranties: allWarranties,
+          egresos: egresosSummary,
           credits: allCredits,
           paymentRecords: allPaymentRecords
         }
       }
-      return { sales: [], warranties: [], credits: [], paymentRecords: [] }
+      return { sales: [], egresos: { totalAmount: 0, count: 0 }, credits: [], paymentRecords: [] }
     }
 
     // Para filtros específicos (today, specific), los datos YA vienen filtrados del backend
@@ -912,7 +926,7 @@ export default function DashboardPage() {
       // Si es 'specific' pero no hay fecha seleccionada, devolver vacío
       return {
         sales: [],
-        warranties: [],
+        egresos: { totalAmount: 0, count: 0 },
         credits: [],
         paymentRecords: []
       }
@@ -947,7 +961,7 @@ export default function DashboardPage() {
       // Warranties y credits ya vienen filtrados del backend (solo del día)
       return {
         sales: filteredSales,
-        warranties: allWarranties,
+        egresos: egresosSummary,
         credits: allCredits,
         paymentRecords: filteredPayments
       }
@@ -956,38 +970,30 @@ export default function DashboardPage() {
     // Fallback: devolver todos los datos (p. ej. range sin fechas aún)
     return {
       sales: allSales,
-      warranties: allWarranties,
+      egresos: egresosSummary,
       credits: allCredits,
       paymentRecords: allPaymentRecords
     }
-  }, [allSales, allWarranties, allCredits, allPaymentRecords, effectiveDateFilter, specificDate, dateRangeStart, dateRangeEnd])
+  }, [allSales, egresosSummary, allCredits, allPaymentRecords, effectiveDateFilter, specificDate, dateRangeStart, dateRangeEnd])
 
   // Cargar productos específicos bajo demanda cuando cambien las ventas o garantías
   useEffect(() => {
-    // Cargar productos de garantías completadas
-    const warrantyProductIds = allWarranties
-      .filter(w => w.status === 'completed')
-      .slice(0, 5)
-      .map(w => w.productDeliveredId)
-      .filter(Boolean) as string[]
-    
     // Cargar productos de ventas activas para cálculo de ganancias
     const saleProductIds = allSales
       .filter(sale => sale.status !== 'cancelled' && sale.status !== 'draft')
       .flatMap(sale => sale.items?.map(item => item.productId) || [])
       .filter(Boolean) as string[]
     
-    // Combinar y cargar productos únicos
-    const allProductIds = Array.from(new Set([...warrantyProductIds, ...saleProductIds]))
+    const allProductIds = Array.from(new Set(saleProductIds))
     
     if (allProductIds.length > 0) {
       loadSpecificProducts(allProductIds)
     }
-  }, [allSales, allWarranties, loadSpecificProducts])
+  }, [allSales, loadSpecificProducts])
 
   // Calcular métricas del dashboard
   const metrics = useMemo(() => {
-    const { sales, warranties, credits, paymentRecords } = filteredData
+    const { sales, egresos, credits, paymentRecords } = filteredData
 
     // Ingresos por ventas (nuevas ventas) - excluir canceladas y borradores
     const activeSalesForRevenue = sales.filter(sale => sale.status !== 'cancelled' && sale.status !== 'draft')
@@ -1116,69 +1122,9 @@ export default function DashboardPage() {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5)
 
-    // Garantías
-    const completedWarranties = warranties.filter(w => w.status === 'completed').length
-    const pendingWarranties = warranties.filter(w => w.status === 'pending').length
-
-    // Métricas adicionales para garantías - Excluir ventas canceladas
-    const warrantyRate = activeSales.length > 0 ? ((completedWarranties / activeSales.length) * 100).toFixed(1) : '0.0'
-
-    // Calcular valor total de productos reemplazados en garantías
-    const completedWarrantyDetails = warranties
-      .filter(w => w.status === 'completed')
-      .sort((a, b) => {
-        const dateA = new Date(a.updatedAt || a.createdAt).getTime()
-        const dateB = new Date(b.updatedAt || b.createdAt).getTime()
-        return dateB - dateA
-      })
-
-    const totalWarrantyValue = completedWarrantyDetails.reduce((sum, warranty) => {
-      const replacementProduct = specificProductsCache.get(warranty.productDeliveredId) || allProducts.find(p => p.id === warranty.productDeliveredId)
-      return sum + (replacementProduct?.price || 0)
-    }, 0)
-
-    const recentWarrantyReplacements = completedWarrantyDetails
-      .slice(0, 5)
-      .map(warranty => {
-        const replacementProduct = specificProductsCache.get(warranty.productDeliveredId) || allProducts.find(p => p.id === warranty.productDeliveredId)
-        const deliveredName = warranty.productDeliveredName || replacementProduct?.name || 'Producto entregado'
-        const reference = replacementProduct?.reference
-        const value = replacementProduct?.price || 0
-        const quantityDelivered = warranty.quantityDelivered || 1
-        const warrantyDate = new Date(warranty.updatedAt || warranty.createdAt)
-        const dateLabel = warrantyDate.toLocaleDateString('es-CO', {
-          day: '2-digit',
-          month: 'short'
-        }).replace('.', '')
-        const timeLabel = warrantyDate.toLocaleTimeString('es-CO', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-
-        return {
-          id: warranty.id,
-          deliveredName,
-          reference,
-          value,
-          quantityDelivered,
-          dateLabel,
-          timeLabel
-        }
-      })
-
-    // Calcular días desde la última garantía completada (usar todas las garantías, no solo las filtradas)
-    const lastWarranty = allWarranties
-      .filter(w => w.status === 'completed')
-      .sort((a, b) => {
-        // Usar updatedAt si está disponible (fecha de completado), sino createdAt
-        const dateA = new Date(a.updatedAt || a.createdAt).getTime()
-        const dateB = new Date(b.updatedAt || b.createdAt).getTime()
-        return dateB - dateA
-      })[0]
-
-    const daysSinceLastWarranty = lastWarranty
-      ? Math.floor((new Date().getTime() - new Date(lastWarranty.updatedAt || lastWarranty.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-      : null
+    // Egresos del período
+    const totalEgresos = egresos?.totalAmount ?? egresosSummary.totalAmount ?? 0
+    const egresosCount = egresos?.count ?? egresosSummary.count ?? 0
 
     // Créditos pendientes y parciales (dinero afuera) - TODOS los créditos, no filtrados por fecha
     // Excluir créditos cancelados (que tienen totalAmount y pendingAmount en 0)
@@ -1501,13 +1447,9 @@ export default function DashboardPage() {
       // Mismo período que totalRevenue (filteredData), no salesSummary: ese contaba la ventana cruda de getDashboardSales (p. ej. 7 días con filtro "Hoy").
       totalSales: activeSales.length,
       topProducts,
-      completedWarranties,
-      pendingWarranties,
-      warrantyRate,
-      totalWarrantyValue,
-      recentWarrantyReplacements,
+      totalEgresos,
+      egresosCount,
       recentPendingCredits,
-      daysSinceLastWarranty,
       totalDebt: optimizedMetrics.creditsSummary?.totalDebt ?? totalDebt,
       pendingCreditsCount: optimizedMetrics.creditsSummary?.pendingCreditsCount ?? pendingCredits.length,
       dailyCreditsDebt,
@@ -1531,7 +1473,7 @@ export default function DashboardPage() {
       paymentMethodData,
       topProductsChart
     }
-  }, [filteredData, allSales, allProducts, allClients, allWarranties, allCredits, optimizedMetrics, specificProductsCache])
+  }, [filteredData, allSales, allProducts, allClients, egresosSummary, allCredits, optimizedMetrics, specificProductsCache])
 
   // Función helper para formatear moneda con opción de ocultar
   const formatCurrency = (amount: number): string => {
@@ -2068,19 +2010,21 @@ export default function DashboardPage() {
 
             <button
               type="button"
-              onClick={() => router.push('/warranties')}
+              onClick={() => router.push('/egresos')}
               className={cn(dashKpiCard, dashMetricTileInteractive)}
             >
               <div className="flex gap-3">
                 <div className={dashKpiIconWrap} aria-hidden>
-                  <Shield className={cn(dashMetricIconEm, kpiIconTone.warranties)} strokeWidth={1.5} />
+                  <Wallet className={cn(dashMetricIconEm, kpiIconTone.egresos)} strokeWidth={1.5} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Garantías</span>
+                  <span className={dashMetricLabelClass}>Egresos</span>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {metrics.completedWarranties}
+                    {formatCurrency(metrics.totalEgresos || 0)}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Completadas</p>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {metrics.egresosCount || 0} del período
+                  </p>
                 </div>
               </div>
             </button>

@@ -404,6 +404,28 @@ export interface PaymentRecord {
 // Mantener Payment para compatibilidad
 export interface Payment extends Credit {}
 
+export type EgresoStatus = 'active' | 'cancelled'
+
+export interface Egreso {
+  id: string
+  storeId: string
+  concept: string
+  conceptOther?: string | null
+  description?: string | null
+  amount: number
+  expenseDate: string
+  paymentMethod: 'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'other'
+  status: EgresoStatus
+  createdBy?: string | null
+  createdByName?: string
+  cancelledBy?: string | null
+  cancelledByName?: string | null
+  cancelledAt?: string | null
+  cancelReason?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 // Store interface moved to store.ts for better module resolution
 export type { Store } from './store'
 

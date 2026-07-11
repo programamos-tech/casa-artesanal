@@ -12,7 +12,6 @@ import {
   CreditCard,
   Shield,
   Activity,
-  ShieldCheck,
   UserCircle,
   UserCog,
   Store as StoreIcon,
@@ -21,7 +20,8 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronRight,
-  FileText
+  FileText,
+  Wallet,
 } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -54,7 +54,7 @@ const navigation = [
       { name: 'Ventas', href: '/sales', icon: Receipt, module: 'sales' },
       { name: 'Créditos', href: '/payments', icon: CreditCard, module: 'payments' },
       { name: 'Facturador', href: '/purchases/invoices', icon: FileText, module: 'supplier_invoices' },
-      { name: 'Garantías', href: '/warranties', icon: ShieldCheck, module: 'warranties' },
+      { name: 'Egresos', href: '/egresos', icon: Wallet, module: 'egresos' },
     ]
   },
   { 
@@ -93,7 +93,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     if (pathname?.startsWith('/inventory')) {
       setExpandedMenus(prev => new Set([...prev, 'Inventario']))
     }
-    if (pathname?.startsWith('/clients') || pathname?.startsWith('/sales') || pathname?.startsWith('/payments') || pathname?.startsWith('/purchases') || pathname?.startsWith('/warranties')) {
+    if (pathname?.startsWith('/clients') || pathname?.startsWith('/sales') || pathname?.startsWith('/payments') || pathname?.startsWith('/purchases') || pathname?.startsWith('/egresos') || pathname?.startsWith('/warranties')) {
       setExpandedMenus(prev => new Set([...prev, 'Comercial']))
     }
     if (pathname?.startsWith('/stores') || pathname?.startsWith('/roles') || pathname?.startsWith('/logs')) {
@@ -274,7 +274,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                 if (subitem.href === '/sales' && pathname?.startsWith('/sales')) return true
                 if (subitem.href === '/payments' && pathname?.startsWith('/payments')) return true
                 if (subitem.href === '/purchases/invoices' && pathname?.startsWith('/purchases')) return true
-                if (subitem.href === '/warranties' && pathname?.startsWith('/warranties')) return true
+                if (subitem.href === '/egresos' && pathname?.startsWith('/egresos')) return true
                 if (subitem.href === '/stores' && pathname?.startsWith('/stores')) return true
                 if (subitem.href === '/roles' && pathname?.startsWith('/roles')) return true
                 if (subitem.href === '/logs' && pathname?.startsWith('/logs')) return true
@@ -285,7 +285,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
               const isActive = pathname === item.href || 
                 (item.href === '/payments' && pathname?.startsWith('/payments')) ||
                 (item.href === '/inventory/products' && pathname?.startsWith('/inventory')) ||
-                (item.href === '/clients' && (pathname?.startsWith('/clients') || pathname?.startsWith('/sales') || pathname?.startsWith('/payments') || pathname?.startsWith('/purchases') || pathname?.startsWith('/warranties'))) ||
+                (item.href === '/clients' && (pathname?.startsWith('/clients') || pathname?.startsWith('/sales') || pathname?.startsWith('/payments') || pathname?.startsWith('/purchases') || pathname?.startsWith('/egresos') || pathname?.startsWith('/warranties'))) ||
                 (item.href === '/stores' && (pathname?.startsWith('/stores') || pathname?.startsWith('/roles') || pathname?.startsWith('/logs'))) ||
                 (item.href === '/stores' && pathname?.startsWith('/stores')) ||
                 isSubmenuActive
@@ -363,7 +363,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                               (subitem.href === '/sales' && pathname?.startsWith('/sales')) ||
                               (subitem.href === '/payments' && pathname?.startsWith('/payments')) ||
                               (subitem.href === '/purchases/invoices' && pathname?.startsWith('/purchases')) ||
-                              (subitem.href === '/warranties' && pathname?.startsWith('/warranties')) ||
+                              (subitem.href === '/egresos' && pathname?.startsWith('/egresos')) ||
                               (subitem.href === '/stores' && pathname?.startsWith('/stores')) ||
                               (subitem.href === '/roles' && pathname?.startsWith('/roles')) ||
                               (subitem.href === '/logs' && pathname?.startsWith('/logs'))
