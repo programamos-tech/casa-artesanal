@@ -1148,19 +1148,14 @@ export class StoreStockTransferService {
   static async getPendingTransfers(storeId: string, page: number = 1, limit: number = 10): Promise<{ transfers: StoreStockTransfer[], total: number, hasMore: boolean }> {
     try {
       const offset = (page - 1) * limit
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      const isMainStore = storeId === MAIN_STORE_ID
-      
-      // Obtener el total de transferencias pendientes
+
+      // Solo traslados con destino en esta tienda (listos para recibir)
       let countQuery = supabaseAdmin
         .from('stock_transfers')
         .select('*', { count: 'exact', head: true })
         .in('status', ['pending', 'in_transit'])
-      
-      if (!isMainStore) {
-        countQuery = countQuery.eq('to_store_id', storeId)
-      }
-      
+        .eq('to_store_id', storeId)
+
       const { count, error: countError } = await countQuery
       
       if (countError) {
@@ -1173,14 +1168,9 @@ export class StoreStockTransferService {
         .from('stock_transfers')
         .select('*')
         .in('status', ['pending', 'in_transit'])
+        .eq('to_store_id', storeId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
-      
-      // Si es la tienda principal, mostrar todas las transferencias pendientes
-      // Si no, solo las que van hacia esa tienda
-      if (!isMainStore) {
-        query = query.eq('to_store_id', storeId)
-      }
       
       const { data: transfers, error } = await query
 

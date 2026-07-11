@@ -7,8 +7,10 @@ import {
   Activity,
   Bell,
   ChevronDown,
+  ArrowRightLeft,
   CircleHelp,
   LogOut,
+  PackageCheck,
   Plus,
   Search,
   SlidersHorizontal,
@@ -21,13 +23,16 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
-import { isMainStoreUser } from '@/lib/store-helper'
 import { useTheme } from '@/components/theme-provider'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { GlobalSearchService, type GlobalSearchHit } from '@/lib/global-search-service'
 import { GlobalSearchDropdown } from '@/components/layout/global-search-dropdown'
 import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
+import {
+  loadTransferAlerts,
+  resolveUserStoreId,
+  type TransferAlertItem,
+} from '@/lib/transfer-alerts'
 import { cn } from '@/lib/utils'
 
 /** Altura única de la barra y de todos los controles interactivos */
@@ -75,30 +80,48 @@ export function AppTopNav() {
   const [searching, setSearching] = useState(false)
   const [plusOpen, setPlusOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
-  const [pendingReceptions, setPendingReceptions] = useState(0)
+  const [bellOpen, setBellOpen] = useState(false)
+  const [approvals, setApprovals] = useState<TransferAlertItem[]>([])
+  const [receptions, setReceptions] = useState<TransferAlertItem[]>([])
+  const [approvalTotal, setApprovalTotal] = useState(0)
+  const [receptionTotal, setReceptionTotal] = useState(0)
   const searchRef = useRef<HTMLDivElement>(null)
   const plusRef = useRef<HTMLDivElement>(null)
   const userRef = useRef<HTMLDivElement>(null)
+  const bellRef = useRef<HTMLDivElement>(null)
   const searchSeqRef = useRef(0)
+
+  const canSeeTransferAlerts = canView('receptions') || canView('transfers')
+  const alertCount = approvalTotal + receptionTotal
 
   useEffect(() => {
     let cancelled = false
     const loadPending = async () => {
-      if (!user || !canView('receptions')) {
-        if (!cancelled) setPendingReceptions(0)
+      if (!user || !canSeeTransferAlerts) {
+        if (!cancelled) {
+          setApprovals([])
+          setReceptions([])
+          setApprovalTotal(0)
+          setReceptionTotal(0)
+        }
         return
       }
       try {
-        const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-        const storeId = isMainStoreUser(user) ? MAIN_STORE_ID : user.storeId
-        if (!storeId) {
-          if (!cancelled) setPendingReceptions(0)
-          return
+        const storeId = resolveUserStoreId(user.storeId)
+        const data = await loadTransferAlerts(storeId)
+        if (!cancelled) {
+          setApprovals(data.approvals)
+          setReceptions(data.receptions)
+          setApprovalTotal(data.approvalTotal)
+          setReceptionTotal(data.receptionTotal)
         }
-        const result = await StoreStockTransferService.getPendingTransfers(storeId, 1, 1)
-        if (!cancelled) setPendingReceptions(result.total || 0)
       } catch {
-        if (!cancelled) setPendingReceptions(0)
+        if (!cancelled) {
+          setApprovals([])
+          setReceptions([])
+          setApprovalTotal(0)
+          setReceptionTotal(0)
+        }
       }
     }
     void loadPending()
@@ -107,7 +130,7 @@ export function AppTopNav() {
       cancelled = true
       clearInterval(interval)
     }
-  }, [user?.id, user?.storeId])
+  }, [user?.id, user?.storeId, canSeeTransferAlerts])
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -115,6 +138,7 @@ export function AppTopNav() {
       if (searchRef.current && !searchRef.current.contains(t)) setSearchOpen(false)
       if (plusRef.current && !plusRef.current.contains(t)) setPlusOpen(false)
       if (userRef.current && !userRef.current.contains(t)) setUserOpen(false)
+      if (bellRef.current && !bellRef.current.contains(t)) setBellOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
@@ -298,19 +322,112 @@ export function AppTopNav() {
         <Link href="/profile" className={iconBtn} title="Perfil y ajustes">
           <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={1.75} />
         </Link>
-        {canView('receptions') ? (
-          <Link
-            href="/inventory/receptions"
-            className={cn(iconBtn, 'relative')}
-            title="Recepciones pendientes"
-          >
-            <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            {pendingReceptions > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950">
-                {pendingReceptions > 99 ? '99+' : pendingReceptions}
-              </span>
+        {canSeeTransferAlerts ? (
+          <div ref={bellRef} className="relative shrink-0">
+            <button
+              type="button"
+              className={cn(iconBtn, 'relative')}
+              title="Notificaciones de traslados"
+              aria-label="Notificaciones de traslados"
+              aria-expanded={bellOpen}
+              onClick={() => setBellOpen((v) => !v)}
+            >
+              <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              {alertCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950">
+                  {alertCount > 99 ? '99+' : alertCount}
+                </span>
+              )}
+            </button>
+            {bellOpen && (
+              <div className={cn(menuPanel, 'right-0 top-[calc(100%+8px)] w-[22rem] max-w-[calc(100vw-2rem)]')}>
+                <div className="border-b border-zinc-100 px-3.5 py-2.5 dark:border-zinc-800">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notificaciones</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Solicitudes por aprobar y traslados listos para recibir
+                  </p>
+                </div>
+                <div className="max-h-[22rem] overflow-y-auto py-1">
+                  {alertCount === 0 ? (
+                    <p className="px-3.5 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                      No hay notificaciones pendientes
+                    </p>
+                  ) : (
+                    <>
+                      {approvals.map((item) => (
+                        <button
+                          key={`a-${item.id}`}
+                          type="button"
+                          onClick={() => {
+                            setBellOpen(false)
+                            router.push(item.href)
+                          }}
+                          className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
+                        >
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+                            <ArrowRightLeft className="h-4 w-4" strokeWidth={1.75} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                              {item.title}
+                            </span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                              {item.subtitle}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                      {receptions.map((item) => (
+                        <button
+                          key={`r-${item.id}`}
+                          type="button"
+                          onClick={() => {
+                            setBellOpen(false)
+                            router.push(item.href)
+                          }}
+                          className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
+                        >
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            <PackageCheck className="h-4 w-4" strokeWidth={1.75} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                              {item.title}
+                            </span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                              {item.subtitle}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+                {alertCount > 0 && (
+                  <div className="border-t border-zinc-100 px-2 py-1.5 dark:border-zinc-800">
+                    {approvals.length > 0 && (
+                      <Link
+                        href="/inventory/transfers"
+                        onClick={() => setBellOpen(false)}
+                        className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-950/40"
+                      >
+                        Ver transferencias
+                      </Link>
+                    )}
+                    {receptions.length > 0 && (
+                      <Link
+                        href="/inventory/receptions"
+                        onClick={() => setBellOpen(false)}
+                        className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                      >
+                        Ver recepciones
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-          </Link>
+          </div>
         ) : (
           <span className={cn(iconBtn, 'relative opacity-30')} aria-hidden>
             <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />

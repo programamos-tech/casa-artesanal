@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useStoreUrl } from '@/hooks/use-store-url'
 import { cn } from '@/lib/utils'
 import { ReleaseNotesModal } from '@/components/ui/release-notes-modal'
+import { TransferAlertModal } from '@/components/layout/transfer-alert-modal'
 import { AppTopNav } from '@/components/layout/app-top-nav'
 import { OwnerAssistantBubble } from '@/components/assistant/owner-assistant-bubble'
 
@@ -73,6 +74,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
         </main>
       </div>
       <ReleaseNotesModal />
+      <TransferAlertModal />
       <OwnerAssistantBubble />
     </ProtectedRoute>
   )

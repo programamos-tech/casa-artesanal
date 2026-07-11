@@ -28,7 +28,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
 import { canAccessAllStores, getCurrentUserStoreId, isMainStoreUser } from '@/lib/store-helper'
 import { StoresService } from '@/lib/stores-service'
-import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
+import { loadTransferAlerts, resolveUserStoreId } from '@/lib/transfer-alerts'
 import { APP_BRAND_LOGO, APP_NAME, APP_VERSION } from '@/config/app-meta'
 import type { Store } from '@/types/store'
 const navigation = [
@@ -84,6 +84,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [currentStore, setCurrentStore] = useState<Store | null>(null)
   const [pendingReceptionsCount, setPendingReceptionsCount] = useState(0)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   // Inicializar con todos los menús expandidos por defecto
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['Inventario', 'Comercial', 'Administración']))
 
@@ -131,36 +132,36 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     void loadStoreInfo()
   }, [user, user?.storeId])
 
-  // Contador de recepciones pendientes para badge en sidebar.
+  // Contadores de traslados: por aprobar (origen) y por recibir (destino).
   useEffect(() => {
     let cancelled = false
-    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
-    const loadPendingReceptionsCount = async () => {
+    const loadPendingCounts = async () => {
       if (!user) {
         setPendingReceptionsCount(0)
+        setPendingApprovalsCount(0)
         return
       }
 
-      const storeId = isMainStoreUser(user) ? MAIN_STORE_ID : user.storeId
-      if (!storeId) {
-        setPendingReceptionsCount(0)
-        return
-      }
+      const storeId = resolveUserStoreId(user.storeId)
 
       try {
-        const result = await StoreStockTransferService.getPendingTransfers(storeId, 1, 1)
+        const { approvals, receptions, approvalTotal, receptionTotal } = await loadTransferAlerts(storeId)
         if (!cancelled) {
-          setPendingReceptionsCount(result.total || 0)
+          setPendingApprovalsCount(approvalTotal)
+          setPendingReceptionsCount(receptionTotal)
         }
-      } catch (error) {
-        if (!cancelled) setPendingReceptionsCount(0)
+      } catch {
+        if (!cancelled) {
+          setPendingReceptionsCount(0)
+          setPendingApprovalsCount(0)
+        }
       }
     }
 
-    void loadPendingReceptionsCount()
+    void loadPendingCounts()
     const interval = setInterval(() => {
-      void loadPendingReceptionsCount()
+      void loadPendingCounts()
     }, 30000)
 
     return () => {
@@ -379,6 +380,14 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                               >
                                 <subitem.icon className={navIconChild(isSubActive)} aria-hidden />
                                 <span className="flex-1 truncate">{subitem.name}</span>
+                                {subitem.href === '/inventory/transfers' && pendingApprovalsCount > 0 && (
+                                  <span
+                                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-violet-500/90 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+                                    title={`${pendingApprovalsCount} por aprobar`}
+                                  >
+                                    {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
+                                  </span>
+                                )}
                                 {subitem.href === '/inventory/receptions' && pendingReceptionsCount > 0 && (
                                   <span
                                     className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-white/12 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/75"
