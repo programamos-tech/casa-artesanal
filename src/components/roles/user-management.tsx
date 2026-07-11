@@ -75,6 +75,8 @@ const rolePermissions = {
   'vendedor': [
     { module: 'dashboard', actions: allActions },
     { module: 'products', actions: ['view'] }, // Solo ver productos, no editar/eliminar
+    { module: 'transfers', actions: allActions },
+    { module: 'receptions', actions: allActions },
     { module: 'clients', actions: allActions },
     { module: 'sales', actions: allActions },
     { module: 'payments', actions: allActions }
@@ -109,7 +111,7 @@ const roleDescriptions = {
   'superadmin': 'Propietario: acceso completo a todos los módulos del sistema',
   'admin': 'Administrador: reportes, ventas, créditos y facturador',
   'cajero': 'Cajero: ventas, clientes, créditos, garantías y reportes (productos solo lectura)',
-  'vendedor': 'Vendedor: reportes, productos (lectura), clientes, ventas y créditos',
+  'vendedor': 'Vendedor: reportes, productos (lectura), traslados, recepciones, clientes, ventas y créditos',
   'inventario': 'Inventario: productos y facturador de proveedores',
   'contador': 'Contador: reportes (lectura), créditos y facturador',
   'supervisor_tienda': 'Supervisor: reportes, productos, ventas y clientes en su tienda',

@@ -14,7 +14,7 @@ import { Logo } from '@/components/ui/logo'
 const items = [
   { href: '/dashboard', label: 'Reportes', icon: BarChart3, module: 'dashboard', alwaysVisible: true },
   { href: '/inventory/products', label: 'Productos', icon: Package, module: 'products' },
-  { href: '/inventory/transfers', label: 'Transferencias', icon: ArrowRightLeft, module: 'transfers', requiresMainStore: true },
+  { href: '/inventory/transfers', label: 'Transferencias', icon: ArrowRightLeft, module: 'transfers' },
   { href: '/inventory/receptions', label: 'Recepciones', icon: CheckCircle, module: 'receptions' },
   { href: '/clients', label: 'Clientes', icon: Users, module: 'clients' },
   { href: '/sales', label: 'Ventas', icon: Receipt, module: 'sales' },
@@ -77,9 +77,9 @@ export function BottomNav() {
       if (item.alwaysVisible && user) {
         return true
       }
-      // Transferencias: tienda principal o admin/superadmin con acceso global (misma regla que el sidebar)
-      if (item.requiresMainStore && !isMainStoreUser(user) && !canAccessAllStores(user)) {
-        return false
+      // Transferencias: quien tenga permiso del módulo (incluye microtienda / vendedores)
+      if (item.href === '/inventory/transfers') {
+        return canView(item.module)
       }
       // Para el módulo de Tiendas, siempre mostrarlo pero solo permitir acceso si es super admin
       if (item.href === '/stores') {

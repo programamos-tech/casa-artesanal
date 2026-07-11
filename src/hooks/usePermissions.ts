@@ -11,6 +11,9 @@ const defaultVendedorPermissions: Record<string, string[]> = {
   clients: ALL_ACTIONS,
   sales: ALL_ACTIONS,
   payments: ALL_ACTIONS,
+  products: ['view'],
+  transfers: ALL_ACTIONS,
+  receptions: ALL_ACTIONS,
 }
 
 // Permisos por defecto del rol "cajero" (atiende caja, no edita productos ni hace transferencias).
@@ -47,12 +50,14 @@ export function usePermissions() {
       if (module === 'products') {
         return action === 'view' // Solo permitir ver productos
       }
-      if (module === 'transfers') {
-        return false // Vendedores no pueden transferir
-      }
-      
+
       // Los vendedores SIEMPRE pueden crear ventas, sin importar los permisos explícitos
       if (module === 'sales' && action === 'create') {
+        return true
+      }
+
+      // Traslados y recepciones siempre habilitados para vendedores
+      if ((module === 'transfers' || module === 'receptions') && ALL_ACTIONS.includes(action)) {
         return true
       }
       
@@ -191,6 +196,19 @@ export function usePermissions() {
         .filter(p => (p.actions || p.permissions || []).includes('view'))
         .map(p => p.module)
       return Array.from(new Set(['dashboard', ...Object.keys(defaultCajeroPermissions), ...fromPermissions]))
+    }
+
+    // Vendedor: siempre incluir traslados/recepciones + defaults del rol
+    if (currentUser.role?.toLowerCase() === 'vendedor' || currentUser.role?.toLowerCase() === 'vendedora') {
+      const fromPermissions =
+        currentUser.permissions && Array.isArray(currentUser.permissions)
+          ? currentUser.permissions
+              .filter((p) => (p.actions || p.permissions || []).includes('view'))
+              .map((p) => p.module)
+          : []
+      return Array.from(
+        new Set(['dashboard', ...Object.keys(defaultVendedorPermissions), ...fromPermissions])
+      )
     }
     
     if (!currentUser.permissions || !Array.isArray(currentUser.permissions)) return []

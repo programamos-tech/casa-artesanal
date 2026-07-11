@@ -556,6 +556,8 @@ export class AuthService {
           return [
             { module: 'dashboard', actions: ['view'] },
             { module: 'products', actions: ['view'] },
+            { module: 'transfers', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
+            { module: 'receptions', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
             { module: 'clients', actions: ['view', 'create', 'edit'] },
             { module: 'sales', actions: ['view', 'create', 'edit'] },
             { module: 'payments', actions: ['view', 'create', 'edit'] }
@@ -583,6 +585,8 @@ export class AuthService {
         return [
           { module: 'dashboard', actions: ['view'] },
           { module: 'products', actions: ['view'] },
+          { module: 'transfers', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
+          { module: 'receptions', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
           { module: 'clients', actions: ['view', 'create', 'edit'] },
           { module: 'sales', actions: ['view', 'create', 'edit'] },
           { module: 'payments', actions: ['view', 'create', 'edit'] }

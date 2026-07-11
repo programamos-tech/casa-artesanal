@@ -38,12 +38,6 @@ export default function TransfersPage() {
   const defaultTransferOriginId = isMainStore ? MAIN_STORE_ID : currentStoreId || MAIN_STORE_ID
 
   useEffect(() => {
-    if (user && !isMainStore && !canManageAllStores) {
-      window.location.href = '/inventory/receptions'
-    }
-  }, [user, isMainStore, canManageAllStores])
-
-  useEffect(() => {
     loadStores()
   }, [])
 
@@ -138,14 +132,6 @@ export default function TransfersPage() {
     }
   }
 
-  if (user && !isMainStore && !canManageAllStores) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-gray-600 dark:text-gray-400">Redirigiendo a recepciones...</p>
-      </div>
-    )
-  }
-
   return (
     <RoleProtectedRoute module="transfers" requiredAction="view">
       <div className="min-h-screen space-y-4 bg-white py-4 dark:bg-neutral-950 md:space-y-6 md:py-6">
@@ -159,8 +145,8 @@ export default function TransfersPage() {
             setCurrentPage(1)
           }}
           onRefresh={loadTransfers}
-          onCreate={canManageAllStores ? () => setIsCreateModalOpen(true) : undefined}
-          canManageAllStores={canManageAllStores}
+          onCreate={canManageAllStores || isMainStore ? () => setIsCreateModalOpen(true) : undefined}
+          canManageAllStores={canManageAllStores || isMainStore}
           onView={t => router.push(`/inventory/transfers/${t.id}`)}
           onOpenSale={saleId => router.push(`/sales/${saleId}`)}
           loading={loading}

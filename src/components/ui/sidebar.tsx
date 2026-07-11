@@ -348,9 +348,8 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                           {item.submenu.map((subitem) => {
                             if (!canView(subitem.module)) return null
                             
-                            // Permitir "Transferencias" en microtiendas a usuarios con acceso global (admin/superadmin).
-                            // Solo usuarios sin acceso global quedan limitados a recepciones.
-                            if (subitem.href === '/inventory/transfers' && !isMainStoreUser(user) && !canAccessAllStores(user)) return null
+                            // Transferencias: visible si tiene permiso (incl. microtienda que debe aprobar salidas)
+                            if (subitem.href === '/inventory/transfers' && !canView('transfers')) return null
                             
                             // Verificar si requiere acceso a todas las tiendas (para el subitem de Tiendas)
                             if (subitem.requiresAllStoresAccess && !canAccessAllStores(user)) return null
