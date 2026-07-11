@@ -2,13 +2,13 @@ import { supabase, supabaseAdmin } from './supabase'
 import { User } from '@/types'
 import { getCurrentUserStoreId } from './store-helper'
 
-/** Asegura que vendedores tengan traslados y recepciones en su sesión. */
+/** Asegura que vendedores tengan traslados, recepciones y egresos en su sesión. */
 function ensureVendedorTransferModules(role: string | undefined, permissions: any[]): any[] {
   const roleNorm = (role || '').toLowerCase().trim()
   if (roleNorm !== 'vendedor' && roleNorm !== 'vendedora') return Array.isArray(permissions) ? permissions : []
   const list = Array.isArray(permissions) ? [...permissions] : []
   const allActions = ['view', 'create', 'edit', 'delete', 'cancel']
-  for (const module of ['transfers', 'receptions']) {
+  for (const module of ['transfers', 'receptions', 'egresos']) {
     if (!list.some((p) => p?.module === module)) {
       list.push({ module, actions: allActions })
     }
@@ -574,6 +574,7 @@ export class AuthService {
             { module: 'products', actions: ['view'] },
             { module: 'transfers', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
             { module: 'receptions', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
+            { module: 'egresos', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
             { module: 'clients', actions: ['view', 'create', 'edit'] },
             { module: 'sales', actions: ['view', 'create', 'edit'] },
             { module: 'payments', actions: ['view', 'create', 'edit'] }
@@ -603,6 +604,7 @@ export class AuthService {
           { module: 'products', actions: ['view'] },
           { module: 'transfers', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
           { module: 'receptions', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
+          { module: 'egresos', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
           { module: 'clients', actions: ['view', 'create', 'edit'] },
           { module: 'sales', actions: ['view', 'create', 'edit'] },
           { module: 'payments', actions: ['view', 'create', 'edit'] }

@@ -14,6 +14,7 @@ const defaultVendedorPermissions: Record<string, string[]> = {
   products: ['view'],
   transfers: ALL_ACTIONS,
   receptions: ALL_ACTIONS,
+  egresos: ALL_ACTIONS,
 }
 
 // Permisos por defecto del rol "cajero" (atiende caja, no edita productos ni hace transferencias).
@@ -60,8 +61,8 @@ export function usePermissions() {
         return true
       }
 
-      // Traslados y recepciones siempre habilitados para vendedores
-      if (module === 'transfers' || module === 'receptions') {
+      // Traslados, recepciones y egresos siempre habilitados para vendedores
+      if (module === 'transfers' || module === 'receptions' || module === 'egresos') {
         return ALL_ACTIONS.includes(action)
       }
       
@@ -202,7 +203,7 @@ export function usePermissions() {
       return Array.from(new Set(['dashboard', ...Object.keys(defaultCajeroPermissions), ...fromPermissions]))
     }
 
-    // Vendedor: siempre incluir traslados/recepciones + defaults del rol
+    // Vendedor: siempre incluir traslados/recepciones/egresos + defaults del rol
     const roleForModules = (currentUser.role || '')
       .toLowerCase()
       .normalize('NFD')
@@ -249,6 +250,22 @@ export function usePermissions() {
       const defaults = defaultCajeroPermissions[module]
       if (defaults) return defaults
       if (module === 'products') return ['view']
+    }
+
+    const roleForActions = (currentUser.role || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+    if (roleForActions === 'vendedor' || roleForActions === 'vendedora') {
+      if (module === 'transfers' || module === 'receptions' || module === 'egresos') {
+        return ALL_ACTIONS
+      }
+      const defaults = defaultVendedorPermissions[module]
+      if (defaults) {
+        const modulePermission = currentUser.permissions?.find((p) => p.module === module)
+        if (!modulePermission) return defaults
+      }
     }
     
     if (!currentUser.permissions || !Array.isArray(currentUser.permissions)) return []
