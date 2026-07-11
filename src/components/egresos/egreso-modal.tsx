@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { X, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Egreso } from '@/types'
@@ -34,12 +35,27 @@ interface EgresoModalProps {
   storeId: string
 }
 
-function todayISO() {
+function todayDate() {
   const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0)
+}
+
+function toISODate(date: Date | null): string {
+  if (!date) return ''
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+function formatAmountInput(value: string): string {
+  const numeric = value.replace(/[^\d]/g, '')
+  if (!numeric) return ''
+  return parseInt(numeric, 10).toLocaleString('es-CO')
+}
+
+function parseAmountInput(value: string): number {
+  return parseInt(value.replace(/[^\d]/g, ''), 10) || 0
 }
 
 export function EgresoModal({
@@ -56,7 +72,7 @@ export function EgresoModal({
   const [conceptOther, setConceptOther] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [expenseDate, setExpenseDate] = useState(todayISO())
+  const [expenseDate, setExpenseDate] = useState<Date | null>(todayDate())
   const [paymentMethod, setPaymentMethod] = useState<EgresoPaymentMethod>('cash')
   const [saving, setSaving] = useState(false)
 
@@ -66,15 +82,21 @@ export function EgresoModal({
       setConcept(egreso.concept)
       setConceptOther(egreso.conceptOther || '')
       setDescription(egreso.description || '')
-      setAmount(String(egreso.amount || ''))
-      setExpenseDate(egreso.expenseDate?.slice(0, 10) || todayISO())
+      setAmount(
+        egreso.amount > 0 ? Math.round(egreso.amount).toLocaleString('es-CO') : ''
+      )
+      setExpenseDate(
+        egreso.expenseDate
+          ? new Date(`${egreso.expenseDate.slice(0, 10)}T12:00:00`)
+          : todayDate()
+      )
       setPaymentMethod(egreso.paymentMethod || 'cash')
     } else {
       setConcept('arriendo')
       setConceptOther('')
       setDescription('')
       setAmount('')
-      setExpenseDate(todayISO())
+      setExpenseDate(todayDate())
       setPaymentMethod('cash')
     }
   }, [isOpen, egreso])
@@ -86,8 +108,8 @@ export function EgresoModal({
       concept,
       conceptOther: showOther ? conceptOther : undefined,
       description,
-      amount: Number(String(amount).replace(/[^\d.]/g, '')) || 0,
-      expenseDate,
+      amount: parseAmountInput(amount),
+      expenseDate: toISODate(expenseDate) || toISODate(todayDate()),
       paymentMethod,
       storeId,
     }
@@ -97,6 +119,10 @@ export function EgresoModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!expenseDate) {
+      toast.error('Selecciona la fecha del egreso')
+      return
+    }
     setSaving(true)
     try {
       if (isEdit && egreso) {
@@ -187,26 +213,22 @@ export function EgresoModal({
                 <Label htmlFor="egreso-amount">Monto</Label>
                 <Input
                   id="egreso-amount"
-                  type="number"
-                  min={1}
-                  step={1}
                   inputMode="numeric"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => setAmount(formatAmountInput(e.target.value))}
                   placeholder="0"
-                  className="h-11 bg-white/70 dark:bg-zinc-900/50"
+                  className="h-11 bg-white/70 tabular-nums dark:bg-zinc-900/50"
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="egreso-date">Fecha</Label>
-                <Input
-                  id="egreso-date"
-                  type="date"
-                  value={expenseDate}
-                  onChange={(e) => setExpenseDate(e.target.value)}
-                  className="h-11 bg-white/70 dark:bg-zinc-900/50"
-                  required
+                <Label>Fecha</Label>
+                <DatePicker
+                  selectedDate={expenseDate}
+                  onDateSelect={setExpenseDate}
+                  placeholder="Seleccionar fecha"
+                  ariaLabel="Fecha del egreso"
+                  className="w-full bg-white/70 dark:bg-zinc-900/50"
                 />
               </div>
             </div>
