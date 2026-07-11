@@ -34,6 +34,29 @@ export function escapeIlike(term: string): string {
   return term.replace(/[%_\\]/g, '\\$&')
 }
 
+/** Código de referencia típico: "315", "001", "A12". */
+export function isReferenceLikeQuery(query: string): boolean {
+  const q = query.trim()
+  if (!q) return false
+  return /^\d{1,6}$/.test(q) || /^[A-Za-z]{1,4}\d{1,6}$/i.test(q)
+}
+
+/** Longitud mínima para disparar búsqueda en servidor. */
+export function minSearchLength(query: string): number {
+  return isReferenceLikeQuery(query) ? 1 : 2
+}
+
+/** Variantes de referencia numérica (315, 0315, etc.) para match exacto rápido. */
+export function referenceExactVariants(query: string): string[] {
+  const q = query.trim()
+  if (!/^\d{1,6}$/.test(q)) return [q]
+  const variants = new Set<string>([q, String(Number(q))])
+  for (let width = q.length; width <= 4; width++) {
+    variants.add(q.padStart(width, '0'))
+  }
+  return [...variants]
+}
+
 /** Parte la consulta en tokens útiles (ignora conectores cortos). */
 export function tokenizeProductSearch(query: string): string[] {
   const raw = query
