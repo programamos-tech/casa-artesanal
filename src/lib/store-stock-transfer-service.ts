@@ -209,7 +209,7 @@ export class StoreStockTransferService {
         product_reference: item.productReference || null,
         quantity: item.quantity,
         from_location: item.fromLocation,
-        unit_price: item.unitPrice || null
+        unit_price: item.unitPrice ?? null
       }))
 
       const { error: itemsError } = await supabaseAdmin
@@ -332,11 +332,10 @@ export class StoreStockTransferService {
             let subtotal = 0
 
             for (const item of items) {
-              // Usar el precio proporcionado en la transferencia, o obtenerlo del producto si no se proporcionó
-              let unitPrice = item.unitPrice || 0
-              
-              // Si no se proporcionó precio, obtenerlo del producto
-              if (!unitPrice || unitPrice === 0) {
+              // Usar el precio de la transferencia (0 es válido = sin cobro).
+              // Solo si no viene precio, tomar el del producto.
+              let unitPrice = item.unitPrice ?? 0
+              if (item.unitPrice == null) {
                 const product = await ProductsService.getProductById(item.productId)
                 unitPrice = product?.price || 0
               }

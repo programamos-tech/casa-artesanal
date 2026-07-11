@@ -128,23 +128,26 @@ export function SalesProvider({ children }: { children: ReactNode }) {
     try {
       const result = await SalesService.cancelSale(id, reason, currentUser.id)
 
-      setSales(prev => {
-        const updated = prev.map(sale => 
-          sale.id === id 
+      let cancelledSale: Sale | undefined
+      setSales((prev) => {
+        cancelledSale = prev.find((sale) => sale.id === id)
+        return prev.map((sale) =>
+          sale.id === id
             ? { ...sale, status: 'cancelled' as const, cancellationReason: reason }
             : sale
         )
-        return updated
       })
-      
-      await fetchSales(currentPage, false, dateRange)
 
-      const cancelledSale = sales.find(sale => sale.id === id)
+      // Refrescar lista y stock en segundo plano (no bloquear la anulación)
+      void fetchSales(currentPage, false, dateRange)
+      void refreshProducts(undefined, { silent: true })
 
       if (cancelledSale?.paymentMethod === 'credit') {
-        window.dispatchEvent(new CustomEvent('creditCancelled', { 
-          detail: { invoiceNumber: cancelledSale.invoiceNumber } 
-        }))
+        window.dispatchEvent(
+          new CustomEvent('creditCancelled', {
+            detail: { invoiceNumber: cancelledSale.invoiceNumber },
+          })
+        )
       }
 
       return result

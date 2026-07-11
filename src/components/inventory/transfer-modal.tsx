@@ -310,9 +310,9 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
         return
       }
 
-      // Validar que tenga precio
-      if (!item.unitPrice || item.unitPrice <= 0) {
-        toast.error(`Debes ingresar un precio de venta para ${item.productName}`)
+      // Precio puede ser 0 (transferencia sin cobro); solo rechazar negativos
+      if (item.unitPrice == null || item.unitPrice < 0) {
+        toast.error(`Debes ingresar un precio de venta válido para ${item.productName}`)
         return
       }
     }

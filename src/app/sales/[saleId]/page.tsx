@@ -14,7 +14,7 @@ export default function SaleDetailPage() {
   const router = useRouter()
   const saleId = params.saleId as string
 
-  const { cancelSale, refreshSales } = useSales()
+  const { cancelSale } = useSales()
 
   const [sale, setSale] = useState<Sale | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,8 +51,11 @@ export default function SaleDetailPage() {
 
   const handleCancelSale = async (id: string, reason: string) => {
     const result = await cancelSale(id, reason)
-    await refreshSales()
-    await load()
+    setSale((prev) =>
+      prev
+        ? { ...prev, status: 'cancelled' as const, cancellationReason: reason }
+        : prev
+    )
     return result
   }
 
