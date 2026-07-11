@@ -2212,8 +2212,9 @@ export class SalesService {
   }
 
   /**
-   * Ingresos del día (ventas completadas) por tienda, usando inicio/fin del día en hora local del cliente.
-   * Misma convención de tienda principal (null + MAIN_STORE_ID) que getCompletedSalesSummaryByStore.
+   * Ingresos del día por tienda (ventas completadas con dinero recibido).
+   * Excluye créditos: no cuentan como ingreso hasta que se cobren.
+   * Usa inicio/fin del día en hora local del cliente.
    */
   static async getTodayCompletedRevenueByStore(): Promise<Record<string, number>> {
     const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -2244,8 +2245,9 @@ export class SalesService {
       for (;;) {
         const { data, error } = await supabase
           .from('sales')
-          .select('store_id, total')
+          .select('store_id, total, payment_method')
           .eq('status', 'completed')
+          .neq('payment_method', 'credit')
           .gte('created_at', startLocal.toISOString())
           .lte('created_at', endLocal.toISOString())
           .order('created_at', { ascending: true })
@@ -2258,6 +2260,8 @@ export class SalesService {
         if (!data?.length) break
 
         for (const row of data) {
+          // Defensa: no sumar crédito aunque el filtro falle
+          if (row.payment_method === 'credit') continue
           const key =
             !row.store_id || row.store_id === MAIN_STORE_ID
               ? MAIN_STORE_ID

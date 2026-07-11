@@ -20,7 +20,7 @@ const storeMetricLabel =
 
 interface StoreTableProps {
   stores: Store[]
-  /** Ingresos del día (completadas, efectivo + transferencia) por store id. */
+  /** Ingresos del día (completadas, sin créditos) por store id. */
   salesByStore: Record<string, { revenueToday: number }>
   onEdit: (store: Store) => void
   onDelete: (store: Store) => void
@@ -137,11 +137,11 @@ function StoreCard({
             <div className="flex flex-col rounded-xl border border-solid border-zinc-200/90 bg-zinc-50/95 p-3 dark:border-zinc-700/80 dark:bg-zinc-800/35">
               <div className="flex items-center gap-1.5">
                 <CircleDollarSign className={storeMetricIcon} strokeWidth={1.75} aria-hidden />
-                <span className={storeMetricLabel}>Ventas del día</span>
+                <span className={storeMetricLabel}>Ingresos del día</span>
               </div>
               <p
                 className="mt-1 line-clamp-2 text-left text-xl font-bold leading-tight tabular-nums text-zinc-900 dark:text-zinc-100"
-                title={`Ingresos del día: ${formatCOP(salesSummary.revenueToday)}`}
+                title={`Ingresos del día (sin créditos): ${formatCOP(salesSummary.revenueToday)}`}
               >
                 {formatCOP(salesSummary.revenueToday)}
               </p>
