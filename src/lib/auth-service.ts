@@ -2,6 +2,20 @@ import { supabase, supabaseAdmin } from './supabase'
 import { User } from '@/types'
 import { getCurrentUserStoreId } from './store-helper'
 
+/** Asegura que vendedores tengan traslados y recepciones en su sesión. */
+function ensureVendedorTransferModules(role: string | undefined, permissions: any[]): any[] {
+  const roleNorm = (role || '').toLowerCase().trim()
+  if (roleNorm !== 'vendedor' && roleNorm !== 'vendedora') return Array.isArray(permissions) ? permissions : []
+  const list = Array.isArray(permissions) ? [...permissions] : []
+  const allActions = ['view', 'create', 'edit', 'delete', 'cancel']
+  for (const module of ['transfers', 'receptions']) {
+    if (!list.some((p) => p?.module === module)) {
+      list.push({ module, actions: allActions })
+    }
+  }
+  return list
+}
+
 export class AuthService {
   // Login de usuario
   static async login(email: string, password: string): Promise<User | null> {
@@ -54,6 +68,8 @@ export class AuthService {
             .eq('id', user.id)
         }
       }
+
+      permissions = ensureVendedorTransferModules(user.role, permissions)
 
       // Registrar log de login (no bloquear si falla)
       try {
@@ -669,6 +685,8 @@ export class AuthService {
           }
         }
       }
+
+      permissions = ensureVendedorTransferModules(dbUser.role, permissions)
 
       return {
         id: dbUser.id,

@@ -9,6 +9,7 @@ import { StoreStockTransfer, Store, Sale } from '@/types'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { StoresService } from '@/lib/stores-service'
 import { useAuth } from '@/contexts/auth-context'
+import { usePermissions } from '@/hooks/usePermissions'
 import { getCurrentUserStoreId, canAccessAllStores, isMainStoreUser } from '@/lib/store-helper'
 import { toast } from 'sonner'
 
@@ -18,6 +19,7 @@ const PAGE_SIZE = 50
 export default function TransfersPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { canCreate } = usePermissions()
   const [transfers, setTransfers] = useState<StoreStockTransfer[]>([])
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +33,7 @@ export default function TransfersPage() {
   const currentStoreId = getCurrentUserStoreId()
   const canManageAllStores = canAccessAllStores(user)
   const isMainStore = isMainStoreUser(user)
+  const canCreateTransfer = canCreate('transfers')
   /** Listado global de traslados: admin ve todo; tienda principal igual. */
   const transferListStoreId =
     canManageAllStores || isMainStore ? MAIN_STORE_ID : currentStoreId || null
@@ -145,7 +148,7 @@ export default function TransfersPage() {
             setCurrentPage(1)
           }}
           onRefresh={loadTransfers}
-          onCreate={canManageAllStores || isMainStore ? () => setIsCreateModalOpen(true) : undefined}
+          onCreate={canCreateTransfer ? () => setIsCreateModalOpen(true) : undefined}
           canManageAllStores={canManageAllStores || isMainStore}
           onView={t => router.push(`/inventory/transfers/${t.id}`)}
           onOpenSale={saleId => router.push(`/sales/${saleId}`)}
@@ -165,6 +168,10 @@ export default function TransfersPage() {
           }}
           stores={stores}
           fromStoreId={defaultTransferOriginId}
+          mode={isMainStore || canManageAllStores ? 'send' : 'request'}
+          requestingStoreId={
+            !isMainStore && !canManageAllStores ? currentStoreId || undefined : undefined
+          }
         />
       </div>
     </RoleProtectedRoute>

@@ -214,7 +214,7 @@ export function TransfersTable({
                 <RefreshCcw className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden md:inline">Actualizar</span>
               </Button>
-              {canManageAllStores && onCreate && (
+              {onCreate && (
                 <Button onClick={onCreate} size="sm" className="flex-1 sm:flex-none">
                   <Plus className="h-3.5 w-3.5 shrink-0" />
                   <span className="hidden sm:inline">Nueva Transferencia</span>
@@ -271,7 +271,7 @@ export function TransfersTable({
               <Package className="mx-auto mb-4 h-12 w-12 text-zinc-400" />
               <h3 className="mb-2 text-lg font-medium text-zinc-900 dark:text-zinc-50">No hay transferencias</h3>
               <p className="text-zinc-500 dark:text-zinc-400">
-                {canManageAllStores
+                {onCreate
                   ? 'Crea una nueva transferencia para comenzar'
                   : 'No hay transferencias en este filtro'}
               </p>

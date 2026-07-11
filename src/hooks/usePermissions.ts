@@ -38,7 +38,11 @@ export function usePermissions() {
     // El dashboard es accesible para todos los usuarios autenticados
     if (module === 'dashboard' && action === 'view') return true
     
-    const userRole = currentUser.role?.toLowerCase() || ''
+    const userRole = (currentUser.role || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
 
     // Rol inventario: solo productos por defecto (el resto según permisos guardados del usuario)
     if (userRole === 'inventario' && module === 'products') {
@@ -57,8 +61,8 @@ export function usePermissions() {
       }
 
       // Traslados y recepciones siempre habilitados para vendedores
-      if ((module === 'transfers' || module === 'receptions') && ALL_ACTIONS.includes(action)) {
-        return true
+      if (module === 'transfers' || module === 'receptions') {
+        return ALL_ACTIONS.includes(action)
       }
       
       const hasExplicitPermissions = currentUser.permissions && Array.isArray(currentUser.permissions) && currentUser.permissions.length > 0
@@ -199,7 +203,12 @@ export function usePermissions() {
     }
 
     // Vendedor: siempre incluir traslados/recepciones + defaults del rol
-    if (currentUser.role?.toLowerCase() === 'vendedor' || currentUser.role?.toLowerCase() === 'vendedora') {
+    const roleForModules = (currentUser.role || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+    if (roleForModules === 'vendedor' || roleForModules === 'vendedora') {
       const fromPermissions =
         currentUser.permissions && Array.isArray(currentUser.permissions)
           ? currentUser.permissions
