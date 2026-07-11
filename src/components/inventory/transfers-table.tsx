@@ -31,6 +31,7 @@ export interface TransfersTableProps {
   onFilterChange: (f: 'all' | 'pending' | 'cancelled' | 'received' | 'requested') => void
   onRefresh: () => void
   onCreate?: () => void
+  createLabel?: string
   canManageAllStores: boolean
   onView: (transfer: StoreStockTransfer) => void
   onOpenSale: (saleId: string) => void
@@ -128,6 +129,7 @@ export function TransfersTable({
   onFilterChange,
   onRefresh,
   onCreate,
+  createLabel = 'Nueva Transferencia',
   canManageAllStores,
   onView,
   onOpenSale,
@@ -206,7 +208,7 @@ export function TransfersTable({
                 <StoreBadge />
               </CardTitle>
               <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                Gestiona las transferencias de productos entre tiendas
+                Solicita stock a otra sede, aprueba salidas de tu tienda o sigue el estado de cada traslado
               </p>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
@@ -217,8 +219,8 @@ export function TransfersTable({
               {onCreate && (
                 <Button onClick={onCreate} size="sm" className="flex-1 sm:flex-none">
                   <Plus className="h-3.5 w-3.5 shrink-0" />
-                  <span className="hidden sm:inline">Nueva Transferencia</span>
-                  <span className="sm:hidden">Nueva</span>
+                  <span className="hidden sm:inline">{createLabel}</span>
+                  <span className="sm:hidden">Solicitar</span>
                 </Button>
               )}
             </div>

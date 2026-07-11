@@ -34,11 +34,23 @@ export default function TransfersPage() {
   const canManageAllStores = canAccessAllStores(user)
   const isMainStore = isMainStoreUser(user)
   const canCreateTransfer = canCreate('transfers')
+  const roleNorm = (user?.role || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+  const isVendedor = roleNorm === 'vendedor' || roleNorm === 'vendedora'
+  /** Vendedores siempre solicitan (destino = su tienda). Solo admin/superadmin pueden enviar directo. */
+  const createAsRequest = isVendedor || !canManageAllStores
+  const myStoreId = isMainStore ? MAIN_STORE_ID : currentStoreId || MAIN_STORE_ID
+  const SECOND_FLOOR_ID = '8ad34b95-e611-4117-a03d-b44627297ae4'
   /** Listado global de traslados: admin ve todo; tienda principal igual. */
   const transferListStoreId =
     canManageAllStores || isMainStore ? MAIN_STORE_ID : currentStoreId || null
-  /** Origen por defecto del modal: principal si aplica; si no, la tienda actual. */
-  const defaultTransferOriginId = isMainStore ? MAIN_STORE_ID : currentStoreId || MAIN_STORE_ID
+  /** Origen por defecto al solicitar: la otra sede (ej. 2 piso si estás en Parque). */
+  const defaultRequestOriginId =
+    myStoreId === SECOND_FLOOR_ID ? MAIN_STORE_ID : SECOND_FLOOR_ID
+  const defaultTransferOriginId = createAsRequest
+    ? defaultRequestOriginId
+    : isMainStore
+      ? MAIN_STORE_ID
+      : currentStoreId || MAIN_STORE_ID
 
   useEffect(() => {
     loadStores()
@@ -149,6 +161,7 @@ export default function TransfersPage() {
           }}
           onRefresh={loadTransfers}
           onCreate={canCreateTransfer ? () => setIsCreateModalOpen(true) : undefined}
+          createLabel={createAsRequest ? 'Solicitar traslado' : 'Nueva Transferencia'}
           canManageAllStores={canManageAllStores || isMainStore}
           onView={t => router.push(`/inventory/transfers/${t.id}`)}
           onOpenSale={saleId => router.push(`/sales/${saleId}`)}
@@ -168,10 +181,8 @@ export default function TransfersPage() {
           }}
           stores={stores}
           fromStoreId={defaultTransferOriginId}
-          mode={isMainStore || canManageAllStores ? 'send' : 'request'}
-          requestingStoreId={
-            !isMainStore && !canManageAllStores ? currentStoreId || undefined : undefined
-          }
+          mode={createAsRequest ? 'request' : 'send'}
+          requestingStoreId={createAsRequest ? myStoreId : undefined}
         />
       </div>
     </RoleProtectedRoute>
