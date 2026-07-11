@@ -209,7 +209,8 @@ export class StoreStockTransferService {
         product_reference: item.productReference || null,
         quantity: item.quantity,
         from_location: item.fromLocation,
-        unit_price: item.unitPrice ?? null
+        unit_price: item.unitPrice ?? null,
+        approval_status: 'approved',
       }))
 
       const { error: itemsError } = await supabaseAdmin
@@ -561,6 +562,475 @@ export class StoreStockTransferService {
     } catch (error) {
       console.error('Error in createTransfer:', error)
       return null
+    }
+  }
+
+  /**
+   * Solicitud de traslado creada por la tienda destino.
+   * No descuenta stock ni crea factura hasta que la tienda origen apruebe cada referencia.
+   */
+  static async createTransferRequest(
+    fromStoreId: string,
+    toStoreId: string,
+    items: CreateTransferLineInput[],
+    description?: string,
+    notes?: string,
+    createdBy?: string,
+    createdByName?: string
+  ): Promise<StoreStockTransfer | null> {
+    try {
+      if (!items?.length) return null
+      if (!fromStoreId || !toStoreId || fromStoreId === toStoreId) {
+        console.error('[TRANSFER REQUEST] Invalid store pair')
+        return null
+      }
+
+      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+      const originStoreId = fromStoreId.trim() || MAIN_STORE_ID
+      const isFromMainStore = originStoreId === MAIN_STORE_ID
+
+      const expandedItems = await this.expandTransferLinesForPersistence(items, isFromMainStore, originStoreId)
+      if (!expandedItems?.length) return null
+
+      const { data: transfer, error: transferError } = await supabaseAdmin
+        .from('stock_transfers')
+        .insert({
+          from_store_id: originStoreId,
+          to_store_id: toStoreId,
+          status: 'requested',
+          description: description || null,
+          notes: notes || null,
+          created_by: createdBy || null,
+          created_by_name: createdByName || null,
+          product_id: items[0].productId,
+          quantity: items.reduce((sum, item) => sum + item.quantity, 0),
+        })
+        .select()
+        .maybeSingle()
+
+      if (transferError || !transfer) {
+        console.error('[TRANSFER REQUEST] Error creating:', transferError)
+        return null
+      }
+
+      const transferItems = expandedItems.map((item) => ({
+        transfer_id: transfer.id,
+        product_id: item.productId,
+        product_name: item.productName,
+        product_reference: item.productReference || null,
+        quantity: item.quantity,
+        from_location: item.fromLocation,
+        unit_price: item.unitPrice ?? null,
+        approval_status: 'pending',
+      }))
+
+      const { error: itemsError } = await supabaseAdmin.from('transfer_items').insert(transferItems)
+      if (itemsError) {
+        console.error('[TRANSFER REQUEST] Error creating items:', itemsError)
+        await supabaseAdmin.from('stock_transfers').delete().eq('id', transfer.id)
+        return null
+      }
+
+      if (createdBy) {
+        try {
+          const fromStore = await StoresService.getStoreById(originStoreId)
+          const toStore = await StoresService.getStoreById(toStoreId)
+          const full = await this.getTransferById(transfer.id)
+          const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
+          void AuthService.logActivity(createdBy, 'transfer_requested', 'transfers', {
+            description: `Solicitud de traslado de ${totalQuantity} unidades desde "${fromStore?.name || 'Origen'}" hacia "${toStore?.name || 'Destino'}"`,
+            transferId: transfer.id,
+            transferNumber: full?.transferNumber,
+            fromStoreId: originStoreId,
+            toStoreId,
+            itemsCount: items.length,
+            totalQuantity,
+          })
+        } catch {
+          /* no bloquear */
+        }
+      }
+
+      return await this.getTransferById(transfer.id)
+    } catch (error) {
+      console.error('Error in createTransferRequest:', error)
+      return null
+    }
+  }
+
+  /**
+   * La tienda origen aprueba o rechaza cada referencia.
+   * Si hay al menos una aprobada: descuenta stock, crea factura si aplica y deja status=pending (lista para recepción).
+   * Si todas se rechazan: status=rejected.
+   */
+  static async approveTransferItems(
+    transferId: string,
+    decisions: Array<{
+      itemId: string
+      decision: 'approved' | 'rejected'
+      quantity?: number
+      unitPrice?: number
+      fromLocation?: 'warehouse' | 'store'
+      notes?: string
+    }>,
+    approvedBy: string,
+    approvedByName?: string,
+    paymentInfo?: { method: 'cash' | 'transfer' | 'mixed'; cashAmount: number; transferAmount: number }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const transfer = await this.getTransferById(transferId)
+      if (!transfer) return { success: false, error: 'Transferencia no encontrada' }
+      if (transfer.status !== 'requested') {
+        return { success: false, error: 'Solo se pueden aprobar solicitudes pendientes' }
+      }
+      if (!transfer.items?.length) return { success: false, error: 'La solicitud no tiene productos' }
+      if (!decisions?.length) return { success: false, error: 'Debes decidir cada referencia' }
+
+      const decisionById = new Map(decisions.map((d) => [d.itemId, d]))
+      for (const item of transfer.items) {
+        if (!decisionById.has(item.id)) {
+          return { success: false, error: `Falta decisión para ${item.productName}` }
+        }
+      }
+
+      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+      const originStoreId = transfer.fromStoreId
+      const isFromMainStore = originStoreId === MAIN_STORE_ID || !originStoreId
+      const now = new Date().toISOString()
+      const actorName = approvedByName || 'Usuario'
+
+      const approvedLines: Array<{
+        itemId: string
+        productId: string
+        productName: string
+        productReference?: string
+        quantity: number
+        fromLocation: 'warehouse' | 'store'
+        unitPrice: number
+      }> = []
+
+      for (const item of transfer.items) {
+        const d = decisionById.get(item.id)!
+        const qty = d.quantity != null ? Math.max(0, Math.floor(d.quantity)) : item.quantity
+        const unitPrice = d.unitPrice != null ? d.unitPrice : item.unitPrice ?? 0
+        const fromLocation =
+          d.fromLocation ||
+          item.fromLocation ||
+          (isFromMainStore ? 'store' : 'store')
+
+        if (d.decision === 'approved') {
+          if (qty <= 0) {
+            return { success: false, error: `Cantidad inválida para ${item.productName}` }
+          }
+          // Validar stock al momento de aprobar
+          if (isFromMainStore) {
+            const { data: product } = await supabaseAdmin
+              .from('products')
+              .select('stock_warehouse, stock_store')
+              .eq('id', item.productId)
+              .single()
+            const available =
+              fromLocation === 'warehouse'
+                ? product?.stock_warehouse || 0
+                : product?.stock_store || 0
+            if (available < qty) {
+              return {
+                success: false,
+                error: `Stock insuficiente para ${item.productName}. Disponible: ${available}`,
+              }
+            }
+          } else {
+            const stock = await this.getStoreStock(originStoreId, item.productId)
+            if (!stock || stock.quantity < qty) {
+              return {
+                success: false,
+                error: `Stock insuficiente para ${item.productName}. Disponible: ${stock?.quantity || 0}`,
+              }
+            }
+          }
+          approvedLines.push({
+            itemId: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            productReference: item.productReference,
+            quantity: qty,
+            fromLocation,
+            unitPrice,
+          })
+        }
+
+        const { error: lineError } = await supabaseAdmin
+          .from('transfer_items')
+          .update({
+            approval_status: d.decision,
+            approved_by: approvedBy,
+            approved_by_name: actorName,
+            approved_at: now,
+            approval_notes: d.notes || null,
+            quantity: d.decision === 'approved' ? qty : item.quantity,
+            unit_price: unitPrice,
+            from_location: fromLocation,
+          })
+          .eq('id', item.id)
+
+        if (lineError) {
+          console.error('[APPROVE TRANSFER] Error updating line:', lineError)
+          return { success: false, error: 'No se pudo guardar la decisión de una referencia' }
+        }
+      }
+
+      if (approvedLines.length === 0) {
+        await supabaseAdmin
+          .from('stock_transfers')
+          .update({
+            status: 'rejected',
+            notes: transfer.notes
+              ? `${transfer.notes}\n\n[RECHAZADA] Todas las referencias fueron rechazadas`
+              : '[RECHAZADA] Todas las referencias fueron rechazadas',
+            updated_at: now,
+          })
+          .eq('id', transferId)
+
+        if (approvedBy) {
+          void AuthService.logActivity(approvedBy, 'transfer_rejected', 'transfers', {
+            description: `Solicitud de traslado rechazada: ${transfer.transferNumber || transferId}`,
+            transferId,
+            transferNumber: transfer.transferNumber,
+          })
+        }
+
+        return { success: true }
+      }
+
+      // Descontar stock solo de líneas aprobadas
+      for (const line of approvedLines) {
+        if (isFromMainStore) {
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('stock_warehouse, stock_store')
+            .eq('id', line.productId)
+            .single()
+          if (!product) {
+            return { success: false, error: `Producto no encontrado: ${line.productName}` }
+          }
+          const field = line.fromLocation === 'warehouse' ? 'stock_warehouse' : 'stock_store'
+          const current =
+            line.fromLocation === 'warehouse'
+              ? product.stock_warehouse || 0
+              : product.stock_store || 0
+          const newStock = current - line.quantity
+          if (newStock < 0) {
+            return { success: false, error: `Stock insuficiente para ${line.productName}` }
+          }
+          const { error: stockError } = await supabaseAdmin
+            .from('products')
+            .update({ [field]: newStock })
+            .eq('id', line.productId)
+          if (stockError) {
+            return { success: false, error: `Error al descontar stock de ${line.productName}` }
+          }
+        } else {
+          await this.updateStoreStock(originStoreId, line.productId, -line.quantity)
+        }
+      }
+
+      // Factura en origen si hay valor > 0 (misma lógica que envío directo)
+      try {
+        const toStore = await StoresService.getStoreById(transfer.toStoreId)
+        if (toStore) {
+          let storeClientId = transfer.toStoreId
+          const { data: existingClients } = await supabaseAdmin
+            .from('clients')
+            .select('id')
+            .eq('name', toStore.name)
+            .limit(1)
+          if (existingClients?.[0]) {
+            storeClientId = existingClients[0].id
+          } else {
+            const { data: newClient } = await supabaseAdmin
+              .from('clients')
+              .insert({
+                name: toStore.name,
+                email: `${toStore.name.toLowerCase().replace(/\s+/g, '')}@tienda.local`,
+                phone: '0000000000',
+                document: `STORE-${transfer.toStoreId.substring(0, 8)}`,
+                address: toStore.address || 'Sin dirección',
+                city: toStore.city || 'Sin ciudad',
+                type: 'mayorista',
+                credit_limit: 0,
+                current_debt: 0,
+                status: 'active',
+                store_id: transfer.toStoreId,
+              })
+              .select('id')
+              .single()
+            if (newClient) storeClientId = newClient.id
+          }
+
+          const saleItems: SaleItem[] = []
+          let subtotal = 0
+          for (const line of approvedLines) {
+            const totalPrice = line.unitPrice * line.quantity
+            subtotal += totalPrice
+            saleItems.push({
+              id: '',
+              productId: line.productId,
+              productName: line.productName,
+              productReferenceCode: line.productReference || '',
+              quantity: line.quantity,
+              unitPrice: line.unitPrice,
+              total: totalPrice,
+              discount: 0,
+            } as SaleItem)
+          }
+
+          if (saleItems.length > 0 && subtotal > 0) {
+            const invoiceNumber = await SalesService.getNextInvoiceNumber(originStoreId)
+            const { data: sale, error: saleError } = await supabaseAdmin
+              .from('sales')
+              .insert({
+                client_id: storeClientId,
+                client_name: toStore.name || 'Tienda sin nombre',
+                total: subtotal,
+                subtotal,
+                tax: 0,
+                discount: 0,
+                status: 'completed',
+                payment_method: paymentInfo?.method || 'transfer',
+                invoice_number: invoiceNumber,
+                seller_id: approvedBy || null,
+                seller_name: actorName,
+                seller_email: '',
+                store_id: originStoreId,
+              })
+              .select()
+              .single()
+
+            if (!saleError && sale) {
+              await supabaseAdmin.from('sale_items').insert(
+                saleItems.map((item) => ({
+                  sale_id: sale.id,
+                  product_id: item.productId,
+                  product_name: item.productName,
+                  product_reference_code: item.productReferenceCode || null,
+                  quantity: item.quantity,
+                  unit_price: item.unitPrice,
+                  discount: 0,
+                  total: item.total,
+                }))
+              )
+
+              if (paymentInfo?.method === 'mixed') {
+                await supabaseAdmin.from('sale_payments').insert([
+                  { sale_id: sale.id, payment_type: 'cash', amount: paymentInfo.cashAmount },
+                  { sale_id: sale.id, payment_type: 'transfer', amount: paymentInfo.transferAmount },
+                ])
+              } else {
+                await supabaseAdmin.from('sale_payments').insert({
+                  sale_id: sale.id,
+                  payment_type: paymentInfo?.method || 'transfer',
+                  amount: subtotal,
+                })
+              }
+            }
+          }
+        }
+      } catch (invoiceError) {
+        console.error('[APPROVE TRANSFER] Invoice error (non-blocking):', invoiceError)
+      }
+
+      const totalApprovedQty = approvedLines.reduce((s, l) => s + l.quantity, 0)
+      await supabaseAdmin
+        .from('stock_transfers')
+        .update({
+          status: 'pending',
+          quantity: totalApprovedQty,
+          updated_at: now,
+        })
+        .eq('id', transferId)
+
+      if (approvedBy) {
+        void AuthService.logActivity(approvedBy, 'transfer_approved', 'transfers', {
+          description: `Solicitud de traslado aprobada (${approvedLines.length} ref.): ${transfer.transferNumber || transferId}`,
+          transferId,
+          transferNumber: transfer.transferNumber,
+          approvedCount: approvedLines.length,
+          rejectedCount: transfer.items.length - approvedLines.length,
+        })
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error in approveTransferItems:', error)
+      return { success: false, error: 'Error inesperado al aprobar la solicitud' }
+    }
+  }
+
+  /** Solicitudes pendientes de aprobación para la tienda origen */
+  static async getTransfersAwaitingApproval(
+    fromStoreId: string,
+    page: number = 1,
+    limit: number = 50
+  ): Promise<{ transfers: StoreStockTransfer[]; total: number; hasMore: boolean }> {
+    try {
+      const offset = (page - 1) * limit
+      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+      const isMainStore = fromStoreId === MAIN_STORE_ID
+
+      let countQuery = supabaseAdmin
+        .from('stock_transfers')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'requested')
+
+      if (!isMainStore) {
+        countQuery = countQuery.eq('from_store_id', fromStoreId)
+      }
+
+      const { count } = await countQuery
+
+      let query = supabaseAdmin
+        .from('stock_transfers')
+        .select('*')
+        .eq('status', 'requested')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (!isMainStore) {
+        query = query.eq('from_store_id', fromStoreId)
+      }
+
+      const { data: transfers, error } = await query
+      if (error || !transfers?.length) {
+        return { transfers: [], total: count || 0, hasMore: false }
+      }
+
+      const mapped = await Promise.all(
+        transfers.map(async (transfer: any) => {
+          const [fromStoreResult, toStoreResult] = await Promise.all([
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.from_store_id).single(),
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.to_store_id).single(),
+          ])
+          const { data: items } = await supabaseAdmin
+            .from('transfer_items')
+            .select('*')
+            .eq('transfer_id', transfer.id)
+            .order('created_at', { ascending: true })
+          return this.mapTransfer(
+            {
+              ...transfer,
+              from_store: fromStoreResult.data || { id: transfer.from_store_id, name: null },
+              to_store: toStoreResult.data || { id: transfer.to_store_id, name: null },
+            },
+            items || []
+          )
+        })
+      )
+
+      const total = count || 0
+      return { transfers: mapped, total, hasMore: offset + transfers.length < total }
+    } catch (error) {
+      console.error('Error in getTransfersAwaitingApproval:', error)
+      return { transfers: [], total: 0, hasMore: false }
     }
   }
 
@@ -1146,19 +1616,28 @@ export class StoreStockTransferService {
         return false
       }
 
-      // Si se proporcionan items específicos, usar esos; si no, recibir todo
+      const receivableItems = (transfer.items || []).filter(
+        (item) => !item.approvalStatus || item.approvalStatus === 'approved'
+      )
+
+      // Si se proporcionan items específicos, usar esos; si no, recibir todo lo aprobado
       const itemsToReceive = receivedItems && receivedItems.length > 0
-        ? receivedItems
-        : (transfer.items || []).map(item => ({
+        ? receivedItems.filter((ri) => receivableItems.some((i) => i.id === ri.itemId))
+        : receivableItems.map(item => ({
             itemId: item.id,
             quantityReceived: item.quantity,
             note: undefined
           }))
 
+      if (itemsToReceive.length === 0) {
+        console.error('No approved items to receive')
+        return false
+      }
+
       // Validar que las cantidades recibidas no excedan las esperadas y no sean negativas
-      if (transfer.items && transfer.items.length > 0) {
+      if (receivableItems.length > 0) {
         for (const receivedItem of itemsToReceive) {
-          const originalItem = transfer.items.find(item => item.id === receivedItem.itemId)
+          const originalItem = receivableItems.find(item => item.id === receivedItem.itemId)
           if (!originalItem) {
             console.error(`Item ${receivedItem.itemId} not found in transfer`)
             return false
@@ -1175,16 +1654,19 @@ export class StoreStockTransferService {
         }
       }
 
-      // Determinar si es recepción parcial o completa
+      // Determinar si es recepción parcial o completa (solo líneas aprobadas)
       let isPartial = false
-      if (transfer.items && transfer.items.length > 0) {
-        // Verificar si algún item tiene cantidad recibida menor a la esperada
+      if (receivableItems.length > 0) {
         for (const receivedItem of itemsToReceive) {
-          const originalItem = transfer.items.find(item => item.id === receivedItem.itemId)
+          const originalItem = receivableItems.find(item => item.id === receivedItem.itemId)
           if (originalItem && receivedItem.quantityReceived < originalItem.quantity) {
             isPartial = true
             break
           }
+        }
+        // Si faltó alguna línea aprobada en el payload, es parcial
+        if (itemsToReceive.length < receivableItems.length) {
+          isPartial = true
         }
       } else {
         // Para transferencias legacy, verificar si la cantidad recibida es menor
@@ -1453,9 +1935,11 @@ export class StoreStockTransferService {
         }
       }
 
-      // Devolver stock a la tienda origen para cada producto
-      if (transfer.items && transfer.items.length > 0) {
+      // Devolver stock a la tienda origen solo si ya se había descontado (no en solicitudes)
+      const stockWasDeducted = transfer.status === 'pending' || transfer.status === 'in_transit'
+      if (stockWasDeducted && transfer.items && transfer.items.length > 0) {
         for (const item of transfer.items) {
+          if (item.approvalStatus === 'rejected') continue
           if (isFromMainStore && item.fromLocation) {
             // Para la tienda principal, devolver a products.stock_warehouse o products.stock_store
             const { data: product } = await supabaseAdmin
@@ -1485,7 +1969,7 @@ export class StoreStockTransferService {
             await this.updateStoreStock(transfer.fromStoreId, item.productId, item.quantity)
           }
         }
-      } else {
+      } else if (stockWasDeducted) {
         // Compatibilidad con transferencias legacy
         if (transfer.productId && transfer.quantity) {
           if (isFromMainStore) {
@@ -2096,10 +2580,15 @@ export class StoreStockTransferService {
       productName: item.product_name,
       productReference: item.product_reference || undefined,
       quantity: item.quantity, // Cantidad original/enviada
-      quantityReceived: item.quantity_received || undefined, // Cantidad recibida (si aplica)
+      quantityReceived: item.quantity_received ?? undefined, // Cantidad recibida (si aplica)
       fromLocation: item.from_location || undefined,
-      unitPrice: item.unit_price || undefined, // Precio unitario de transferencia
+      unitPrice: item.unit_price ?? undefined, // Precio unitario de transferencia
       notes: item.notes || undefined, // Nota del item
+      approvalStatus: (item.approval_status as TransferItem['approvalStatus']) || 'approved',
+      approvedBy: item.approved_by || undefined,
+      approvedByName: item.approved_by_name || undefined,
+      approvedAt: item.approved_at || undefined,
+      approvalNotes: item.approval_notes || undefined,
       createdAt: item.created_at,
       updatedAt: item.updated_at || item.created_at
     }))

@@ -56,8 +56,11 @@ export function ReceiveTransferModal({ isOpen, onClose, onConfirm, transfer }: R
   useEffect(() => {
     if (isOpen && transfer) {
       if (transfer.items && transfer.items.length > 0) {
+        const receivable = transfer.items.filter(
+          (item) => !item.approvalStatus || item.approvalStatus === 'approved'
+        )
         setReceivedItems(
-          transfer.items.map(item => ({
+          receivable.map(item => ({
             itemId: item.id,
             productName: item.productName,
             productReference: item.productReference,

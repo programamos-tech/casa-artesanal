@@ -24,6 +24,8 @@ const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
 function transferStatusBadge(status: string) {
   switch (status) {
+    case 'requested':
+      return 'border-violet-500/25 bg-violet-500/[0.08] text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/40 dark:text-violet-200'
     case 'pending':
     case 'in_transit':
       return 'border-amber-500/25 bg-amber-500/[0.08] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200'
@@ -32,6 +34,7 @@ function transferStatusBadge(status: string) {
     case 'partially_received':
       return 'border-orange-500/25 bg-orange-500/[0.08] text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200'
     case 'cancelled':
+    case 'rejected':
       return 'border-rose-500/30 bg-rose-500/[0.08] text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-200'
     default:
       return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300'
@@ -40,8 +43,10 @@ function transferStatusBadge(status: string) {
 
 function transferStatusLabel(status: string) {
   switch (status) {
+    case 'requested':
+      return 'Por aprobar'
     case 'pending':
-      return 'Pendiente'
+      return 'Listo para recibir'
     case 'in_transit':
       return 'En tránsito'
     case 'received':
@@ -50,6 +55,8 @@ function transferStatusLabel(status: string) {
       return 'Parcial'
     case 'cancelled':
       return 'Cancelada'
+    case 'rejected':
+      return 'Rechazada'
     default:
       return status
   }
@@ -101,6 +108,7 @@ export interface ReceptionsTableProps {
   filter: 'all' | 'pending' | 'received'
   onFilterChange: (f: 'all' | 'pending' | 'received') => void
   onRefresh: () => void
+  onRequestTransfer?: () => void
   loading: boolean
   transferSales: Map<string, Sale>
   loadingSalesForList: boolean
@@ -124,6 +132,7 @@ export function ReceptionsTable({
   filter,
   onFilterChange,
   onRefresh,
+  onRequestTransfer,
   loading,
   transferSales,
   loadingSalesForList,
@@ -489,7 +498,7 @@ export function ReceptionsTable({
                 <StoreBadge />
               </CardTitle>
               <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                Recibe y confirma las transferencias de productos enviadas a tu tienda
+                Solicita traslados a otras tiendas y recibe solo los que ya fueron aprobados por el origen
               </p>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
@@ -497,6 +506,13 @@ export function ReceptionsTable({
                 <RefreshCcw className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden md:inline">Actualizar</span>
               </Button>
+              {onRequestTransfer && (
+                <Button onClick={onRequestTransfer} size="sm" className="flex-1 sm:flex-none">
+                  <ArrowRightLeft className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Solicitar traslado</span>
+                  <span className="sm:hidden">Solicitar</span>
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>

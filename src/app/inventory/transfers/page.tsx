@@ -22,7 +22,7 @@ export default function TransfersPage() {
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'cancelled' | 'received'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'cancelled' | 'received' | 'requested'>('all')
   const [transferSales, setTransferSales] = useState<Map<string, Sale>>(new Map())
   const [loadingSalesForList, setLoadingSalesForList] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -116,12 +116,16 @@ export default function TransfersPage() {
         filteredTransfers = result.transfers.filter(
           t => t.status === 'pending' || t.status === 'in_transit'
         )
+      } else if (filter === 'requested') {
+        filteredTransfers = result.transfers.filter(t => t.status === 'requested')
       } else if (filter === 'received') {
         filteredTransfers = result.transfers.filter(
           t => t.status === 'received' || t.status === 'partially_received'
         )
       } else if (filter === 'cancelled') {
-        filteredTransfers = result.transfers.filter(t => t.status === 'cancelled')
+        filteredTransfers = result.transfers.filter(
+          t => t.status === 'cancelled' || t.status === 'rejected'
+        )
       }
 
       setTransfers(filteredTransfers)

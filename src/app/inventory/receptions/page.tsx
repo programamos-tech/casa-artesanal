@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { ReceptionsTable } from '@/components/inventory/receptions-table'
 import { ReceiveTransferModal } from '@/components/inventory/receive-transfer-modal'
-import { StoreStockTransfer, Sale } from '@/types'
+import { TransferModal } from '@/components/inventory/transfer-modal'
+import { StoreStockTransfer, Sale, Store } from '@/types'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
+import { StoresService } from '@/lib/stores-service'
 import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUserStoreId, isMainStoreUser } from '@/lib/store-helper'
 import { toast } from 'sonner'
@@ -23,7 +25,9 @@ export default function ReceptionsPage() {
   const [receivedTransfers, setReceivedTransfers] = useState<StoreStockTransfer[]>([])
   const [loading, setLoading] = useState(true)
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [transferToReceive, setTransferToReceive] = useState<StoreStockTransfer | null>(null)
+  const [stores, setStores] = useState<Store[]>([])
   const [filter, setFilterState] = useState<'all' | 'pending' | 'received'>('all')
   const [pendingPage, setPendingPage] = useState(1)
   const [receivedPage, setReceivedPage] = useState(1)
@@ -45,9 +49,16 @@ export default function ReceptionsPage() {
   }
 
   useEffect(() => {
+    StoresService.getAllStores()
+      .then(setStores)
+      .catch(() => setStores([]))
+  }, [])
+
+  useEffect(() => {
     if (storeIdToUse) {
       loadTransfers()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeIdToUse, pendingPage, receivedPage])
 
   useEffect(() => {
@@ -156,6 +167,7 @@ export default function ReceptionsPage() {
           filter={filter}
           onFilterChange={setFilter}
           onRefresh={loadTransfers}
+          onRequestTransfer={storeIdToUse ? () => setIsRequestModalOpen(true) : undefined}
           loading={loading}
           transferSales={transferSales}
           loadingSalesForList={loadingSalesForList}
@@ -184,6 +196,23 @@ export default function ReceptionsPage() {
           onConfirm={confirmReceive}
           transfer={transferToReceive}
         />
+
+        {storeIdToUse && (
+          <TransferModal
+            isOpen={isRequestModalOpen}
+            onClose={() => setIsRequestModalOpen(false)}
+            onSave={async () => {
+              setIsRequestModalOpen(false)
+              await loadTransfers()
+            }}
+            stores={stores}
+            mode="request"
+            requestingStoreId={storeIdToUse}
+            fromStoreId={
+              stores.find((s) => s.id !== storeIdToUse && s.isActive)?.id || MAIN_STORE_ID
+            }
+          />
+        )}
       </div>
     </RoleProtectedRoute>
   )

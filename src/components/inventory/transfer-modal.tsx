@@ -59,6 +59,10 @@ interface TransferModalProps {
   onSave: () => void
   stores: Store[]
   fromStoreId?: string
+  /** request: la tienda destino solicita; send: el origen envía (comportamiento anterior) */
+  mode?: 'request' | 'send'
+  /** En modo request, tienda que solicita (destino fijo) */
+  requestingStoreId?: string
 }
 
 interface TransferItemForm {
@@ -79,8 +83,17 @@ function newTransferRowId(): string {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: TransferModalProps) {
+export function TransferModal({
+  isOpen,
+  onClose,
+  onSave,
+  stores,
+  fromStoreId,
+  mode = 'send',
+  requestingStoreId,
+}: TransferModalProps) {
   const { user } = useAuth()
+  const isRequest = mode === 'request'
   /** Tienda desde la que sale el stock (admin puede elegir cualquier tienda activa). */
   const [originStoreId, setOriginStoreId] = useState<string>(fromStoreId || MAIN_STORE_ID)
   const [toStoreId, setToStoreId] = useState<string>('')
@@ -118,7 +131,7 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
     setOriginStoreId(defaultOrigin)
     setItems([])
     setCollapsedRowIds(new Set())
-    setToStoreId('')
+    setToStoreId(isRequest && requestingStoreId ? requestingStoreId : '')
     setDescription('')
     setGlobalProductSearch('')
     setStockAlerts({})
@@ -127,7 +140,7 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
     setShowStoreError(false)
     setTransferAmount('')
     setPaymentError('')
-  }, [isOpen, fromStoreId])
+  }, [isOpen, fromStoreId, isRequest, requestingStoreId])
 
   useEffect(() => {
     if (!isOpen || !originStoreId) return
@@ -317,9 +330,9 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
       }
     }
 
-    // Validar método de pago
+    // Validar método de pago (solo en envío directo; en solicitud se cobra al aprobar)
     const total = calculateTotal()
-    if (paymentMethod === 'mixed') {
+    if (!isRequest && paymentMethod === 'mixed') {
       const cashValue = parseFloat(cashAmount.replace(/[^\d.]/g, '')) || 0
       const transferValue = parseFloat(transferAmount.replace(/[^\d.]/g, '')) || 0
       const totalMixed = cashValue + transferValue
@@ -367,41 +380,51 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
       }))
 
       // Preparar información de pago
-      const total = calculateTotal()
+      const paymentTotal = calculateTotal()
       const paymentInfo = {
         method: paymentMethod as 'cash' | 'transfer' | 'mixed',
-        cashAmount: paymentMethod === 'mixed' ? (parseFloat(cashAmount.replace(/[^\d.]/g, '')) || 0) : (paymentMethod === 'cash' ? total : 0),
-        transferAmount: paymentMethod === 'mixed' ? (parseFloat(transferAmount.replace(/[^\d.]/g, '')) || 0) : (paymentMethod === 'transfer' ? total : 0)
+        cashAmount: paymentMethod === 'mixed' ? (parseFloat(cashAmount.replace(/[^\d.]/g, '')) || 0) : (paymentMethod === 'cash' ? paymentTotal : 0),
+        transferAmount: paymentMethod === 'mixed' ? (parseFloat(transferAmount.replace(/[^\d.]/g, '')) || 0) : (paymentMethod === 'transfer' ? paymentTotal : 0)
       }
 
-      console.log('[TRANSFER MODAL] Creating transfer with payment info:', {
-        paymentInfo,
-        total,
-        paymentMethod
-      })
+      const destId = isRequest ? (requestingStoreId || toStoreId) : toStoreId
+      if (!destId) {
+        setShowStoreError(true)
+        toast.error('Debes seleccionar la tienda destino')
+        setIsSaving(false)
+        return
+      }
 
-      const transfer = await StoreStockTransferService.createTransfer(
-        originStoreId,
-        toStoreId,
-        transferItems,
-        description || undefined,
-        undefined,
-        user?.id,
-        user?.name,
-        paymentInfo
-      )
+      const transfer = isRequest
+        ? await StoreStockTransferService.createTransferRequest(
+            originStoreId,
+            destId,
+            transferItems,
+            description || undefined,
+            undefined,
+            user?.id,
+            user?.name
+          )
+        : await StoreStockTransferService.createTransfer(
+            originStoreId,
+            destId,
+            transferItems,
+            description || undefined,
+            undefined,
+            user?.id,
+            user?.name,
+            paymentInfo
+          )
 
       if (transfer) {
-        console.log('[TRANSFER MODAL] Transfer created successfully:', {
-          transferId: transfer.id,
-          fromStore: transfer.fromStoreName,
-          toStore: transfer.toStoreName,
-          status: transfer.status
-        })
-        toast.success('Transferencia creada exitosamente')
+        toast.success(
+          isRequest
+            ? 'Solicitud enviada. La tienda origen debe aprobar cada referencia.'
+            : 'Transferencia creada exitosamente'
+        )
         setItems([])
         setCollapsedRowIds(new Set())
-        setToStoreId('')
+        setToStoreId(isRequest && requestingStoreId ? requestingStoreId : '')
         setDescription('')
         setStockAlerts({})
         setPaymentMethod('transfer')
@@ -415,10 +438,14 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
           onSave() // Esto debería recargar las transferencias
         }, 100)
       } else {
-        toast.error('Error al crear la transferencia. Verifica que haya stock disponible.')
+        toast.error(
+          isRequest
+            ? 'Error al crear la solicitud. Verifica stock disponible en la tienda origen.'
+            : 'Error al crear la transferencia. Verifica que haya stock disponible.'
+        )
       }
     } catch (error) {
-      toast.error('Error al crear la transferencia')
+      toast.error(isRequest ? 'Error al crear la solicitud' : 'Error al crear la transferencia')
       console.error('Error creating transfer:', error)
     } finally {
       setIsSaving(false)
@@ -477,7 +504,9 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
 
   if (!isOpen) return null
 
-  const originStores = stores.filter(s => s.isActive)
+  const originStores = stores.filter(
+    (s) => s.isActive && (!isRequest || s.id !== (requestingStoreId || toStoreId))
+  )
   const destinationStores = stores.filter(s => s.id !== originStoreId && s.isActive)
 
   const modal = (
@@ -494,7 +523,7 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
           <div className="flex min-w-0 items-center gap-2.5">
             <ArrowRightLeft className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
             <h2 id="transfer-modal-title" className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              Nueva Transferencia
+              {isRequest ? 'Solicitar traslado' : 'Nueva Transferencia'}
             </h2>
           </div>
           <Button
@@ -544,6 +573,15 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
                 <Label className="mb-2 block text-zinc-700 dark:text-zinc-300">
                   Tienda destino <span className="text-red-500">*</span>
                 </Label>
+                {isRequest ? (
+                  <Input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={stores.find((s) => s.id === (requestingStoreId || toStoreId))?.name || 'Tu tienda'}
+                    className={cn(inputClass, 'h-10 cursor-not-allowed bg-zinc-100 dark:bg-zinc-900')}
+                  />
+                ) : (
                 <Select value={toStoreId} onValueChange={(value) => { setToStoreId(value); setShowStoreError(false); }}>
                   <SelectTrigger className={cn('w-full border', selectTriggerClass)}>
                     <SelectValue placeholder="Seleccionar tienda destino" />
@@ -556,7 +594,8 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
                     ))}
                   </SelectContent>
                 </Select>
-                {destinationStores.length === 0 && (
+                )}
+                {!isRequest && destinationStores.length === 0 && (
                   <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                     {stores.filter(s => s.isActive).length <= 1
                       ? 'Para enviar a otra sede necesitas al menos dos tiendas activas. La tienda desde la que envías no puede ser destino.'
@@ -1046,8 +1085,8 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
                   </div>
               </div>
 
-            {/* Método de Pago */}
-            {items.length > 0 && calculateTotal() > 0 && (
+            {/* Método de Pago (solo envío directo; en solicitud se define al aprobar) */}
+            {!isRequest && items.length > 0 && calculateTotal() > 0 && (
               <div className={cn('p-4', panelInner, 'dark:!bg-transparent dark:p-0')}>
                 <div className="mb-3 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
@@ -1197,15 +1236,15 @@ export function TransferModal({ isOpen, onClose, onSave, stores, fromStoreId }: 
               disabled={isSaving}
               className="dark:border-brand-600 dark:bg-brand-600 dark:text-white dark:hover:bg-brand-500"
             >
-              {isSaving ? (
+                  {isSaving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-b-zinc-800 dark:border-zinc-600 dark:border-b-zinc-100" />
-                  Creando...
+                  {isRequest ? 'Enviando…' : 'Creando...'}
                 </span>
               ) : (
                 <>
                   <ArrowRightLeft className="h-4 w-4" strokeWidth={1.5} />
-                  Crear Transferencia
+                  {isRequest ? 'Enviar solicitud' : 'Crear Transferencia'}
                 </>
               )}
             </Button>

@@ -71,6 +71,17 @@ export interface StockTransfer {
 }
 
 // Item individual de una transferencia
+export type TransferLineApprovalStatus = 'pending' | 'approved' | 'rejected'
+
+export type StoreStockTransferStatus =
+  | 'requested'
+  | 'pending'
+  | 'in_transit'
+  | 'received'
+  | 'partially_received'
+  | 'cancelled'
+  | 'rejected'
+
 export interface TransferItem {
   id: string
   transferId: string
@@ -82,6 +93,12 @@ export interface TransferItem {
   fromLocation?: 'warehouse' | 'store' // Ubicación de origen (bodega o local)
   unitPrice?: number // Precio unitario de transferencia (se convierte en cost para la microtienda)
   notes?: string // Nota específica del item (para recepciones)
+  /** Decisión de la tienda origen sobre esta referencia */
+  approvalStatus?: TransferLineApprovalStatus
+  approvedBy?: string
+  approvedByName?: string
+  approvedAt?: string
+  approvalNotes?: string
   createdAt: string
   updatedAt: string
 }
@@ -94,7 +111,7 @@ export interface StoreStockTransfer {
   fromStoreName?: string
   toStoreId: string
   toStoreName?: string
-  status: 'pending' | 'in_transit' | 'received' | 'partially_received' | 'cancelled'
+  status: StoreStockTransferStatus
   description?: string // Descripción general de la transferencia
   notes?: string
   createdBy?: string

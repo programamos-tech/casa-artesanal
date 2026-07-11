@@ -27,8 +27,8 @@ export interface TransfersTableProps {
   transfers: StoreStockTransfer[]
   transferSales: Map<string, Sale>
   loadingSalesForList: boolean
-  filter: 'all' | 'pending' | 'cancelled' | 'received'
-  onFilterChange: (f: 'all' | 'pending' | 'cancelled' | 'received') => void
+  filter: 'all' | 'pending' | 'cancelled' | 'received' | 'requested'
+  onFilterChange: (f: 'all' | 'pending' | 'cancelled' | 'received' | 'requested') => void
   onRefresh: () => void
   onCreate?: () => void
   canManageAllStores: boolean
@@ -43,6 +43,8 @@ export interface TransfersTableProps {
 
 function transferStatusBadge(status: string) {
   switch (status) {
+    case 'requested':
+      return 'border-violet-500/25 bg-violet-500/[0.08] text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/40 dark:text-violet-200'
     case 'pending':
     case 'in_transit':
       return 'border-amber-500/25 bg-amber-500/[0.08] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200'
@@ -51,6 +53,7 @@ function transferStatusBadge(status: string) {
     case 'partially_received':
       return 'border-orange-500/25 bg-orange-500/[0.08] text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200'
     case 'cancelled':
+    case 'rejected':
       return 'border-rose-500/30 bg-rose-500/[0.08] text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-200'
     default:
       return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300'
@@ -59,8 +62,10 @@ function transferStatusBadge(status: string) {
 
 function transferStatusLabel(status: string) {
   switch (status) {
+    case 'requested':
+      return 'Por aprobar'
     case 'pending':
-      return 'Pendiente'
+      return 'Listo para recibir'
     case 'in_transit':
       return 'En tránsito'
     case 'received':
@@ -69,6 +74,8 @@ function transferStatusLabel(status: string) {
       return 'Parcial'
     case 'cancelled':
       return 'Cancelada'
+    case 'rejected':
+      return 'Rechazada'
     default:
       return status
   }
@@ -243,7 +250,8 @@ export function TransfersTable({
               aria-label="Filtrar por estado"
             >
               <option value="all">Todos los estados</option>
-              <option value="pending">Pendientes</option>
+              <option value="requested">Por aprobar</option>
+              <option value="pending">Listos para recibir</option>
               <option value="received">Recibidas</option>
               <option value="cancelled">Canceladas</option>
             </select>

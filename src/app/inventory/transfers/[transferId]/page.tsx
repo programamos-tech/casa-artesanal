@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { TransferDetailPageView } from '@/components/inventory/transfer-detail-page-view'
+import { ApproveTransferPanel } from '@/components/inventory/approve-transfer-panel'
 import { CancelTransferModal } from '@/components/ui/cancel-transfer-modal'
 import { StoreStockTransfer, Sale } from '@/types'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
 import { useAuth } from '@/contexts/auth-context'
-import { isMainStoreUser } from '@/lib/store-helper'
+import { getCurrentUserStoreId, isMainStoreUser, canAccessAllStores } from '@/lib/store-helper'
 import { PDFService } from '@/lib/pdf-service'
 import { toast } from 'sonner'
 
@@ -27,8 +28,10 @@ export default function TransferDetailPage() {
   const [cancelling, setCancelling] = useState(false)
 
   const isMainStore = isMainStoreUser(user)
-  const accessModule = isMainStore ? 'transfers' : 'receptions'
-  const backHref = isMainStore ? '/inventory/transfers' : '/inventory/receptions'
+  const canManageAll = canAccessAllStores(user)
+  const currentStoreId = getCurrentUserStoreId()
+  const accessModule = isMainStore || canManageAll ? 'transfers' : 'receptions'
+  const backHref = isMainStore || canManageAll ? '/inventory/transfers' : '/inventory/receptions'
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -110,10 +113,21 @@ export default function TransferDetailPage() {
     }
   }
 
+  const canApprove =
+    !!transfer &&
+    transfer.status === 'requested' &&
+    !!user?.id &&
+    (canManageAll || isMainStore || currentStoreId === transfer.fromStoreId)
+
   const canCancel =
     !!transfer &&
-    (transfer.status === 'pending' || transfer.status === 'in_transit') &&
-    isMainStore
+    (transfer.status === 'pending' ||
+      transfer.status === 'in_transit' ||
+      transfer.status === 'requested') &&
+    (isMainStore ||
+      canManageAll ||
+      currentStoreId === transfer.fromStoreId ||
+      currentStoreId === transfer.toStoreId)
 
   if (loading) {
     return (
@@ -157,6 +171,17 @@ export default function TransferDetailPage() {
           onDownloadPdf={handleDownloadPdf}
           onRequestCancel={canCancel ? () => setCancelOpen(true) : undefined}
           canCancel={canCancel}
+          approvalPanel={
+            canApprove && user?.id ? (
+              <ApproveTransferPanel
+                transfer={transfer}
+                currentUserId={user.id}
+                currentUserName={user.name}
+                formatCurrency={formatCurrency}
+                onApproved={load}
+              />
+            ) : undefined
+          }
         />
         <CancelTransferModal
           isOpen={cancelOpen}

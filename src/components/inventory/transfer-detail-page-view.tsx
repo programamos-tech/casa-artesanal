@@ -41,6 +41,8 @@ function Field({ label, children, className }: { label: string; children: ReactN
 /** Misma familia visual que el badge de estado en detalle de factura */
 function transferStatusBadgeClass(status: string) {
   switch (status) {
+    case 'requested':
+      return 'border-violet-500/25 bg-violet-500/[0.06] text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/40 dark:text-violet-300/90'
     case 'pending':
     case 'in_transit':
       return 'border-amber-500/25 bg-amber-500/[0.06] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300/90'
@@ -49,6 +51,7 @@ function transferStatusBadgeClass(status: string) {
     case 'partially_received':
       return 'border-orange-500/25 bg-orange-500/[0.08] text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200'
     case 'cancelled':
+    case 'rejected':
       return 'border-rose-500/30 bg-rose-500/[0.06] text-rose-900 dark:border-zinc-600 dark:bg-rose-950/35 dark:text-rose-200/90'
     default:
       return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300'
@@ -57,8 +60,10 @@ function transferStatusBadgeClass(status: string) {
 
 function statusLabel(status: string) {
   switch (status) {
+    case 'requested':
+      return 'Por aprobar'
     case 'pending':
-      return 'Pendiente'
+      return 'Listo para recibir'
     case 'in_transit':
       return 'En tránsito'
     case 'received':
@@ -67,6 +72,8 @@ function statusLabel(status: string) {
       return 'Parcialmente recibida'
     case 'cancelled':
       return 'Cancelada'
+    case 'rejected':
+      return 'Rechazada'
     default:
       return status
   }
@@ -88,6 +95,7 @@ export interface TransferDetailPageViewProps {
   onDownloadPdf: () => void
   onRequestCancel?: () => void
   canCancel: boolean
+  approvalPanel?: ReactNode
 }
 
 export function TransferDetailPageView({
@@ -99,6 +107,7 @@ export function TransferDetailPageView({
   onDownloadPdf,
   onRequestCancel,
   canCancel,
+  approvalPanel,
 }: TransferDetailPageViewProps) {
   const isReceived = transfer.status === 'received' || transfer.status === 'partially_received'
   const totalQuantity =
@@ -281,6 +290,8 @@ export function TransferDetailPageView({
                 </div>
               </section>
             </div>
+
+            {approvalPanel}
 
             {transfer.fromStoreId === MAIN_STORE_ID && (
               <div className={panel}>
