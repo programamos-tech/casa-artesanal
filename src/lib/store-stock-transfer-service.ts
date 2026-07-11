@@ -686,6 +686,24 @@ export class StoreStockTransferService {
       if (!transfer.items?.length) return { success: false, error: 'La solicitud no tiene productos' }
       if (!decisions?.length) return { success: false, error: 'Debes decidir cada referencia' }
 
+      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+      const originStoreId = transfer.fromStoreId
+      const isFromMainStore = originStoreId === MAIN_STORE_ID || !originStoreId
+
+      // Solo la tienda origen puede aprobar (no el destino ni otra sede)
+      const { data: approverRow } = await supabaseAdmin
+        .from('users')
+        .select('store_id')
+        .eq('id', approvedBy)
+        .maybeSingle()
+      const approverStoreId = approverRow?.store_id || MAIN_STORE_ID
+      if (approverStoreId !== originStoreId) {
+        return {
+          success: false,
+          error: 'Solo la tienda de origen puede aprobar esta solicitud',
+        }
+      }
+
       const decisionById = new Map(decisions.map((d) => [d.itemId, d]))
       for (const item of transfer.items) {
         if (!decisionById.has(item.id)) {
@@ -693,9 +711,6 @@ export class StoreStockTransferService {
         }
       }
 
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      const originStoreId = transfer.fromStoreId
-      const isFromMainStore = originStoreId === MAIN_STORE_ID || !originStoreId
       const now = new Date().toISOString()
       const actorName = approvedByName || 'Usuario'
 
@@ -974,17 +989,12 @@ export class StoreStockTransferService {
   ): Promise<{ transfers: StoreStockTransfer[]; total: number; hasMore: boolean }> {
     try {
       const offset = (page - 1) * limit
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      const isMainStore = fromStoreId === MAIN_STORE_ID
 
       let countQuery = supabaseAdmin
         .from('stock_transfers')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'requested')
-
-      if (!isMainStore) {
-        countQuery = countQuery.eq('from_store_id', fromStoreId)
-      }
+        .eq('from_store_id', fromStoreId)
 
       const { count } = await countQuery
 
@@ -992,12 +1002,9 @@ export class StoreStockTransferService {
         .from('stock_transfers')
         .select('*')
         .eq('status', 'requested')
+        .eq('from_store_id', fromStoreId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
-
-      if (!isMainStore) {
-        query = query.eq('from_store_id', fromStoreId)
-      }
 
       const { data: transfers, error } = await query
       if (error || !transfers?.length) {

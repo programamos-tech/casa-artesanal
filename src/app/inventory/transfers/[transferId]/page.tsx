@@ -113,11 +113,14 @@ export default function TransferDetailPage() {
     }
   }
 
+  /** Solo la tienda origen aprueba (ej. 2 Piso). Destino (Parque) solo solicita/recibe. */
+  const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+  const effectiveStoreId = currentStoreId || MAIN_STORE_ID
   const canApprove =
     !!transfer &&
     transfer.status === 'requested' &&
     !!user?.id &&
-    (canManageAll || isMainStore || currentStoreId === transfer.fromStoreId)
+    effectiveStoreId === transfer.fromStoreId
 
   const canCancel =
     !!transfer &&
