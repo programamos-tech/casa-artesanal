@@ -626,7 +626,7 @@ export function ProductTable({
                           )}
                           <th className={thClass}>Estado stock</th>
                           <th className={thClass}>Catálogo</th>
-                          <th className={cn(thClass, 'w-[11rem] px-2')} />
+                          <th className={cn(thClass, 'w-[11rem] px-2 text-right')}>Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
