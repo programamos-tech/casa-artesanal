@@ -242,12 +242,18 @@ export function ClientDetailPageView({
   const displayType = editing && draft ? draft.type : client.type
   const TypeIcon = displayType === 'consumidor_final' ? User : Building2
   const displayName = editing && draft ? draft.name : client.name
-  const availableCredit = Math.max(0, client.creditLimit - client.currentDebt)
-  const usagePct =
-    client.creditLimit > 0 ? Math.min(100, Math.round((client.currentDebt / client.creditLimit) * 100)) : 0
 
-  const totalPendingCredits = credits.reduce((sum, c) => sum + (c.pendingAmount > 0 ? c.pendingAmount : 0), 0)
+  // Saldo real desde créditos abiertos (clients.current_debt no se actualiza al vender/pagar).
+  const totalPendingCredits = credits.reduce(
+    (sum, c) => sum + (c.pendingAmount > 0 && c.status !== 'cancelled' ? c.pendingAmount : 0),
+    0
+  )
   const activeCreditsCount = credits.filter((c) => c.pendingAmount > 0 && c.status !== 'cancelled').length
+  const availableCredit = Math.max(0, client.creditLimit - totalPendingCredits)
+  const usagePct =
+    client.creditLimit > 0
+      ? Math.min(100, Math.round((totalPendingCredits / client.creditLimit) * 100))
+      : 0
 
   const copyId = async () => {
     try {
@@ -435,8 +441,18 @@ export function ClientDetailPageView({
       <div className={cn('min-w-0 space-y-4 py-6 md:space-y-5', pageContainerClass)}>
         <section className="grid gap-3 sm:grid-cols-3">
           <StatCard icon={Wallet} label="Cupo de crédito" value={formatCurrency(client.creditLimit)} accent="limit" />
-          <StatCard icon={TrendingDown} label="Saldo adeudado" value={formatCurrency(client.currentDebt)} accent="debt" />
-          <StatCard icon={Receipt} label="Cupo disponible" value={formatCurrency(availableCredit)} accent="available" />
+          <StatCard
+            icon={TrendingDown}
+            label="Saldo adeudado"
+            value={creditsLoading ? '…' : formatCurrency(totalPendingCredits)}
+            accent="debt"
+          />
+          <StatCard
+            icon={Receipt}
+            label="Cupo disponible"
+            value={creditsLoading ? '…' : formatCurrency(availableCredit)}
+            accent="available"
+          />
         </section>
 
         {client.creditLimit > 0 && (
