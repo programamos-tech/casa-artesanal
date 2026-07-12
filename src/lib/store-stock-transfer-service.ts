@@ -429,6 +429,12 @@ export class StoreStockTransferService {
                 // No fallar la transferencia si hay error al crear la factura, pero loguear
                 // Continuar con la transferencia aunque falle la factura
               } else if (sale) {
+                // Vincular factura al traslado (para iconos / anulación)
+                await supabaseAdmin
+                  .from('stock_transfers')
+                  .update({ sale_id: sale.id, updated_at: new Date().toISOString() })
+                  .eq('id', transfer.id)
+
                 // Crear los items de la venta
                 const saleItemsToInsert = saleItems.map(item => ({
                   sale_id: sale.id,
@@ -922,6 +928,11 @@ export class StoreStockTransferService {
               .single()
 
             if (!saleError && sale) {
+              await supabaseAdmin
+                .from('stock_transfers')
+                .update({ sale_id: sale.id, updated_at: now })
+                .eq('id', transferId)
+
               await supabaseAdmin.from('sale_items').insert(
                 saleItems.map((item) => ({
                   sale_id: sale.id,
@@ -2248,59 +2259,107 @@ export class StoreStockTransferService {
   // Obtener la transferencia asociada a una venta (método inverso)
   static async getTransferBySaleId(saleId: string): Promise<StoreStockTransfer | null> {
     try {
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      
-      // Obtener la venta para saber el client_id y la fecha
-      const { data: sale, error: saleError } = await supabaseAdmin
-        .from('sales')
-        .select('id, client_id, store_id, created_at')
-        .eq('id', saleId)
-        .single()
-      
-      if (saleError || !sale) {
-        return null
-      }
-
-      const saleOriginStoreId = sale.store_id || MAIN_STORE_ID
-      
-      // Obtener el cliente para saber su store_id (la tienda destino)
-      const { data: client, error: clientError } = await supabaseAdmin
-        .from('clients')
-        .select('id, store_id, name')
-        .eq('id', sale.client_id)
-        .single()
-      
-      if (clientError || !client || !client.store_id) {
-        return null
-      }
-      
-      const toStoreId = client.store_id
-      
-      // Buscar transferencias que tengan el toStoreId y fecha de creación cercana (dentro de 2 horas)
-      const saleDate = new Date(sale.created_at)
-      const startDate = new Date(saleDate.getTime() - 2 * 60 * 60 * 1000) // 2 horas antes
-      const endDate = new Date(saleDate.getTime() + 2 * 60 * 60 * 1000) // 2 horas después
-      
-      const { data: transfers, error } = await supabaseAdmin
-        .from('stock_transfers')
-        .select('*')
-        .eq('to_store_id', toStoreId)
-        .eq('from_store_id', saleOriginStoreId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-      
-      if (error || !transfers || transfers.length === 0) {
-        return null
-      }
-      
-      // Obtener la transferencia completa con items
-      return await this.getTransferById(transfers[0].id)
+      const map = await this.getTransfersBySaleIds([saleId])
+      return map[saleId] || null
     } catch (error) {
       console.error('[TRANSFER BY SALE] Error in getTransferBySaleId:', error)
       return null
     }
+  }
+
+  /**
+   * Mapa saleId → traslado. Primero por sale_id; si falta, heurística por tiendas (sin confundir
+   * con método de pago "transferencia").
+   */
+  static async getTransfersBySaleIds(
+    saleIds: string[]
+  ): Promise<Record<string, StoreStockTransfer>> {
+    const result: Record<string, StoreStockTransfer> = {}
+    const uniqueIds = [...new Set(saleIds.filter(Boolean))]
+    if (uniqueIds.length === 0) return result
+
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
+    try {
+      const { data: bySaleId } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('id, sale_id')
+        .in('sale_id', uniqueIds)
+
+      const linked = new Map<string, string>()
+      for (const row of bySaleId || []) {
+        if (row.sale_id) linked.set(row.sale_id, row.id)
+      }
+
+      const missing = uniqueIds.filter((id) => !linked.has(id))
+
+      if (missing.length > 0) {
+        const { data: sales } = await supabaseAdmin
+          .from('sales')
+          .select('id, client_id, store_id, created_at, total')
+          .in('id', missing)
+
+        const clientIds = [...new Set((sales || []).map((s) => s.client_id).filter(Boolean))]
+        const { data: clients } =
+          clientIds.length > 0
+            ? await supabaseAdmin.from('clients').select('id, store_id, name').in('id', clientIds)
+            : { data: [] as { id: string; store_id: string | null; name: string }[] }
+
+        const clientById = new Map((clients || []).map((c) => [c.id, c]))
+
+        for (const sale of sales || []) {
+          const client = clientById.get(sale.client_id)
+          if (!client?.store_id) continue
+
+          const fromStoreId = sale.store_id || MAIN_STORE_ID
+          const toStoreId = client.store_id
+          // Cliente-tienda distinto al origen de la venta ⇒ candidato a traslado
+          if (toStoreId === fromStoreId) continue
+
+          const saleDate = new Date(sale.created_at).getTime()
+          const { data: transfers } = await supabaseAdmin
+            .from('stock_transfers')
+            .select('id, created_at, updated_at, sale_id, quantity')
+            .eq('from_store_id', fromStoreId)
+            .eq('to_store_id', toStoreId)
+            .is('sale_id', null)
+            .order('updated_at', { ascending: false })
+            .limit(8)
+
+          if (!transfers?.length) continue
+
+          let best: { id: string; score: number } | null = null
+          for (const t of transfers) {
+            const tTime = new Date(t.updated_at || t.created_at).getTime()
+            const delta = Math.abs(tTime - saleDate)
+            // Hasta 14 días: solicitudes pueden aprobarse mucho después
+            if (delta > 14 * 24 * 60 * 60 * 1000) continue
+            if (!best || delta < best.score) best = { id: t.id, score: delta }
+          }
+
+          if (best) {
+            linked.set(sale.id, best.id)
+            // Backfill silencioso
+            void supabaseAdmin
+              .from('stock_transfers')
+              .update({ sale_id: sale.id })
+              .eq('id', best.id)
+              .is('sale_id', null)
+          }
+        }
+      }
+
+      await Promise.all(
+        [...linked.entries()].map(async ([saleId, transferId]) => {
+          const transfer = await this.getTransferById(transferId)
+          if (transfer) result[saleId] = transfer
+        })
+      )
+    } catch (error) {
+      console.error('[TRANSFER BY SALE] Error in getTransfersBySaleIds:', error)
+    }
+
+    return result
   }
 
   // Mapear datos de transferencia
@@ -2605,6 +2664,7 @@ export class StoreStockTransferService {
       receivedBy: data.received_by || undefined,
       receivedByName: data.received_by_name || undefined,
       receivedAt: data.received_at || undefined,
+      saleId: data.sale_id || undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       items: transferItems.length > 0 ? transferItems : undefined,

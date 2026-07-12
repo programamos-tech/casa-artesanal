@@ -113,37 +113,23 @@ export function SalesTable({
     }
   }, [sales])
 
-  // Cargar transferencias para ventas de la tienda principal que puedan ser de transferencia entre tiendas
+  // Cargar traslados asociados (por sale_id / heurística). No confundir con método "transferencia".
   useEffect(() => {
+    let cancelled = false
     const loadTransfers = async () => {
-      // Solo buscar transferencias para ventas de la tienda principal
-      // La transferencia se identifica por tener un registro asociado, no por método de pago
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      const mainStoreSales = sales.filter(sale => sale.storeId === MAIN_STORE_ID)
-      const transfersToLoad: Record<string, StoreStockTransfer> = {}
-      
-      await Promise.all(
-        mainStoreSales.map(async (sale) => {
-          if (!transfers[sale.id]) {
-            try {
-              const transfer = await StoreStockTransferService.getTransferBySaleId(sale.id)
-              if (transfer) {
-                transfersToLoad[sale.id] = transfer
-              }
-            } catch (error) {
-              // Error silencioso
-            }
-          }
-        })
-      )
-      
-      if (Object.keys(transfersToLoad).length > 0) {
-        setTransfers(prev => ({ ...prev, ...transfersToLoad }))
+      if (sales.length === 0) return
+      try {
+        const map = await StoreStockTransferService.getTransfersBySaleIds(sales.map((s) => s.id))
+        if (!cancelled && Object.keys(map).length > 0) {
+          setTransfers((prev) => ({ ...prev, ...map }))
+        }
+      } catch {
+        // silencioso
       }
     }
-    
-    if (sales.length > 0) {
-      loadTransfers()
+    void loadTransfers()
+    return () => {
+      cancelled = true
     }
   }, [sales])
 
@@ -196,7 +182,7 @@ export function SalesTable({
     credit: {
       label: 'Venta a crédito',
       icon: CreditCard,
-      className: 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
+      className: 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
     },
     normal: {
       label: 'Venta normal',
@@ -205,6 +191,8 @@ export function SalesTable({
         'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
     },
   }
+
+  const saleKindLegendOrder: SaleKind[] = ['normal', 'credit', 'transfer']
 
   const SaleKindIcon = ({ sale }: { sale: Sale }) => {
     const kind = getSaleKind(sale)
@@ -498,7 +486,7 @@ export function SalesTable({
                     : 'Administra tus ventas y genera facturas'}
               </p>
               <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                {(Object.keys(saleKindMeta) as SaleKind[]).map((kind) => {
+                {saleKindLegendOrder.map((kind) => {
                   const meta = saleKindMeta[kind]
                   const Icon = meta.icon
                   return (

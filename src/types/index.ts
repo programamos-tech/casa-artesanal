@@ -119,6 +119,8 @@ export interface StoreStockTransfer {
   receivedBy?: string
   receivedByName?: string
   receivedAt?: string
+  /** Factura generada al aprobar/enviar el traslado (si aplica) */
+  saleId?: string
   createdAt: string
   updatedAt: string
   // Items de la transferencia (múltiples productos)
