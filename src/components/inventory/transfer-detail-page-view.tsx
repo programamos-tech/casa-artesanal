@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ArrowRightLeft,
   Calendar,
+  CheckCircle2,
   CreditCard,
   DollarSign,
   Download,
@@ -114,6 +115,33 @@ export function TransferDetailPageView({
     transfer.items && transfer.items.length > 0
       ? transfer.items.reduce((sum, item) => sum + item.quantity, 0)
       : transfer.quantity || 0
+
+  /** Quién aprobó en origen (guardado en las líneas al confirmar decisiones). */
+  const approvalInfo = (() => {
+    const items = transfer.items || []
+    const withDecision = items.filter(
+      (i) =>
+        i.approvedAt &&
+        (i.approvalStatus === 'approved' || i.approvalStatus === 'rejected') &&
+        (i.approvedByName || i.approvedBy)
+    )
+    if (withDecision.length === 0) return null
+    const approved = withDecision.filter((i) => i.approvalStatus === 'approved')
+    const source = approved[0] || withDecision[0]
+    const latestAt = withDecision.reduce((latest, i) => {
+      if (!i.approvedAt) return latest
+      if (!latest || new Date(i.approvedAt).getTime() > new Date(latest).getTime()) {
+        return i.approvedAt
+      }
+      return latest
+    }, source.approvedAt as string)
+    return {
+      name: source.approvedByName || 'Usuario',
+      at: latestAt,
+      approvedCount: approved.length,
+      rejectedCount: withDecision.filter((i) => i.approvalStatus === 'rejected').length,
+    }
+  })()
 
   const titleTrf = transfer.transferNumber || `#${transfer.id.slice(0, 8)}`
 
@@ -236,6 +264,20 @@ export function TransferDetailPageView({
                     <dd className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{formatDateTime(transfer.createdAt)}</dd>
                   </div>
                 </div>
+                {approvalInfo && (
+                  <div className="flex gap-3 px-4 py-3">
+                    <CheckCircle2 className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
+                    <div className="min-w-0 flex-1">
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Aprobado por</dt>
+                      <dd className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {approvalInfo.name}
+                      </dd>
+                      <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        {formatDateTime(approvalInfo.at)}
+                      </dd>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-3 px-4 py-3">
                   <StoreIcon className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
                   <div className="min-w-0 flex-1">
@@ -277,6 +319,22 @@ export function TransferDetailPageView({
                         <span className="inline-flex items-center gap-2">
                           <User className="h-4 w-4 text-zinc-400" strokeWidth={1.5} />
                           {transfer.createdByName}
+                        </span>
+                      </Field>
+                    )}
+                    {approvalInfo && (
+                      <Field label="Aprobado por">
+                        <span className="inline-flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+                            {approvalInfo.name}
+                          </span>
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                            {formatDateTime(approvalInfo.at)}
+                            {approvalInfo.rejectedCount > 0
+                              ? ` · ${approvalInfo.approvedCount} aprobadas, ${approvalInfo.rejectedCount} rechazadas`
+                              : ''}
+                          </span>
                         </span>
                       </Field>
                     )}
