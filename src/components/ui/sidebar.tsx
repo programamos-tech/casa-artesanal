@@ -146,7 +146,9 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
       const storeId = resolveUserStoreId(user.storeId)
 
       try {
-        const { approvals, receptions, approvalTotal, receptionTotal } = await loadTransferAlerts(storeId)
+        const { approvalTotal, receptionTotal } = await loadTransferAlerts(storeId, {
+          allStores: canAccessAllStores(user),
+        })
         if (!cancelled) {
           setPendingApprovalsCount(approvalTotal)
           setPendingReceptionsCount(receptionTotal)
@@ -162,13 +164,13 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     void loadPendingCounts()
     const interval = setInterval(() => {
       void loadPendingCounts()
-    }, 30000)
+    }, 15000)
 
     return () => {
       cancelled = true
       clearInterval(interval)
     }
-  }, [user?.id, user?.storeId, pathname])
+  }, [user?.id, user?.storeId, user?.role, pathname])
 
   // Cerrar menú cuando se hace click fuera del sidebar
   useEffect(() => {

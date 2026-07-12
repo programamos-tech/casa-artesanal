@@ -1052,6 +1052,115 @@ export class StoreStockTransferService {
     }
   }
 
+  /** Todas las solicitudes por aprobar (admin / todas las tiendas) */
+  static async getTransfersAwaitingApprovalAll(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ transfers: StoreStockTransfer[]; total: number; hasMore: boolean }> {
+    try {
+      const offset = (page - 1) * limit
+      const { count } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'requested')
+
+      const { data: transfers, error } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('*')
+        .eq('status', 'requested')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error || !transfers?.length) {
+        return { transfers: [], total: count || 0, hasMore: false }
+      }
+
+      const mapped = await Promise.all(
+        transfers.map(async (transfer: any) => {
+          const [fromStoreResult, toStoreResult] = await Promise.all([
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.from_store_id).single(),
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.to_store_id).single(),
+          ])
+          const { data: items } = await supabaseAdmin
+            .from('transfer_items')
+            .select('*')
+            .eq('transfer_id', transfer.id)
+            .order('created_at', { ascending: true })
+          return this.mapTransfer(
+            {
+              ...transfer,
+              from_store: fromStoreResult.data || { id: transfer.from_store_id, name: null },
+              to_store: toStoreResult.data || { id: transfer.to_store_id, name: null },
+            },
+            items || []
+          )
+        })
+      )
+
+      const total = count || 0
+      return { transfers: mapped, total, hasMore: offset + transfers.length < total }
+    } catch (error) {
+      console.error('Error in getTransfersAwaitingApprovalAll:', error)
+      return { transfers: [], total: 0, hasMore: false }
+    }
+  }
+
+  /** Solicitudes que esta tienda pidió y aún esperan aprobación en origen */
+  static async getTransfersWaitingApproval(
+    toStoreId: string,
+    page: number = 1,
+    limit: number = 12
+  ): Promise<{ transfers: StoreStockTransfer[]; total: number; hasMore: boolean }> {
+    try {
+      const offset = (page - 1) * limit
+      const { count } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'requested')
+        .eq('to_store_id', toStoreId)
+
+      const { data: transfers, error } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('*')
+        .eq('status', 'requested')
+        .eq('to_store_id', toStoreId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error || !transfers?.length) {
+        return { transfers: [], total: count || 0, hasMore: false }
+      }
+
+      const mapped = await Promise.all(
+        transfers.map(async (transfer: any) => {
+          const [fromStoreResult, toStoreResult] = await Promise.all([
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.from_store_id).single(),
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.to_store_id).single(),
+          ])
+          const { data: items } = await supabaseAdmin
+            .from('transfer_items')
+            .select('*')
+            .eq('transfer_id', transfer.id)
+            .order('created_at', { ascending: true })
+          return this.mapTransfer(
+            {
+              ...transfer,
+              from_store: fromStoreResult.data || { id: transfer.from_store_id, name: null },
+              to_store: toStoreResult.data || { id: transfer.to_store_id, name: null },
+            },
+            items || []
+          )
+        })
+      )
+
+      const total = count || 0
+      return { transfers: mapped, total, hasMore: offset + transfers.length < total }
+    } catch (error) {
+      console.error('Error in getTransfersWaitingApproval:', error)
+      return { transfers: [], total: 0, hasMore: false }
+    }
+  }
+
   // Obtener transferencia por ID con sus items
   static async getTransferById(transferId: string): Promise<StoreStockTransfer | null> {
     try {
@@ -1226,6 +1335,69 @@ export class StoreStockTransferService {
       return { transfers: transfersWithItems, total, hasMore }
     } catch (error) {
       console.error('Error in getPendingTransfers:', error)
+      return { transfers: [], total: 0, hasMore: false }
+    }
+  }
+
+  /** Todas las recepciones pendientes (admin / todas las tiendas) */
+  static async getPendingTransfersAll(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ transfers: StoreStockTransfer[]; total: number; hasMore: boolean }> {
+    try {
+      const offset = (page - 1) * limit
+      const { count, error: countError } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['pending', 'in_transit'])
+
+      if (countError) {
+        console.error('Error counting pending transfers (all):', countError)
+        return { transfers: [], total: 0, hasMore: false }
+      }
+
+      const { data: transfers, error } = await supabaseAdmin
+        .from('stock_transfers')
+        .select('*')
+        .in('status', ['pending', 'in_transit'])
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) {
+        console.error('Error fetching pending transfers (all):', error)
+        return { transfers: [], total: count || 0, hasMore: false }
+      }
+
+      if (!transfers || transfers.length === 0) {
+        return { transfers: [], total: count || 0, hasMore: false }
+      }
+
+      const transfersWithItems = await Promise.all(
+        transfers.map(async (transfer: any) => {
+          const [fromStoreResult, toStoreResult] = await Promise.all([
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.from_store_id).single(),
+            supabaseAdmin.from('stores').select('id, name').eq('id', transfer.to_store_id).single(),
+          ])
+          const { data: items } = await supabaseAdmin
+            .from('transfer_items')
+            .select('*')
+            .eq('transfer_id', transfer.id)
+            .order('created_at', { ascending: true })
+          return this.mapTransfer(
+            {
+              ...transfer,
+              from_store: fromStoreResult.data || { id: transfer.from_store_id, name: null },
+              to_store: toStoreResult.data || { id: transfer.to_store_id, name: null },
+            },
+            items || []
+          )
+        })
+      )
+
+      const total = count || 0
+      return { transfers: transfersWithItems, total, hasMore: offset + transfers.length < total }
+    } catch (error) {
+      console.error('Error in getPendingTransfersAll:', error)
       return { transfers: [], total: 0, hasMore: false }
     }
   }

@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Activity,
   Bell,
   ChevronDown,
   ArrowRightLeft,
   CircleHelp,
+  Clock,
   LogOut,
   PackageCheck,
   Plus,
@@ -28,6 +29,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { GlobalSearchService, type GlobalSearchHit } from '@/lib/global-search-service'
 import { GlobalSearchDropdown } from '@/components/layout/global-search-dropdown'
 import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
+import { canAccessAllStores } from '@/lib/store-helper'
 import {
   loadTransferAlerts,
   resolveUserStoreId,
@@ -72,6 +74,7 @@ function TopNavThemeButton({ className }: { className?: string }) {
 
 export function AppTopNav() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, logout } = useAuth()
   const { canView, canCreate } = usePermissions()
   const [query, setQuery] = useState('')
@@ -83,54 +86,66 @@ export function AppTopNav() {
   const [bellOpen, setBellOpen] = useState(false)
   const [approvals, setApprovals] = useState<TransferAlertItem[]>([])
   const [receptions, setReceptions] = useState<TransferAlertItem[]>([])
-  const [approvalTotal, setApprovalTotal] = useState(0)
-  const [receptionTotal, setReceptionTotal] = useState(0)
+  const [waiting, setWaiting] = useState<TransferAlertItem[]>([])
+  const [alertCount, setAlertCount] = useState(0)
   const searchRef = useRef<HTMLDivElement>(null)
   const plusRef = useRef<HTMLDivElement>(null)
   const userRef = useRef<HTMLDivElement>(null)
   const bellRef = useRef<HTMLDivElement>(null)
   const searchSeqRef = useRef(0)
 
-  const canSeeTransferAlerts = canView('receptions') || canView('transfers')
-  const alertCount = approvalTotal + receptionTotal
+  // Campana siempre activa para usuarios logueados: se apaga solo cuando no hay
+  // traslados por aprobar ni por recibir.
+  const showBell = Boolean(user)
 
   useEffect(() => {
     let cancelled = false
     const loadPending = async () => {
-      if (!user || !canSeeTransferAlerts) {
+      if (!user) {
         if (!cancelled) {
           setApprovals([])
           setReceptions([])
-          setApprovalTotal(0)
-          setReceptionTotal(0)
+          setWaiting([])
+          setAlertCount(0)
         }
         return
       }
       try {
         const storeId = resolveUserStoreId(user.storeId)
-        const data = await loadTransferAlerts(storeId)
+        const data = await loadTransferAlerts(storeId, {
+          allStores: canAccessAllStores(user),
+        })
         if (!cancelled) {
           setApprovals(data.approvals)
           setReceptions(data.receptions)
-          setApprovalTotal(data.approvalTotal)
-          setReceptionTotal(data.receptionTotal)
+          setWaiting(data.waiting)
+          // Contador de la campana: aprobar + recibir (hasta que estén cerrados).
+          // Si no hay acción propia pero hay solicitudes en espera, también avisa.
+          setAlertCount(
+            data.actionTotal > 0 ? data.actionTotal : data.waitingTotal
+          )
         }
       } catch {
         if (!cancelled) {
           setApprovals([])
           setReceptions([])
-          setApprovalTotal(0)
-          setReceptionTotal(0)
+          setWaiting([])
+          setAlertCount(0)
         }
       }
     }
     void loadPending()
-    const interval = setInterval(() => void loadPending(), 30000)
+    const interval = setInterval(() => void loadPending(), 15000)
+    const onFocus = () => void loadPending()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
     return () => {
       cancelled = true
       clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
     }
-  }, [user?.id, user?.storeId, canSeeTransferAlerts])
+  }, [user?.id, user?.storeId, user?.role, pathname])
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -322,35 +337,49 @@ export function AppTopNav() {
         <Link href="/profile" className={iconBtn} title="Perfil y ajustes">
           <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={1.75} />
         </Link>
-        {canSeeTransferAlerts ? (
-          <div ref={bellRef} className="relative shrink-0">
+        {showBell ? (
+          <div ref={bellRef} className="relative shrink-0 overflow-visible">
             <button
               type="button"
-              className={cn(iconBtn, 'relative')}
-              title="Notificaciones de traslados"
+              className={cn(
+                iconBtn,
+                'relative overflow-visible',
+                alertCount > 0 && 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
+              )}
+              title={
+                alertCount > 0
+                  ? `${alertCount} traslado${alertCount === 1 ? '' : 's'} pendiente${alertCount === 1 ? '' : 's'}`
+                  : 'Notificaciones de traslados'
+              }
               aria-label="Notificaciones de traslados"
               aria-expanded={bellOpen}
               onClick={() => setBellOpen((v) => !v)}
             >
-              <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              <Bell
+                className={cn('h-[18px] w-[18px]', alertCount > 0 && 'animate-pulse')}
+                strokeWidth={alertCount > 0 ? 2.25 : 1.75}
+              />
               {alertCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950">
-                  {alertCount > 99 ? '99+' : alertCount}
-                </span>
+                <>
+                  <span className="absolute -right-0.5 -top-0.5 h-[18px] w-[18px] animate-ping rounded-full bg-red-400/70" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 z-10 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950">
+                    {alertCount > 99 ? '99+' : alertCount}
+                  </span>
+                </>
               )}
             </button>
             {bellOpen && (
               <div className={cn(menuPanel, 'right-0 top-[calc(100%+8px)] w-[22rem] max-w-[calc(100vw-2rem)]')}>
                 <div className="border-b border-zinc-100 px-3.5 py-2.5 dark:border-zinc-800">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notificaciones</p>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Traslados pendientes</p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Solicitudes por aprobar y traslados listos para recibir
+                    La alerta sigue hasta que se aprueben y reciban
                   </p>
                 </div>
                 <div className="max-h-[22rem] overflow-y-auto py-1">
                   {alertCount === 0 ? (
                     <p className="px-3.5 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                      No hay notificaciones pendientes
+                      No hay traslados pendientes
                     </p>
                   ) : (
                     <>
@@ -400,12 +429,35 @@ export function AppTopNav() {
                           </span>
                         </button>
                       ))}
+                      {waiting.map((item) => (
+                        <button
+                          key={`w-${item.id}`}
+                          type="button"
+                          onClick={() => {
+                            setBellOpen(false)
+                            router.push(item.href)
+                          }}
+                          className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
+                        >
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                            <Clock className="h-4 w-4" strokeWidth={1.75} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                              {item.title}
+                            </span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                              {item.subtitle}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
                     </>
                   )}
                 </div>
                 {alertCount > 0 && (
                   <div className="border-t border-zinc-100 px-2 py-1.5 dark:border-zinc-800">
-                    {approvals.length > 0 && (
+                    {(approvals.length > 0 || waiting.length > 0) && (
                       <Link
                         href="/inventory/transfers"
                         onClick={() => setBellOpen(false)}

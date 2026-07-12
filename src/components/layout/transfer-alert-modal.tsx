@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRightLeft, PackageCheck, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
+import { canAccessAllStores } from '@/lib/store-helper'
 import {
   getSeenTransferIds,
   loadTransferAlerts,
@@ -21,8 +22,8 @@ type AlertModalState = {
 } | null
 
 /**
- * Al entrar: avisa a la tienda origen (aprobar) o destino (recibir)
- * solo cuando hay traslados nuevos respecto a lo ya visto.
+ * Al entrar: avisa mientras haya traslados por aprobar o por recibir.
+ * "Después" solo oculta el modal en esta sesión; la campana sigue encendida.
  */
 export function TransferAlertModal() {
   const router = useRouter()
@@ -47,7 +48,9 @@ export function TransferAlertModal() {
     const check = async () => {
       try {
         const storeId = resolveUserStoreId(user.storeId)
-        const { approvals, receptions } = await loadTransferAlerts(storeId)
+        const { approvals, receptions, waiting } = await loadTransferAlerts(storeId, {
+          allStores: canAccessAllStores(user),
+        })
         if (cancelled) return
 
         setAlert((prev) => {
@@ -64,6 +67,12 @@ export function TransferAlertModal() {
           if (unseenReceptions.length > 0) {
             return { kind: 'receive', items: unseenReceptions }
           }
+          const unseenWaiting = waiting.filter(
+            (w) => !getSeenTransferIds(user.id, 'waiting').includes(w.id)
+          )
+          if (unseenWaiting.length > 0) {
+            return { kind: 'waiting', items: unseenWaiting }
+          }
           return null
         })
       } catch {
@@ -72,33 +81,40 @@ export function TransferAlertModal() {
     }
 
     void check()
-    const interval = setInterval(() => void check(), 45000)
+    const interval = setInterval(() => void check(), 30000)
     return () => {
       cancelled = true
       clearInterval(interval)
     }
-  }, [user?.id, user?.storeId])
+  }, [user?.id, user?.storeId, user?.role])
 
   if (!alert) return null
 
   const isApproval = alert.kind === 'approval'
+  const isWaiting = alert.kind === 'waiting'
   const count = alert.items.length
   const primary = alert.items[0]
   const title = isApproval
     ? '¡Tienes traslados por aprobación!'
-    : '¡Ya puedes recibir traslados!'
+    : isWaiting
+      ? 'Tu solicitud espera aprobación'
+      : '¡Ya puedes recibir traslados!'
   const message = isApproval
     ? count === 1
       ? `Hay 1 solicitud pendiente de aprobar (${primary.transferNumber}). Revisa cada referencia para descontar stock de tu tienda.`
       : `Hay ${count} solicitudes pendientes de aprobar. Revisa cada referencia para descontar stock de tu tienda.`
-    : count === 1
-      ? `El traslado ${primary.transferNumber} ya fue aprobado y está listo para recibir en tu tienda.`
-      : `Hay ${count} traslados aprobados listos para recibir en tu tienda.`
+    : isWaiting
+      ? count === 1
+        ? `El traslado ${primary.transferNumber} sigue pendiente de aprobación en origen. Te avisaremos cuando puedas recibirlo.`
+        : `Hay ${count} solicitudes esperando aprobación en la tienda origen.`
+      : count === 1
+        ? `El traslado ${primary.transferNumber} ya fue aprobado y está listo para recibir en tu tienda.`
+        : `Hay ${count} traslados aprobados listos para recibir en tu tienda.`
 
   const goHref =
     count === 1
       ? primary.href
-        : isApproval
+      : isApproval || isWaiting
         ? '/inventory/transfers'
         : '/inventory/receptions'
 
@@ -106,9 +122,11 @@ export function TransferAlertModal() {
     ? count === 1
       ? 'Ir a aprobar'
       : 'Ver solicitudes'
-    : count === 1
-      ? 'Ir a recibir'
-      : 'Ver recepciones'
+    : isWaiting
+      ? 'Ver solicitud'
+      : count === 1
+        ? 'Ir a recibir'
+        : 'Ver recepciones'
 
   return (
     <div
@@ -128,10 +146,12 @@ export function TransferAlertModal() {
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
                 isApproval
                   ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                  : isWaiting
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
               )}
             >
-              {isApproval ? (
+              {isApproval || isWaiting ? (
                 <ArrowRightLeft className="h-5 w-5" strokeWidth={1.75} />
               ) : (
                 <PackageCheck className="h-5 w-5" strokeWidth={1.75} />
