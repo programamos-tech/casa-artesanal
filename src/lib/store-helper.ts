@@ -68,21 +68,14 @@ export function canAccessAllStores(user: User | null): boolean {
   return false
 }
 
-/** Nombre o ciudad que identifica la tienda donde se permite transferir stock Bodega ↔ Local */
-const STORE_IDENTIFIER_SINCELEJO = 'Sincelejo'
-
 /** Misma tienda que `StoresService.getMainStore()` — catálogo y creación de productos viven aquí aunque el nombre no diga "Sincelejo". */
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
 /**
- * Indica si una tienda es la de Sincelejo (donde se permite transferir stock bodega ↔ local).
- * La tienda principal por UUID siempre cuenta (badge "Tienda Principal"); además se reconoce por nombre/ciudad.
+ * Tienda donde aplica stock bodega ↔ local (solo la tienda principal).
+ * Las microtiendas (p. ej. 2 Piso en Sincelejo) no deben tratarse como bodega.
  */
 export function isStoreSincelejo(store: { id?: string; name?: string; city?: string } | null): boolean {
   if (!store) return false
-  if (store.id === MAIN_STORE_ID) return true
-  const name = (store.name || '').toLowerCase()
-  const city = (store.city || '').toLowerCase()
-  const key = STORE_IDENTIFIER_SINCELEJO.toLowerCase()
-  return name.includes(key) || city.includes(key)
+  return store.id === MAIN_STORE_ID
 }

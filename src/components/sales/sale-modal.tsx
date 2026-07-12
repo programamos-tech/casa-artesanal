@@ -1064,9 +1064,15 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                       </div>
                                       <div className="flex items-center justify-between gap-2 flex-wrap">
                                         <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                          <span>Bodega: <span className="font-medium">{product.stock.warehouse || 0}</span></span>
-                                          <span>•</span>
-                                          <span>Local: <span className="font-medium">{product.stock.store || 0}</span></span>
+                                          {isMainStore ? (
+                                            <>
+                                              <span>Bodega: <span className="font-medium">{product.stock.warehouse || 0}</span></span>
+                                              <span>•</span>
+                                              <span>Local: <span className="font-medium">{product.stock.store || 0}</span></span>
+                                            </>
+                                          ) : (
+                                            <span>Stock: <span className="font-medium">{product.stock.store || 0}</span></span>
+                                          )}
                                         </div>
                                         <Badge className={`text-xs whitespace-nowrap ${
                                           getStockStatus(product.id) === 'Disponible Local' 

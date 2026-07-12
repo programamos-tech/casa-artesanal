@@ -946,7 +946,9 @@ export default function NewSalePage() {
                                     {item.productName}
                                   </h4>
                                   <div className="mb-2 text-sm text-zinc-500 dark:text-zinc-400">
-                                    Ref: {reference} · Bodega: {warehouseStock} · Local: {localStock}
+                                    {isMainStore
+                                      ? `Ref: ${reference} · Bodega: ${warehouseStock} · Local: ${localStock}`
+                                      : `Ref: ${reference} · Stock: ${localStock}`}
                                   </div>
                                   <div className="space-y-1.5">
                                     <div className="flex flex-wrap items-start gap-6">

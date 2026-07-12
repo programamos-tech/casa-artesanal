@@ -130,7 +130,11 @@ export function ProductTable({
   const canAdjust = isVendedor ? false : (canDoProductActionsSincelejo || isSuperAdmin) && hasPermission('products', 'edit')
   const canCreate = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'create')
   const canDelete = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'delete')
-  const canTransfer = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'edit')
+  // Traslados bodega ↔ local solo en tienda principal (no en microtiendas).
+  const canTransfer =
+    isVendedor || !isMainStore
+      ? false
+      : canDoProductActionsSincelejo && hasPermission('products', 'edit')
 
   const [searchTerm, setSearchTerm] = useState('')
   const onSearchRef = useRef(onSearch)
