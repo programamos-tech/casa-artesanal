@@ -14,6 +14,9 @@ import {
   ChevronRight,
   ChevronDown,
   X,
+  ArrowRightLeft,
+  CreditCard,
+  ShoppingBag,
 } from 'lucide-react'
 import { Sale, Credit, StoreStockTransfer } from '@/types'
 import { StoreBadge } from '@/components/ui/store-badge'
@@ -170,6 +173,55 @@ export function SalesTable({
   // Solo es true si hay una transferencia de stock asociada cargada
   const isTransferSale = (sale: Sale): boolean => {
     return !!transfers[sale.id]
+  }
+
+  type SaleKind = 'transfer' | 'credit' | 'normal'
+
+  const getSaleKind = (sale: Sale): SaleKind => {
+    if (isTransferSale(sale)) return 'transfer'
+    if (sale.paymentMethod === 'credit') return 'credit'
+    return 'normal'
+  }
+
+  const saleKindMeta: Record<
+    SaleKind,
+    { label: string; icon: typeof ShoppingBag; className: string }
+  > = {
+    transfer: {
+      label: 'Traslado entre tiendas',
+      icon: ArrowRightLeft,
+      className:
+        'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
+    },
+    credit: {
+      label: 'Venta a crédito',
+      icon: CreditCard,
+      className: 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
+    },
+    normal: {
+      label: 'Venta normal',
+      icon: ShoppingBag,
+      className:
+        'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+    },
+  }
+
+  const SaleKindIcon = ({ sale }: { sale: Sale }) => {
+    const kind = getSaleKind(sale)
+    const meta = saleKindMeta[kind]
+    const Icon = meta.icon
+    return (
+      <span
+        className={cn(
+          'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+          meta.className
+        )}
+        title={meta.label}
+        aria-label={meta.label}
+      >
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+      </span>
+    )
   }
 
   // Efecto para manejar la búsqueda
@@ -445,6 +497,25 @@ export function SalesTable({
                     ? 'Filtra resultados o limpia la búsqueda para ver el listado completo'
                     : 'Administra tus ventas y genera facturas'}
               </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                {(Object.keys(saleKindMeta) as SaleKind[]).map((kind) => {
+                  const meta = saleKindMeta[kind]
+                  const Icon = meta.icon
+                  return (
+                    <span key={kind} className="inline-flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          'inline-flex h-5 w-5 items-center justify-center rounded-md',
+                          meta.className
+                        )}
+                      >
+                        <Icon className="h-3 w-3" strokeWidth={2} />
+                      </span>
+                      {meta.label}
+                    </span>
+                  )
+                })}
+              </div>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               {onRefresh && (
@@ -621,12 +692,18 @@ export function SalesTable({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
+                            <SaleKindIcon sale={sale} />
                             <span className="font-mono text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                               {generateInvoiceNumber(sale)}
                             </span>
                             {sale.paymentMethod === 'credit' && credits[sale.id] && (
                               <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
                                 Crédito #{getCreditId(credits[sale.id])}
+                              </span>
+                            )}
+                            {isTransferSale(sale) && transfers[sale.id] && (
+                              <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                                TRF {transfers[sale.id].transferNumber || `#${getTransferId(transfers[sale.id])}`}
                               </span>
                             )}
                           </div>
@@ -689,6 +766,9 @@ export function SalesTable({
                     <thead>
                       <tr className="border-b border-zinc-200 dark:border-zinc-800">
                         <th className={cn(thClass, 'pl-4')}>Factura</th>
+                        <th className={cn(thClass, 'w-12 text-center')} title="Tipo de venta">
+                          Tipo
+                        </th>
                         <th className={thClass}>Cliente</th>
                         <th className={cn(thClass, 'text-right')}>Total</th>
                         <th className={cn(thClass, 'text-center')}>Método</th>
@@ -719,6 +799,11 @@ export function SalesTable({
                                     TRF {transfers[sale.id].transferNumber || `#${getTransferId(transfers[sale.id])}`}
                                   </span>
                                 )}
+                              </div>
+                            </td>
+                            <td className="px-2 py-3 text-center align-middle">
+                              <div className="flex justify-center">
+                                <SaleKindIcon sale={sale} />
                               </div>
                             </td>
                             <td className="max-w-[14rem] px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
