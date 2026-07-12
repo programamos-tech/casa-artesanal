@@ -10,7 +10,6 @@ import {
   Search,
   Edit,
   Trash2,
-  ArrowRightLeft,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -68,7 +67,6 @@ interface ProductTableProps {
   onCreate: () => void
   onManageCategories: () => void
   onStockAdjustment?: (product: Product) => void
-  onStockTransfer?: (product: Product) => void
   onRefresh?: () => void
   onPageChange: (page: number) => void
   onSearch: (searchTerm: string) => Promise<Product[]>
@@ -94,7 +92,6 @@ export function ProductTable({
   onCreate,
   onManageCategories,
   onStockAdjustment,
-  onStockTransfer,
   onRefresh,
   onPageChange,
   onSearch,
@@ -130,11 +127,6 @@ export function ProductTable({
   const canAdjust = isVendedor ? false : (canDoProductActionsSincelejo || isSuperAdmin) && hasPermission('products', 'edit')
   const canCreate = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'create')
   const canDelete = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'delete')
-  // Traslados bodega ↔ local solo en tienda principal (no en microtiendas).
-  const canTransfer =
-    isVendedor || !isMainStore
-      ? false
-      : canDoProductActionsSincelejo && hasPermission('products', 'edit')
 
   const [searchTerm, setSearchTerm] = useState('')
   const onSearchRef = useRef(onSearch)
@@ -604,11 +596,6 @@ export function ProductTable({
                                   <Package className="h-4 w-4" strokeWidth={1.5} />
                                 </Button>
                               )}
-                              {canTransfer && onStockTransfer && (
-                                <Button type="button" size="sm" variant="ghost" className={actionIconBtnClass} onClick={() => onStockTransfer(product)} title="Transferir">
-                                  <ArrowRightLeft className="h-4 w-4" strokeWidth={1.5} />
-                                </Button>
-                              )}
                               {canDelete && (
                                 <Button type="button" size="sm" variant="ghost" className={actionDeleteBtnClass} onClick={() => onDelete(product)} title="Eliminar">
                                   <Trash2 className="h-4 w-4" strokeWidth={1.5} />
@@ -701,18 +688,6 @@ export function ProductTable({
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="z-[200]">
                                         Ajustar stock
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  {canTransfer && onStockTransfer && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button type="button" size="sm" variant="ghost" className={actionIconBtnClass} onClick={() => onStockTransfer(product)}>
-                                          <ArrowRightLeft className="h-4 w-4" strokeWidth={1.5} />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="z-[200]">
-                                        Transferir bodega ↔ local
                                       </TooltipContent>
                                     </Tooltip>
                                   )}

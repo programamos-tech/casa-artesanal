@@ -5,20 +5,19 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ProductTable } from '@/components/products/product-table'
 import { ProductModal } from '@/components/products/product-modal'
 import { CategoryModal } from '@/components/categories/category-modal'
-import { StockTransferModal } from '@/components/products/stock-transfer-modal'
 import { StockAdjustmentModal } from '@/components/products/stock-adjustment-modal'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { useProducts } from '@/contexts/products-context'
 import { useCategories } from '@/contexts/categories-context'
 import { ProductsService } from '@/lib/products-service'
-import { Product, Category, StockTransfer } from '@/types'
+import { Product, Category } from '@/types'
 import { toast } from 'sonner'
 
 export default function ProductsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, filtersLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts } = useProducts()
+  const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, filtersLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, adjustStock, refreshProducts, goToPage, searchProducts } = useProducts()
   const { categories, createCategory, toggleCategoryStatus, deleteCategory } = useCategories()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -26,8 +25,6 @@ export default function ProductsPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
-  const [productToTransfer, setProductToTransfer] = useState<Product | null>(null)
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false)
   const [productToAdjust, setProductToAdjust] = useState<Product | null>(null)
 
@@ -92,28 +89,6 @@ export default function ProductsPage() {
         description:
           'No pudimos confirmar el ajuste en el servidor. Revisa tu conexión o permisos e inténtalo de nuevo.',
       })
-    }
-  }
-
-  const handleStockTransfer = (product: Product) => {
-    setProductToTransfer(product)
-    setIsTransferModalOpen(true)
-  }
-
-  const handleTransferStock = async (transferData: Omit<StockTransfer, 'id' | 'createdAt' | 'userId' | 'userName'>) => {
-    const success = await transferStock(
-      transferData.productId,
-      transferData.fromLocation,
-      transferData.toLocation,
-      transferData.quantity
-    )
-    
-    if (success) {
-      toast.success('Stock transferido exitosamente')
-      setIsTransferModalOpen(false)
-      setProductToTransfer(null)
-    } else {
-      toast.error('Error transfiriendo stock')
     }
   }
 
@@ -211,7 +186,6 @@ export default function ProductsPage() {
         onCreate={handleCreate}
         onManageCategories={handleManageCategories}
         onStockAdjustment={handleStockAdjustment}
-        onStockTransfer={handleStockTransfer}
         onRefresh={handleRefresh}
         onPageChange={goToPage}
         onSearch={searchProducts}
@@ -239,16 +213,6 @@ export default function ProductsPage() {
         onDelete={handleDeleteCategory}
         categories={categories}
       />
-
-              <StockTransferModal
-                isOpen={isTransferModalOpen}
-                onClose={() => {
-                  setIsTransferModalOpen(false)
-                  setProductToTransfer(null)
-                }}
-                onTransfer={handleTransferStock}
-                product={productToTransfer}
-              />
 
               <StockAdjustmentModal
                 isOpen={isAdjustmentModalOpen}
