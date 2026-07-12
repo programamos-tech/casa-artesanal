@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ProductTable } from '@/components/products/product-table'
 import { ProductModal } from '@/components/products/product-modal'
 import { CategoryModal } from '@/components/categories/category-modal'
@@ -10,10 +11,13 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { useProducts } from '@/contexts/products-context'
 import { useCategories } from '@/contexts/categories-context'
+import { ProductsService } from '@/lib/products-service'
 import { Product, Category, StockTransfer } from '@/types'
 import { toast } from 'sonner'
 
 export default function ProductsPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { products, loading, currentPage, totalProducts, hasMore, isSearching, searchLoading, filtersLoading, stockFilter, categoryFilter, setStockFilter, setCategoryFilter, createProduct, updateProduct, deleteProduct, transferStock, adjustStock, refreshProducts, goToPage, searchProducts } = useProducts()
   const { categories, createCategory, toggleCategoryStatus, deleteCategory } = useCategories()
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -31,6 +35,27 @@ export default function ProductsPage() {
     setSelectedProduct(product)
     setIsModalOpen(true)
   }
+
+  // Abrir modal si llegan con ?edit=id (búsqueda global o links viejos a la ficha).
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    if (!editId) return
+
+    let cancelled = false
+    const open = async () => {
+      const product = await ProductsService.getProductById(editId)
+      if (cancelled) return
+      if (product) {
+        setSelectedProduct(product)
+        setIsModalOpen(true)
+      }
+      router.replace('/inventory/products', { scroll: false })
+    }
+    void open()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams, router])
 
   const handleDelete = (product: Product) => {
     setProductToDelete(product)

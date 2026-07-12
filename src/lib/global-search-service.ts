@@ -144,7 +144,7 @@ export class GlobalSearchService {
           id: p.id,
           title: p.name,
           subtitle: `${ref} · ${stockLabel}`,
-          href: `/inventory/products/${p.id}`,
+          href: `/inventory/products?edit=${encodeURIComponent(p.id)}`,
         }
       })
   }

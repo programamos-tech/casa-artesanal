@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -101,7 +100,6 @@ export function ProductTable({
   onSearch,
   onView,
 }: ProductTableProps) {
-  const router = useRouter()
   const { hasPermission } = usePermissions()
   const { user } = useAuth()
 
@@ -186,7 +184,7 @@ export function ProductTable({
 
   const goProduct = (p: Product) => {
     if (onView) onView(p)
-    else router.push(`/inventory/products/${p.id}`)
+    else onEdit(p)
   }
 
   const getCategoryLabel = (product: Product) => {
