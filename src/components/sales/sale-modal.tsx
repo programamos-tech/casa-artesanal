@@ -1727,7 +1727,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                   }
                   className="font-medium px-6 py-2.5"
                 >
-                  Dejar borrador
+                  Guardar Borrador
                 </Button>
                 <Button
                   type="button"
@@ -1740,7 +1740,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                     !paymentMethod ||
                     hasAcquisitionCostIssues
                   }
-                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
+                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-700 hover:bg-emerald-800 text-white"
                 >
                   {isSaving ? 'Creando venta…' : 'Crear Venta'}
                 </Button>
@@ -1750,16 +1750,15 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
               <>
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={handleSaveAsDraft}
                   disabled={
                     isSaving ||
                     selectedProducts.length === 0 ||
                     validProducts.length === 0
                   }
-                  className="font-medium px-6 py-2.5"
+                  className="font-medium px-6 py-2.5 border-transparent bg-amber-500 text-zinc-950 hover:bg-amber-400"
                 >
-                  Dejar borrador
+                  Guardar Borrador
                 </Button>
                 <Button
                   type="button"
@@ -1773,7 +1772,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                     paymentMethod === 'pending' ||
                     hasAcquisitionCostIssues
                   }
-                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
+                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-700 hover:bg-emerald-800 text-white"
                 >
                   {isSaving ? 'Facturando…' : 'Finalizar factura'}
                 </Button>

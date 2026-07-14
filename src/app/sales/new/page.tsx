@@ -117,6 +117,8 @@ export default function NewSalePage() {
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([])
   const [isSearchingProducts, setIsSearchingProducts] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  /** Qué botón está guardando: evita que ambos muestren loading a la vez */
+  const [savingAction, setSavingAction] = useState<'draft' | 'finalize' | null>(null)
   const productRefs = useRef<(HTMLDivElement | null)[]>([])
   const lastSearchTermRef = useRef<string>('')
   const isSubmittingRef = useRef(false)
@@ -733,6 +735,8 @@ export default function NewSalePage() {
   const handleSave = async (isDraft = false) => {
     if (isCreating || isSubmittingRef.current) return
 
+    const action: 'draft' | 'finalize' = isDraft ? 'draft' : 'finalize'
+
     // Borrador: basta con tener productos agregados
     if (isDraft) {
       if (selectedProducts.length === 0 || validProducts.length === 0) {
@@ -835,8 +839,9 @@ export default function NewSalePage() {
 
     isSubmittingRef.current = true
     setIsCreating(true)
+    setSavingAction(action)
     const previousInvoice = invoiceNumber
-    if (!editingDraftId) setInvoiceNumber('Generando...')
+    if (!editingDraftId && !isDraft) setInvoiceNumber('Generando...')
     try {
       if (editingDraftId) {
         // Guardar contenido del borrador; si se factura, luego finalizar (descuenta stock)
@@ -857,12 +862,13 @@ export default function NewSalePage() {
       else setInvoiceNumber(previousInvoice)
       alert(
         isDraft
-          ? 'Error al dejar el borrador. Por favor intenta de nuevo.'
+          ? 'Error al guardar el borrador. Por favor intenta de nuevo.'
           : 'Error al crear la venta. Por favor intenta de nuevo.'
       )
     } finally {
       isSubmittingRef.current = false
       setIsCreating(false)
+      setSavingAction(null)
     }
   }
 
@@ -1794,12 +1800,12 @@ export default function NewSalePage() {
                             validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) ||
                             hasAcquisitionCostIssues
                           }
-                          className="w-full"
+                          className="w-full border-transparent bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500 [&_svg]:text-white"
                           size="lg"
                         >
-                          {isCreating ? (
+                          {savingAction === 'finalize' ? (
                             <>
-                              <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-600 dark:border-t-zinc-200" />
+                              <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                               {editingDraftId ? 'Finalizando…' : 'Creando venta…'}
                             </>
                           ) : (
@@ -1811,21 +1817,29 @@ export default function NewSalePage() {
                         </Button>
                         <Button
                           type="button"
-                          variant="outline"
                           onClick={() => void handleSave(true)}
                           disabled={
                             isCreating ||
                             selectedProducts.length === 0 ||
                             validProducts.length === 0
                           }
-                          className="w-full"
+                          className="w-full border-transparent bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-50 dark:bg-amber-500 dark:text-zinc-950 dark:hover:bg-amber-400 [&_svg]:text-zinc-950"
                           size="lg"
                         >
-                          <ClipboardList className="mr-2 h-5 w-5" strokeWidth={1.5} />
-                          Dejar borrador
+                          {savingAction === 'draft' ? (
+                            <>
+                              <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-zinc-950/30 border-t-zinc-950" />
+                              Guardando borrador…
+                            </>
+                          ) : (
+                            <>
+                              <ClipboardList className="mr-2 h-5 w-5" strokeWidth={1.5} />
+                              Guardar Borrador
+                            </>
+                          )}
                         </Button>
                         <p className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
-                          Con solo productos puedes dejar borrador. Cliente, vendedor y pago se piden al facturar.
+                          Con solo productos puedes guardar borrador. Cliente, vendedor y pago se piden al facturar.
                         </p>
                         {validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) && (
                           <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-700 dark:text-amber-400">
