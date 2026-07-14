@@ -482,6 +482,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     discountType: orderDiscountType,
   })
   const { itemsSubtotal, orderDiscountAmount, subtotal, total } = saleAmounts
+  const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashAmount : total
   const totalLineDiscount = validProductsForTotal.reduce(
     (sum, item) => sum + getLineDiscountAmount(item),
     0
