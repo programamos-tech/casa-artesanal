@@ -50,11 +50,54 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const expected = summary?.expectedCash ?? session.openingCash
   const diff = counted - expected
 
+  const notifyWhatsApp = async (sessionId: string, previewWindow: Window | null) => {
+    try {
+      const res = await fetch('/api/caja/notify-close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        previewWindow?.close()
+        toast.message('Caja cerrada', {
+          description: 'No se pudo preparar el WhatsApp del informe.',
+        })
+        return
+      }
+      if (data.sent) {
+        previewWindow?.close()
+        toast.success('Informe enviado por WhatsApp al +57 320 5689053')
+        return
+      }
+      if (data.whatsappUrl) {
+        if (previewWindow) {
+          previewWindow.location.href = data.whatsappUrl
+        } else {
+          window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer')
+        }
+        toast.success('Caja cerrada', {
+          description: 'Se abrió WhatsApp con el informe. Confirma Enviar.',
+        })
+        return
+      }
+      previewWindow?.close()
+      toast.success('Caja cerrada')
+    } catch {
+      previewWindow?.close()
+      toast.message('Caja cerrada', {
+        description: 'Revisa el historial; el WhatsApp no se pudo abrir.',
+      })
+    }
+  }
+
   const handleSubmit = async () => {
     if (!user?.id) {
       toast.error('Sesión no válida')
       return
     }
+    // Abrir ya la pestaña (gesto del usuario) para no bloquear el WhatsApp después del await
+    const previewWindow = window.open('about:blank', '_blank')
     setSaving(true)
     try {
       const result = await CashSessionsService.closeSession({
@@ -65,8 +108,14 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
         userName: user.name,
       })
       if (!result.success) {
+        previewWindow?.close()
         toast.error(result.error || 'No se pudo cerrar')
         return
+      }
+      if (result.session?.id) {
+        await notifyWhatsApp(result.session.id, previewWindow)
+      } else {
+        previewWindow?.close()
       }
       await onClosed()
     } finally {
@@ -153,7 +202,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
             onClick={() => void handleSubmit()}
             disabled={saving}
           >
-            {saving ? 'Cerrando…' : 'Confirmar cierre'}
+            {saving ? 'Cerrando y enviando…' : 'Confirmar cierre'}
           </Button>
         </div>
       </div>

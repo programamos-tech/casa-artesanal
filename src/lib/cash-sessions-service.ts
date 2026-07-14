@@ -1,6 +1,13 @@
 import { supabaseAdmin } from './supabase'
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import { getCurrentUserStoreId, getCurrentUser } from './store-helper'
+import {
+  buildCashCloseWhatsAppMessage,
+  type CashCloseEgresoLine,
+  type CashCloseReportInput,
+  type CashCloseSaleLine,
+} from './cash-close-whatsapp'
+import { getEgresoConceptLabel } from './egreso-concepts'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -92,6 +99,20 @@ export class CashSessionsService {
   static async hasOpenSession(storeId?: string | null): Promise<boolean> {
     const open = await this.getOpenSession(storeId)
     return Boolean(open)
+  }
+
+  static async getSessionById(id: string): Promise<CashSession | null> {
+    const { data, error } = await supabaseAdmin
+      .from('cash_sessions')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Error getSessionById:', error)
+      return null
+    }
+    return data ? mapRow(data) : null
   }
 
   static async getSessions(options?: {
@@ -374,5 +395,105 @@ export class CashSessionsService {
     }
 
     return { success: true, session: mapRow(data) }
+  }
+
+  /** Armar informe detallado (ventas + egresos) de una sesión cerrada o abierta. */
+  static async buildCloseReportMessage(
+    session: CashSession
+  ): Promise<{ message: string; report: CashCloseReportInput }> {
+    const from = session.openedAt
+    const to = session.closedAt || new Date().toISOString()
+    const storeId = session.storeId
+
+    const { data: storeRow } = await supabaseAdmin
+      .from('stores')
+      .select('name')
+      .eq('id', storeId)
+      .maybeSingle()
+
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select(
+        'id, invoice_number, client_name, payment_method, total, created_at, seller_name, store_id, status, sale_items(product_name, quantity, total)'
+      )
+      .gte('created_at', from)
+      .lte('created_at', to)
+      .neq('status', 'cancelled')
+      .neq('status', 'draft')
+      .order('created_at', { ascending: true })
+
+    salesQuery = applySalesStoreFilter(salesQuery, storeId)
+    const { data: salesRows } = await salesQuery
+
+    const sales: CashCloseSaleLine[] = (salesRows || []).map((s: any) => ({
+      invoiceNumber: s.invoice_number || 'S/N',
+      clientName: s.client_name || 'Cliente',
+      paymentMethod: s.payment_method || '',
+      total: Number(s.total) || 0,
+      createdAt: s.created_at,
+      sellerName: s.seller_name ?? null,
+      items: (s.sale_items || []).map((item: any) => ({
+        productName: item.product_name || 'Producto',
+        quantity: Number(item.quantity) || 0,
+        total: Number(item.total) || 0,
+      })),
+    }))
+
+    let egresosQuery = supabaseAdmin
+      .from('egresos')
+      .select(
+        'concept, concept_other, description, payment_method, amount, expense_date, created_at, store_id, status'
+      )
+      .eq('status', 'active')
+      .gte('created_at', from)
+      .lte('created_at', to)
+      .order('created_at', { ascending: true })
+
+    egresosQuery = applySalesStoreFilter(egresosQuery, storeId)
+    const { data: egresosRows } = await egresosQuery
+
+    const egresos: CashCloseEgresoLine[] = (egresosRows || []).map((e: any) => ({
+      concept: getEgresoConceptLabel(e.concept, e.concept_other),
+      description: e.description ?? null,
+      paymentMethod: e.payment_method || 'cash',
+      amount: Number(e.amount) || 0,
+      expenseDate: e.expense_date ?? null,
+      createdAt: e.created_at,
+    }))
+
+    const report: CashCloseReportInput = {
+      storeName: storeRow?.name || 'Tienda',
+      openedAt: session.openedAt,
+      closedAt: to,
+      openedByName: session.openedByName,
+      closedByName: session.closedByName || '',
+      openingCash: session.openingCash,
+      countedCash: session.countedCash ?? session.expectedCash,
+      expectedCash: session.expectedCash,
+      difference: session.difference ?? 0,
+      totalIngresos: session.totalIngresos,
+      totalEgresos: session.totalEgresos,
+      salesCash: session.salesCash,
+      salesNequi: session.salesNequi,
+      salesBancolombia: session.salesBancolombia,
+      salesTransfer: session.salesTransfer,
+      salesCard: session.salesCard,
+      salesCredit: session.salesCredit,
+      salesOther: session.salesOther,
+      creditAbonosCash: session.creditAbonosCash,
+      creditAbonosOther: session.creditAbonosOther,
+      egresosCash: session.egresosCash,
+      egresosOther: session.egresosOther,
+      salesCount: session.salesCount,
+      egresosCount: session.egresosCount,
+      notes: session.notes,
+      sales,
+      egresos,
+    }
+
+    return {
+      message: buildCashCloseWhatsAppMessage(report),
+      report,
+    }
   }
 }

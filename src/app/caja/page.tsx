@@ -296,7 +296,6 @@ export default function CajaPage() {
             onClose={() => setCloseModal(false)}
             onClosed={async () => {
               setCloseModal(false)
-              toast.success('Caja cerrada')
               await load()
             }}
           />
