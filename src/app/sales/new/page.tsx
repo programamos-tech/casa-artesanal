@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +31,7 @@ import { useProducts } from '@/contexts/products-context'
 import { useSales } from '@/contexts/sales-context'
 import { useAuth } from '@/contexts/auth-context'
 import { ProductsService } from '@/lib/products-service'
+import { SalesService } from '@/lib/sales-service'
 import {
   compareProductsBySearchRelevance,
   isReferenceLikeQuery,
@@ -78,18 +79,23 @@ const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 
 export default function NewSalePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const draftIdParam = searchParams.get('draft')
   const { clients, searchClients } = useClients()
   const { products } = useProducts()
-  const { createSale } = useSales()
+  const { createSale, updateSale, finalizeDraftSale } = useSales()
   const { user, getAllUsers } = useAuth()
   
   // Detectar si es tienda principal o microtienda
   const isMainStore = !user?.storeId || user.storeId === MAIN_STORE_ID
+
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null)
+  const [draftLoading, setDraftLoading] = useState(Boolean(draftIdParam))
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [selectedProducts, setSelectedProducts] = useState<SaleItem[]>([])
   const [paymentMethod, setPaymentMethod] = useState<
-    'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'warranty' | 'mixed' | ''
+    'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'credit' | 'warranty' | 'mixed' | ''
   >('')
   const {
     clientSearch,
@@ -141,6 +147,88 @@ export default function NewSalePage() {
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular precios al cambiar o quitar cliente
   }, [selectedClient?.id, selectedClient?.type])
+
+  // Cargar borrador en la misma vista de nueva factura (sin modal)
+  useEffect(() => {
+    if (!draftIdParam) {
+      setEditingDraftId(null)
+      setDraftLoading(false)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      setDraftLoading(true)
+      try {
+        const draft = await SalesService.getSaleById(draftIdParam)
+        if (cancelled) return
+        if (!draft || draft.status !== 'draft') {
+          alert('Este borrador no existe o ya fue facturado.')
+          router.replace('/sales')
+          return
+        }
+
+        setEditingDraftId(draft.id)
+        setInvoiceNumber(draft.invoiceNumber || 'Pendiente')
+
+        if (draft.clientId) {
+          const client =
+            clients.find((c) => c.id === draft.clientId) ||
+            ({
+              id: draft.clientId,
+              name: draft.clientName,
+            } as Client)
+          setSelectedClient(client)
+          setClientSearch(draft.clientName || '')
+        } else {
+          setSelectedClient(null)
+          setClientSearch('')
+        }
+
+        if (draft.items?.length) {
+          const itemsWithAddedAt = draft.items.map((item, index) => ({
+            ...item,
+            id: item.id || `draft-${index}`,
+            addedAt: Date.now() + index,
+          }))
+          setSelectedProducts(itemsWithAddedAt)
+        }
+
+        setPaymentMethod(
+          draft.paymentMethod && draft.paymentMethod !== 'pending'
+            ? (draft.paymentMethod as
+                | 'cash'
+                | 'transfer'
+                | 'nequi'
+                | 'bancolombia'
+                | 'card'
+                | 'credit'
+                | 'warranty'
+                | 'mixed')
+            : ''
+        )
+        if (draft.paymentMethod === 'mixed' && draft.payments?.length) {
+          setMixedPayments(draft.payments)
+          setShowMixedPayments(true)
+        }
+        setTransportPrice(draft.transportPrice ?? 0)
+        setOrderDiscount(draft.discount ?? 0)
+        setOrderDiscountType(draft.discountType ?? 'amount')
+        if (draft.sellerId) setSelectedSellerId(draft.sellerId)
+      } catch {
+        if (!cancelled) {
+          alert('No se pudo cargar el borrador.')
+          router.replace('/sales')
+        }
+      } finally {
+        if (!cancelled) setDraftLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // clients se usa solo para hidratar; no re-disparar al refrescar listado
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftIdParam])
 
   // Cargar vendedores activos disponibles para asignar a la venta.
   // Filtramos por:
@@ -721,8 +809,8 @@ export default function NewSalePage() {
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
     const amounts = computeSaleAmounts(saleItems, false, {
-      transportPrice: isDraft ? 0 : transportPrice,
-      discount: isDraft ? 0 : orderDiscount,
+      transportPrice,
+      discount: orderDiscount,
       discountType: orderDiscountType,
     })
 
@@ -739,7 +827,7 @@ export default function NewSalePage() {
       paymentMethod: (paymentMethod || 'pending') as Sale['paymentMethod'],
       payments: !isDraft && paymentMethod === 'mixed' ? mixedPayments : undefined,
       items: saleItems,
-      invoiceNumber: undefined,
+      invoiceNumber: editingDraftId ? invoiceNumber : undefined,
       sellerId: seller?.id,
       sellerName: seller?.name,
       sellerEmail: seller?.email,
@@ -747,14 +835,23 @@ export default function NewSalePage() {
 
     isSubmittingRef.current = true
     setIsCreating(true)
-    setInvoiceNumber('Generando...')
+    const previousInvoice = invoiceNumber
+    if (!editingDraftId) setInvoiceNumber('Generando...')
     try {
-      await createSale(saleData)
-      // replace evita historial extra y suele sentirse más ágil al volver al listado
+      if (editingDraftId) {
+        // Guardar contenido del borrador; si se factura, luego finalizar (descuenta stock)
+        await updateSale(editingDraftId, { ...saleData, status: 'draft' })
+        if (!isDraft) {
+          await finalizeDraftSale(editingDraftId)
+        }
+      } else {
+        await createSale(saleData)
+      }
       router.replace('/sales')
     } catch (error) {
       console.error('Error creating sale:', error)
-      setInvoiceNumber('Pendiente')
+      if (!editingDraftId) setInvoiceNumber('Pendiente')
+      else setInvoiceNumber(previousInvoice)
       alert(
         isDraft
           ? 'Error al dejar el borrador. Por favor intenta de nuevo.'
@@ -785,6 +882,16 @@ export default function NewSalePage() {
     </div>
   ) : null
 
+  if (draftLoading) {
+    return (
+      <RoleProtectedRoute module="sales" requiredAction="create">
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <p className="text-sm text-zinc-500">Cargando borrador…</p>
+        </div>
+      </RoleProtectedRoute>
+    )
+  }
+
   return (
     <RoleProtectedRoute module="sales" requiredAction="create">
       <div className="min-h-screen bg-zinc-50 pb-28 dark:bg-zinc-950 xl:pb-8">
@@ -794,9 +901,9 @@ export default function NewSalePage() {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => router.push('/sales')}
+              onClick={() => router.push(editingDraftId ? `/sales/${editingDraftId}` : '/sales')}
               className="-ml-2 shrink-0"
-              aria-label="Volver a ventas"
+              aria-label="Volver"
             >
               <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
             </Button>
@@ -804,12 +911,14 @@ export default function NewSalePage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  Nueva factura de venta
+                  {editingDraftId ? 'Editar borrador' : 'Nueva factura de venta'}
                 </h1>
                 <StoreBadge />
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Agrega productos, elige cliente y método de pago.
+                {editingDraftId
+                  ? 'Completa cliente, vendedor y pago para finalizar, o deja el borrador otra vez.'
+                  : 'Agrega productos, elige cliente y método de pago.'}
               </p>
               {invoiceNumber !== 'Pendiente' && invoiceNumber !== 'Generando...' && (
                 <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">{invoiceNumber}</p>
@@ -1688,12 +1797,12 @@ export default function NewSalePage() {
                           {isCreating ? (
                             <>
                               <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-600 dark:border-t-zinc-200" />
-                              Creando venta…
+                              {editingDraftId ? 'Finalizando…' : 'Creando venta…'}
                             </>
                           ) : (
                             <>
                               <ShoppingCart className="mr-2 h-5 w-5" strokeWidth={1.5} />
-                              Crear venta
+                              {editingDraftId ? 'Finalizar factura' : 'Crear venta'}
                             </>
                           )}
                         </Button>

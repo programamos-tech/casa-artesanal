@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { SaleDetailPageView } from '@/components/sales/sale-detail-page-view'
-import { SaleModal } from '@/components/sales/sale-modal'
 import { useSales } from '@/contexts/sales-context'
 import { Sale } from '@/types'
 import { SalesService } from '@/lib/sales-service'
@@ -15,12 +14,11 @@ export default function SaleDetailPage() {
   const router = useRouter()
   const saleId = params.saleId as string
 
-  const { cancelSale, updateSale, finalizeDraftSale, createSale } = useSales()
+  const { cancelSale, finalizeDraftSale } = useSales()
 
   const [sale, setSale] = useState<Sale | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [isEditOpen, setIsEditOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!saleId) return
@@ -66,17 +64,6 @@ export default function SaleDetailPage() {
     await load()
   }
 
-  const handleUpdateSale = async (id: string, saleData: Omit<Sale, 'id' | 'createdAt'>) => {
-    if (saleData.status === 'completed') {
-      await updateSale(id, { ...saleData, status: 'draft' } as Partial<Sale>)
-      await finalizeDraftSale(id)
-    } else {
-      await updateSale(id, saleData as Partial<Sale>)
-    }
-    setIsEditOpen(false)
-    await load()
-  }
-
   if (loading) {
     return (
       <RoleProtectedRoute module="sales" requiredAction="view">
@@ -115,19 +102,8 @@ export default function SaleDetailPage() {
         onBack={() => router.push('/sales')}
         onPrint={handlePrint}
         onCancel={handleCancelSale}
-        onEditDraft={() => setIsEditOpen(true)}
+        onEditDraft={(draft) => router.push(`/sales/new?draft=${draft.id}`)}
         onFinalizeDraft={handleFinalizeDraft}
-      />
-      <SaleModal
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        onSave={async (saleData) => {
-          await createSale(saleData)
-          setIsEditOpen(false)
-          await load()
-        }}
-        sale={sale.status === 'draft' ? sale : null}
-        onUpdate={handleUpdateSale}
       />
     </RoleProtectedRoute>
   )
