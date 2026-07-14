@@ -2336,7 +2336,8 @@ export class StoreStockTransferService {
     }
   }
 
-  // Actualizar stock de una tienda (y opcionalmente cost/price para microtiendas)
+  // Actualizar stock de una tienda (y opcionalmente cost/price para microtiendas).
+  // Parque (tienda principal) usa products.stock_store; microtiendas usan store_stock.
   static async updateStoreStock(
     storeId: string,
     productId: string,
@@ -2345,7 +2346,50 @@ export class StoreStockTransferService {
     price?: number | null
   ): Promise<boolean> {
     try {
-      // Obtener stock actual
+      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+      const isMainStore = storeId === MAIN_STORE_ID
+
+      if (isMainStore) {
+        const { data: product, error: productError } = await supabaseAdmin
+          .from('products')
+          .select('stock_store')
+          .eq('id', productId)
+          .single()
+
+        if (productError || !product) {
+          console.error('[STORE STOCK TRANSFER] Product not found for main store stock update:', {
+            productId,
+            error: productError
+          })
+          return false
+        }
+
+        const currentQuantity = product.stock_store || 0
+        const newQuantity = currentQuantity + quantityChange
+
+        if (newQuantity < 0) {
+          console.error('[STORE STOCK TRANSFER] Insufficient stock on main store:', {
+            currentQuantity,
+            quantityChange,
+            newQuantity
+          })
+          return false
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from('products')
+          .update({ stock_store: newQuantity })
+          .eq('id', productId)
+
+        if (updateError) {
+          console.error('[STORE STOCK TRANSFER] Error updating products.stock_store:', updateError)
+          return false
+        }
+
+        return true
+      }
+
+      // Obtener stock actual (microtienda)
       const currentStock = await this.getStoreStock(storeId, productId)
       const currentQuantity = currentStock?.quantity || 0
       const newQuantity = currentQuantity + quantityChange
@@ -2359,29 +2403,21 @@ export class StoreStockTransferService {
         return false
       }
 
-      // Upsert stock - asegurar que location sea 'local' para micro tiendas
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      const isMainStore = storeId === MAIN_STORE_ID
-      
       const upsertData: any = {
         store_id: storeId,
         product_id: productId,
-        quantity: newQuantity
-      }
-      
-      // Solo establecer location para micro tiendas (siempre 'local')
-      if (!isMainStore) {
-        upsertData.location = 'local'
-        // Para microtiendas, actualizar cost y price si se proporcionan
-        if (cost !== undefined) {
-          upsertData.cost = cost
-        }
-        if (price !== undefined) {
-          upsertData.price = price
-        }
+        quantity: newQuantity,
+        location: 'local'
       }
 
-      const { data, error } = await supabaseAdmin
+      if (cost !== undefined) {
+        upsertData.cost = cost
+      }
+      if (price !== undefined) {
+        upsertData.price = price
+      }
+
+      const { error } = await supabaseAdmin
         .from('store_stock')
         .upsert(upsertData, {
           onConflict: 'store_id,product_id'
