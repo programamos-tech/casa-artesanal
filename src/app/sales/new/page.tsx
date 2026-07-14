@@ -553,6 +553,7 @@ export default function NewSalePage() {
     [mixedPayments]
   )
   const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashAmount : total
+  const mixedRemaining = Math.round(total) - Math.round(getTotalMixedPayments())
 
   const updateMixedPayment = (index: number, field: keyof SalePayment, value: any) => {
     const updated = [...mixedPayments]
@@ -1393,13 +1394,51 @@ export default function NewSalePage() {
                           />
                         </div>
                       ))}
-                      <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                      <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-zinc-500 dark:text-zinc-400">Total a pagar</span>
+                          <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                            {formatCurrency(Math.round(total))}
+                          </span>
+                        </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-zinc-500 dark:text-zinc-400">Total ingresado</span>
-                          <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                          <span
+                            className={cn(
+                              'font-semibold tabular-nums',
+                              mixedRemaining === 0 && getTotalMixedPayments() > 0
+                                ? 'text-brand-700 dark:text-brand-400'
+                                : 'text-zinc-900 dark:text-zinc-100'
+                            )}
+                          >
                             {formatCurrency(getTotalMixedPayments())}
                           </span>
                         </div>
+                        {getTotalMixedPayments() > 0 && mixedRemaining > 0 && (
+                          <div className="flex items-center justify-between rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/25">
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                              Te faltan
+                            </span>
+                            <span className="text-base font-bold tabular-nums text-amber-800 dark:text-amber-300">
+                              {formatCurrency(mixedRemaining)}
+                            </span>
+                          </div>
+                        )}
+                        {getTotalMixedPayments() > 0 && mixedRemaining < 0 && (
+                          <div className="flex items-center justify-between rounded-lg border border-red-200/80 bg-red-50/90 px-3 py-2 dark:border-red-900/40 dark:bg-red-950/25">
+                            <span className="text-sm font-medium text-red-700 dark:text-red-300">Sobran</span>
+                            <span className="text-base font-bold tabular-nums text-red-700 dark:text-red-300">
+                              {formatCurrency(Math.abs(mixedRemaining))}
+                            </span>
+                          </div>
+                        )}
+                        {getTotalMixedPayments() > 0 && mixedRemaining === 0 && (
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-brand-700 dark:text-brand-400">
+                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                            Pago completo
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

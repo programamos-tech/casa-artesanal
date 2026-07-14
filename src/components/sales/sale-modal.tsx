@@ -1409,25 +1409,48 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                           </div>
                           
                           {/* Resumen de pagos mixtos */}
-                          <div className="pt-3 border-t border-gray-200 dark:border-neutral-600 space-y-2">
-                            <div className="flex justify-between items-center text-sm bg-gray-50 dark:bg-neutral-900/50 p-2 rounded-md">
-                              <span className="text-gray-600 dark:text-gray-400 font-medium">Total a pagar:</span>
-                              <span className="font-bold text-gray-900 dark:text-white text-base">
+                          <div className="space-y-2 border-t border-gray-200 pt-3 dark:border-neutral-600">
+                            <div className="flex items-center justify-between rounded-md bg-gray-50 p-2 text-sm dark:bg-neutral-900/50">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Total a pagar:</span>
+                              <span className="text-base font-bold text-gray-900 dark:text-white">
                                 ${Math.round(total).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center text-sm">
+                            <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600 dark:text-gray-400">Total ingresado:</span>
-                              <span className={`font-medium ${Math.round(getTotalMixedPayments()) === Math.round(total) && validProducts.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
+                              <span
+                                className={`font-medium ${
+                                  getRemainingAmount() === 0 && validProducts.length > 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-gray-900 dark:text-white'
+                                }`}
+                              >
                                 ${Math.round(getTotalMixedPayments()).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
                               </span>
                             </div>
-                            {Math.round(getTotalMixedPayments()) === Math.round(total) && validProducts.length > 0 && (
-                              <div className="flex justify-between items-center text-sm font-medium pt-1 border-t border-gray-200 dark:border-neutral-700">
-                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                                  <CheckCircle className="h-4 w-4" />
-                                  <span>Pago completo</span>
-                                </div>
+                            {getTotalMixedPayments() > 0 && getRemainingAmount() > 0 && (
+                              <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
+                                <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
+                                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                                  Te faltan
+                                </span>
+                                <span className="text-base font-bold text-amber-800 dark:text-amber-300">
+                                  ${getRemainingAmount().toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                                </span>
+                              </div>
+                            )}
+                            {getTotalMixedPayments() > 0 && getRemainingAmount() < 0 && (
+                              <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-900/20">
+                                <span className="text-sm font-medium text-red-700 dark:text-red-300">Sobran</span>
+                                <span className="text-base font-bold text-red-700 dark:text-red-300">
+                                  ${Math.abs(getRemainingAmount()).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                                </span>
+                              </div>
+                            )}
+                            {getTotalMixedPayments() > 0 && getRemainingAmount() === 0 && validProducts.length > 0 && (
+                              <div className="flex items-center gap-2 border-t border-gray-200 pt-1 text-sm font-medium text-green-600 dark:border-neutral-700 dark:text-green-400">
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Pago completo</span>
                               </div>
                             )}
                           </div>
