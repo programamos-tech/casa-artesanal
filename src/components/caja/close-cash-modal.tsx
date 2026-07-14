@@ -50,7 +50,17 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const expected = summary?.expectedCash ?? session.openingCash
   const diff = counted - expected
 
-  const notifyWhatsApp = async (sessionId: string, previewWindow: Window | null) => {
+  const notifyWhatsApp = async (sessionId: string, previewWindows: Window[]) => {
+    const closePreviews = () => {
+      for (const w of previewWindows) {
+        try {
+          w.close()
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
     try {
       const res = await fetch('/api/caja/notify-close', {
         method: 'POST',
@@ -59,32 +69,57 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        previewWindow?.close()
+        closePreviews()
         toast.message('Caja cerrada', {
           description: 'No se pudo preparar el WhatsApp del informe.',
         })
         return
       }
+
+      const phonesLabel =
+        typeof data.phonesLabel === 'string' && data.phonesLabel
+          ? data.phonesLabel
+          : '+57 320 5689053, +57 315 2802343'
+
       if (data.sent) {
-        previewWindow?.close()
-        toast.success('Informe enviado por WhatsApp al +57 320 5689053')
+        closePreviews()
+        toast.success(`Informe enviado por WhatsApp a ${phonesLabel}`)
         return
       }
-      if (data.whatsappUrl) {
-        if (previewWindow) {
-          previewWindow.location.href = data.whatsappUrl
-        } else {
-          window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer')
+
+      const urls: string[] = Array.isArray(data.whatsappUrls)
+        ? data.whatsappUrls.filter((u: unknown): u is string => typeof u === 'string')
+        : data.whatsappUrl
+          ? [data.whatsappUrl]
+          : []
+
+      if (urls.length > 0) {
+        urls.forEach((url, index) => {
+          const win = previewWindows[index]
+          if (win) {
+            win.location.href = url
+          } else {
+            window.open(url, '_blank', 'noopener,noreferrer')
+          }
+        })
+        // Cerrar ventanas de más si sobran
+        for (let i = urls.length; i < previewWindows.length; i++) {
+          try {
+            previewWindows[i].close()
+          } catch {
+            /* ignore */
+          }
         }
         toast.success('Caja cerrada', {
-          description: 'Se abrió WhatsApp con el informe. Confirma Enviar.',
+          description: `WhatsApp listo para ${phonesLabel}. Confirma Enviar en cada chat.`,
         })
         return
       }
-      previewWindow?.close()
+
+      closePreviews()
       toast.success('Caja cerrada')
     } catch {
-      previewWindow?.close()
+      closePreviews()
       toast.message('Caja cerrada', {
         description: 'Revisa el historial; el WhatsApp no se pudo abrir.',
       })
@@ -96,8 +131,11 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
       toast.error('Sesión no válida')
       return
     }
-    // Abrir ya la pestaña (gesto del usuario) para no bloquear el WhatsApp después del await
-    const previewWindow = window.open('about:blank', '_blank')
+    // Abrir ya las pestañas (gesto del usuario) para Efrain y copia de prueba
+    const previewWindows = [
+      window.open('about:blank', '_blank'),
+      window.open('about:blank', '_blank'),
+    ].filter((w): w is Window => Boolean(w))
     setSaving(true)
     try {
       const result = await CashSessionsService.closeSession({
@@ -108,14 +146,14 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
         userName: user.name,
       })
       if (!result.success) {
-        previewWindow?.close()
+        for (const w of previewWindows) w.close()
         toast.error(result.error || 'No se pudo cerrar')
         return
       }
       if (result.session?.id) {
-        await notifyWhatsApp(result.session.id, previewWindow)
+        await notifyWhatsApp(result.session.id, previewWindows)
       } else {
-        previewWindow?.close()
+        for (const w of previewWindows) w.close()
       }
       await onClosed()
     } finally {

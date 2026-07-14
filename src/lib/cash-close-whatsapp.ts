@@ -1,5 +1,7 @@
-/** Destinatario por defecto del informe de cierre de caja. */
-export const CAJA_WHATSAPP_PHONE = '573205689053'
+/** Destinatarios por defecto del informe de cierre de caja (Efraín + copia de prueba). */
+export const CAJA_WHATSAPP_PHONES = ['573205689053', '573152802343'] as const
+/** @deprecated usar CAJA_WHATSAPP_PHONES */
+export const CAJA_WHATSAPP_PHONE = CAJA_WHATSAPP_PHONES[0]
 
 const paymentLabels: Record<string, string> = {
   cash: 'Efectivo',
@@ -179,12 +181,36 @@ export function buildWhatsAppDeepLink(phone: string, message: string): string {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
 }
 
-export function getCajaWhatsAppPhone(): string {
-  return (
-    process.env.CAJA_WHATSAPP_TO?.replace(/\D/g, '') ||
-    process.env.NEXT_PUBLIC_CAJA_WHATSAPP_TO?.replace(/\D/g, '') ||
-    CAJA_WHATSAPP_PHONE
+function normalizePhoneList(raw: string | undefined): string[] {
+  if (!raw?.trim()) return []
+  return raw
+    .split(/[,;\s]+/)
+    .map((p) => p.replace(/\D/g, ''))
+    .filter((p) => p.length >= 10)
+}
+
+export function getCajaWhatsAppPhones(): string[] {
+  const fromEnv = normalizePhoneList(
+    process.env.CAJA_WHATSAPP_TO || process.env.NEXT_PUBLIC_CAJA_WHATSAPP_TO
   )
+  const phones = fromEnv.length > 0 ? fromEnv : [...CAJA_WHATSAPP_PHONES]
+  return Array.from(new Set(phones))
+}
+
+export function getCajaWhatsAppPhone(): string {
+  return getCajaWhatsAppPhones()[0] || CAJA_WHATSAPP_PHONE
+}
+
+export function formatPhonesForDisplay(phones: string[]): string {
+  return phones
+    .map((p) => {
+      const d = p.replace(/\D/g, '')
+      if (d.startsWith('57') && d.length === 12) {
+        return `+57 ${d.slice(2, 5)} ${d.slice(5)}`
+      }
+      return `+${d}`
+    })
+    .join(', ')
 }
 
 /** Envío automático vía CallMeBot si hay API key (opcional). */
@@ -214,5 +240,26 @@ export async function sendWhatsAppViaCallMeBot(
       sent: false,
       error: error instanceof Error ? error.message : 'Error CallMeBot',
     }
+  }
+}
+
+export async function sendWhatsAppViaCallMeBotToAll(
+  phones: string[],
+  message: string
+): Promise<{ sentAll: boolean; sentCount: number; errors: string[] }> {
+  const results = await Promise.all(
+    phones.map(async (phone) => {
+      const result = await sendWhatsAppViaCallMeBot(phone, message)
+      return { phone, ...result }
+    })
+  )
+  const sentCount = results.filter((r) => r.sent).length
+  const errors = results
+    .filter((r) => !r.sent && r.error)
+    .map((r) => `${r.phone}: ${r.error}`)
+  return {
+    sentAll: sentCount > 0 && sentCount === phones.length,
+    sentCount,
+    errors,
   }
 }

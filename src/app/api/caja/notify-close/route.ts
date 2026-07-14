@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { CashSessionsService } from '@/lib/cash-sessions-service'
 import {
   buildWhatsAppDeepLink,
-  getCajaWhatsAppPhone,
-  sendWhatsAppViaCallMeBot,
+  formatPhonesForDisplay,
+  getCajaWhatsAppPhones,
+  sendWhatsAppViaCallMeBotToAll,
 } from '@/lib/cash-close-whatsapp'
 
 /**
  * POST /api/caja/notify-close
- * Genera el informe de cierre y lo envía por WhatsApp (CallMeBot si hay key)
- * o devuelve el enlace wa.me para abrir el chat con el texto listo.
+ * Genera el informe de cierre y lo envía por WhatsApp a todos los destinatarios
+ * (CallMeBot si hay key) o devuelve enlaces wa.me con el texto listo.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,18 +26,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { message } = await CashSessionsService.buildCloseReportMessage(session)
-    const phone = getCajaWhatsAppPhone()
-    const whatsappUrl = buildWhatsAppDeepLink(phone, message)
+    const phones = getCajaWhatsAppPhones()
+    const whatsappUrls = phones.map((phone) => buildWhatsAppDeepLink(phone, message))
 
-    const auto = await sendWhatsAppViaCallMeBot(phone, message)
+    const auto = await sendWhatsAppViaCallMeBotToAll(phones, message)
 
     return NextResponse.json({
       success: true,
-      phone,
+      phones,
+      phonesLabel: formatPhonesForDisplay(phones),
       message,
-      whatsappUrl,
-      sent: auto.sent,
-      sendError: auto.error || null,
+      whatsappUrl: whatsappUrls[0] || null,
+      whatsappUrls,
+      sent: auto.sentAll,
+      sentCount: auto.sentCount,
+      sendError: auto.errors.length ? auto.errors.join('; ') : null,
     })
   } catch (error) {
     console.error('notify-close:', error)
