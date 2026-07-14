@@ -39,6 +39,7 @@ const moduleOptions = [
   { value: 'payments', label: 'Créditos' },
   { value: 'supplier_invoices', label: 'Facturador' },
   { value: 'egresos', label: 'Egresos' },
+  { value: 'cash_register', label: 'Caja' },
   { value: 'warranties', label: 'Garantías' },
   { value: 'roles', label: 'Roles' },
   { value: 'logs', label: 'Actividades' }
@@ -64,6 +65,7 @@ const rolePermissions = {
     { module: 'payments', actions: allActions },
     { module: 'supplier_invoices', actions: allActions },
     { module: 'egresos', actions: allActions },
+    { module: 'cash_register', actions: allActions },
     { module: 'warranties', actions: allActions },
     { module: 'roles', actions: allActions },
     { module: 'logs', actions: allActions }
@@ -73,7 +75,8 @@ const rolePermissions = {
     { module: 'sales', actions: allActions },
     { module: 'payments', actions: allActions },
     { module: 'supplier_invoices', actions: allActions },
-    { module: 'egresos', actions: allActions }
+    { module: 'egresos', actions: allActions },
+    { module: 'cash_register', actions: allActions }
   ],
   'vendedor': [
     { module: 'dashboard', actions: allActions },
@@ -81,6 +84,7 @@ const rolePermissions = {
     { module: 'transfers', actions: allActions },
     { module: 'receptions', actions: allActions },
     { module: 'egresos', actions: allActions },
+    { module: 'cash_register', actions: allActions },
     { module: 'clients', actions: allActions },
     { module: 'sales', actions: allActions },
     { module: 'payments', actions: allActions }
@@ -92,7 +96,8 @@ const rolePermissions = {
     { module: 'products', actions: ['view'] }, // Solo ver productos
     { module: 'payments', actions: allActions },
     { module: 'warranties', actions: allActions },
-    { module: 'egresos', actions: ['view', 'create'] }
+    { module: 'egresos', actions: ['view', 'create'] },
+    { module: 'cash_register', actions: allActions }
   ],
   'inventario': [
     { module: 'products', actions: allActions },

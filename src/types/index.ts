@@ -428,6 +428,61 @@ export interface Egreso {
   updatedAt: string
 }
 
+export type CashSessionStatus = 'open' | 'closed' | 'cancelled'
+
+export interface CashSession {
+  id: string
+  storeId: string
+  status: CashSessionStatus
+  openingCash: number
+  openedAt: string
+  openedBy?: string | null
+  openedByName: string
+  closedAt?: string | null
+  closedBy?: string | null
+  closedByName?: string | null
+  salesCash: number
+  salesTransfer: number
+  salesNequi: number
+  salesBancolombia: number
+  salesCard: number
+  salesOther: number
+  salesCredit: number
+  creditAbonosCash: number
+  creditAbonosOther: number
+  egresosCash: number
+  egresosOther: number
+  salesCount: number
+  egresosCount: number
+  totalIngresos: number
+  totalEgresos: number
+  expectedCash: number
+  countedCash?: number | null
+  difference?: number | null
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CashSessionLiveSummary {
+  salesCash: number
+  salesTransfer: number
+  salesNequi: number
+  salesBancolombia: number
+  salesCard: number
+  salesOther: number
+  salesCredit: number
+  creditAbonosCash: number
+  creditAbonosOther: number
+  egresosCash: number
+  egresosOther: number
+  salesCount: number
+  egresosCount: number
+  totalIngresos: number
+  totalEgresos: number
+  expectedCash: number
+}
+
 // Store interface moved to store.ts for better module resolution
 export type { Store } from './store'
 

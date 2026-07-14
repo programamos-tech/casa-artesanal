@@ -15,6 +15,7 @@ const defaultVendedorPermissions: Record<string, string[]> = {
   transfers: ALL_ACTIONS,
   receptions: ALL_ACTIONS,
   egresos: ALL_ACTIONS,
+  cash_register: ALL_ACTIONS,
 }
 
 // Permisos por defecto del rol "cajero" (atiende caja, no edita productos ni hace transferencias).
@@ -24,6 +25,8 @@ const defaultCajeroPermissions: Record<string, string[]> = {
   clients: ALL_ACTIONS,
   payments: ALL_ACTIONS,
   warranties: ALL_ACTIONS,
+  cash_register: ALL_ACTIONS,
+  egresos: ['view', 'create'],
 }
 
 export function usePermissions() {
@@ -45,6 +48,11 @@ export function usePermissions() {
       .replace(/[\u0300-\u036f]/g, '')
       .trim()
 
+    // Admin: caja siempre habilitada (aunque el permiso no esté en la lista guardada)
+    if (userRole === 'admin' && module === 'cash_register') {
+      return ALL_ACTIONS.includes(action)
+    }
+
     // Rol inventario: solo productos por defecto (el resto según permisos guardados del usuario)
     if (userRole === 'inventario' && module === 'products') {
       return ALL_ACTIONS.includes(action)
@@ -61,8 +69,8 @@ export function usePermissions() {
         return true
       }
 
-      // Traslados, recepciones y egresos siempre habilitados para vendedores
-      if (module === 'transfers' || module === 'receptions' || module === 'egresos') {
+      // Traslados, recepciones, egresos y caja siempre habilitados para vendedores
+      if (module === 'transfers' || module === 'receptions' || module === 'egresos' || module === 'cash_register') {
         return ALL_ACTIONS.includes(action)
       }
       
@@ -91,6 +99,11 @@ export function usePermissions() {
       // El cajero SIEMPRE puede crear ventas, igual que el vendedor.
       if (module === 'sales' && action === 'create') {
         return true
+      }
+
+      // Caja siempre habilitada para cajeros
+      if (module === 'cash_register') {
+        return ALL_ACTIONS.includes(action)
       }
 
       const hasExplicitPermissions =
@@ -178,7 +191,7 @@ export function usePermissions() {
     
     const roleNorm = (currentUser.role || '').toLowerCase().trim()
     if (roleNorm === 'superadmin' || (roleNorm.includes('super') && (roleNorm.includes('admin') || roleNorm.includes('administrador')))) {
-      return ['dashboard', 'products', 'transfers', 'receptions', 'clients', 'sales', 'payments', 'supplier_invoices', 'egresos', 'warranties', 'roles', 'logs', 'stores']
+      return ['dashboard', 'products', 'transfers', 'receptions', 'clients', 'sales', 'payments', 'supplier_invoices', 'egresos', 'cash_register', 'warranties', 'roles', 'logs', 'stores']
     }
 
     // Inventario: dashboard + solo los módulos que tenga marcados en permisos (ej. solo Productos)
@@ -258,7 +271,7 @@ export function usePermissions() {
       .replace(/[\u0300-\u036f]/g, '')
       .trim()
     if (roleForActions === 'vendedor' || roleForActions === 'vendedora') {
-      if (module === 'transfers' || module === 'receptions' || module === 'egresos') {
+      if (module === 'transfers' || module === 'receptions' || module === 'egresos' || module === 'cash_register') {
         return ALL_ACTIONS
       }
       const defaults = defaultVendedorPermissions[module]
