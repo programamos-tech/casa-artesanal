@@ -454,6 +454,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     return mixedPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
   }
 
+  const mixedCashAmount = mixedPayments
+    .filter((p) => p.paymentType === 'cash')
+    .reduce((sum, p) => sum + (p.amount || 0), 0)
+
   // Solo considerar productos con cantidad > 0 para cálculos
   const validProducts = selectedProducts.filter(item => item.quantity > 0)
 
@@ -1308,8 +1312,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                         onChange={(e) => {
                           const newMethod = e.target.value as any
                           setPaymentMethod(newMethod)
-                          // Limpiar monto recibido si no es efectivo
-                          if (newMethod !== 'cash') {
+                          // Limpiar monto recibido si no es efectivo ni mixto
+                          if (newMethod !== 'cash' && newMethod !== 'mixed') {
                             setReceivedAmount('')
                           }
                         }}
@@ -1557,13 +1561,23 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                             </div>
                           </div>
 
-                          {/* Cálculo de vuelto - Solo para efectivo */}
-                          {paymentMethod === 'cash' && validProducts.length > 0 && (
+                          {/* Cálculo de vuelto: efectivo total, o efectivo del mixto */}
+                          {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
+                            validProducts.length > 0 &&
+                            (paymentMethod === 'cash' || mixedCashAmount > 0) && (
                             <div className="border-t border-gray-200 dark:border-neutral-600 pt-3 mt-3 space-y-3">
                               <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  Dinero recibido:
+                                  {paymentMethod === 'mixed'
+                                    ? 'Dinero recibido en efectivo:'
+                                    : 'Dinero recibido:'}
                                 </label>
+                                {paymentMethod === 'mixed' && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Vuelto sobre la parte en efectivo ($
+                                    {mixedCashAmount.toLocaleString('es-CO')})
+                                  </p>
+                                )}
                                 
                                 {/* Input para monto recibido */}
                                 <div className="relative">
@@ -1589,7 +1603,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                               {/* Mostrar vuelto si hay monto recibido */}
                               {receivedAmount && parseFloat(receivedAmount.replace(/[^\d]/g, '')) > 0 && (
                                 <div className={`rounded-lg p-4 border-2 ${
-                                  parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total
+                                  parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount
                                     ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600'
                                     : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-600'
                                 }`}>
@@ -1598,26 +1612,26 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                       Vuelto:
                                     </span>
                                     <span className={`text-2xl font-bold ${
-                                      parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total
+                                      parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount
                                         ? 'text-green-600 dark:text-green-400'
                                         : 'text-red-600 dark:text-red-400'
                                     }`}>
-                                      ${(parseFloat(receivedAmount.replace(/[^\d]/g, '')) - total).toLocaleString('es-CO', { 
+                                      ${(parseFloat(receivedAmount.replace(/[^\d]/g, '')) - changeBaseAmount).toLocaleString('es-CO', { 
                                         minimumFractionDigits: 0, 
                                         maximumFractionDigits: 0 
                                       })}
                                     </span>
                                   </div>
-                                  {parseFloat(receivedAmount.replace(/[^\d]/g, '')) < total && (
+                                  {parseFloat(receivedAmount.replace(/[^\d]/g, '')) < changeBaseAmount && (
                                     <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mt-2 font-medium">
                                       <AlertTriangle className="h-4 w-4" />
-                                      <span>Faltan ${(total - parseFloat(receivedAmount.replace(/[^\d]/g, ''))).toLocaleString('es-CO', { 
+                                      <span>Faltan ${(changeBaseAmount - parseFloat(receivedAmount.replace(/[^\d]/g, ''))).toLocaleString('es-CO', { 
                                         minimumFractionDigits: 0, 
                                         maximumFractionDigits: 0 
                                       })}</span>
                                     </div>
                                   )}
-                                  {parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total && (
+                                  {parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount && (
                                     <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 mt-2 font-medium">
                                       <CheckCircle className="h-4 w-4" />
                                       <span>Pago completo</span>

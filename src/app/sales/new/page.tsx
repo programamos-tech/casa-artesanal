@@ -545,6 +545,15 @@ export default function NewSalePage() {
     return mixedPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
   }
 
+  const mixedCashAmount = useMemo(
+    () =>
+      mixedPayments
+        .filter((p) => p.paymentType === 'cash')
+        .reduce((sum, p) => sum + (p.amount || 0), 0),
+    [mixedPayments]
+  )
+  const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashAmount : total
+
   const updateMixedPayment = (index: number, field: keyof SalePayment, value: any) => {
     const updated = [...mixedPayments]
     updated[index] = { ...updated[index], [field]: value }
@@ -1327,7 +1336,7 @@ export default function NewSalePage() {
                             | 'mixed'
                             | ''
                         )
-                        if (e.target.value !== 'cash') {
+                        if (e.target.value !== 'cash' && e.target.value !== 'mixed') {
                           setReceivedAmount('')
                         }
                       }}
@@ -1401,9 +1410,19 @@ export default function NewSalePage() {
                     </div>
                   )}
 
-                  {paymentMethod === 'cash' && validProducts.length > 0 && (
+                  {/* Vuelto: efectivo total, o efectivo del mixto */}
+                  {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
+                    validProducts.length > 0 &&
+                    (paymentMethod === 'cash' || mixedCashAmount > 0) && (
                     <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Dinero recibido</label>
+                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        {paymentMethod === 'mixed' ? 'Dinero recibido en efectivo' : 'Dinero recibido'}
+                      </label>
+                      {paymentMethod === 'mixed' && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          Vuelto sobre la parte en efectivo ({formatCurrency(mixedCashAmount)})
+                        </p>
+                      )}
                       <input
                         type="text"
                         value={receivedAmount ? parseFloat(receivedAmount.replace(/[^\d]/g, '') || '0').toLocaleString('es-CO') : ''}
@@ -1419,7 +1438,7 @@ export default function NewSalePage() {
                         <div
                           className={cn(
                             'rounded-lg border p-3',
-                            parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total
+                            parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount
                               ? 'border-brand-200/80 bg-brand-50/80 dark:border-brand-900/40 dark:bg-brand-950/25'
                               : 'border-red-200/80 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/25'
                           )}
@@ -1429,21 +1448,28 @@ export default function NewSalePage() {
                             <span
                               className={cn(
                                 'text-xl font-bold tabular-nums',
-                                parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total
+                                parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount
                                   ? 'text-brand-700 dark:text-brand-400'
                                   : 'text-red-600 dark:text-red-400'
                               )}
                             >
-                              {formatCurrency(parseFloat(receivedAmount.replace(/[^\d]/g, '')) - total)}
+                              {formatCurrency(
+                                parseFloat(receivedAmount.replace(/[^\d]/g, '')) - changeBaseAmount
+                              )}
                             </span>
                           </div>
-                          {parseFloat(receivedAmount.replace(/[^\d]/g, '')) < total && (
+                          {parseFloat(receivedAmount.replace(/[^\d]/g, '')) < changeBaseAmount && (
                             <div className="mt-2 flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                              <span>Faltan {formatCurrency(total - parseFloat(receivedAmount.replace(/[^\d]/g, '')))}</span>
+                              <span>
+                                Faltan{' '}
+                                {formatCurrency(
+                                  changeBaseAmount - parseFloat(receivedAmount.replace(/[^\d]/g, ''))
+                                )}
+                              </span>
                             </div>
                           )}
-                          {parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= total && (
+                          {parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount && (
                             <div className="mt-2 flex items-center gap-2 text-xs text-brand-700 dark:text-brand-400">
                               <CheckCircle className="h-3.5 w-3.5 shrink-0" />
                               <span>Pago completo</span>
