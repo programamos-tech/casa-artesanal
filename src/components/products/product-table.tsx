@@ -253,40 +253,36 @@ export function ProductTable({
   }
 
   const getStockStatusLabel = (product: Product) => {
-    const { warehouse, store, total } = product.stock
-    if (total === 0) return 'Sin Stock'
-    if (store > 0) {
-      if (store >= 10) return 'Disponible Local'
-      if (store >= 5) return 'Stock Local Bajo'
-      return 'Stock Local Muy Bajo'
-    }
-    if (warehouse > 0) {
-      if (warehouse >= 20) return 'Solo Bodega'
-      if (warehouse >= 10) return 'Solo Bodega (Bajo)'
-      return 'Solo Bodega (Muy Bajo)'
-    }
-    return 'Sin Stock'
+    const store = product.stock?.store || 0
+    if (store === 0) return 'Sin Stock'
+    if (store >= 10) return 'Disponible Local'
+    if (store >= 5) return 'Stock Local Bajo'
+    return 'Stock Local Muy Bajo'
   }
 
   /** Stock: acentos muy suaves; sin saturación fuerte */
   const getStockStatusBadgeClass = (product: Product) => {
-    const { warehouse, store, total } = product.stock
-    if (total === 0) {
+    const store = product.stock?.store || 0
+    if (store === 0) {
       return 'border-0 bg-red-100/85 text-red-900/85 dark:bg-red-950/30 dark:text-red-300/85'
     }
-    if (store > 0) {
-      if (store >= 10) {
-        return 'border-0 bg-green-100/80 text-green-900/88 dark:bg-green-950/25 dark:text-green-300/85'
-      }
-      if (store >= 5) {
-        return 'border-0 bg-amber-100/85 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
-      }
-      return 'border-0 bg-orange-100/85 text-orange-950/90 dark:bg-orange-950/25 dark:text-orange-300/85'
+    if (store >= 10) {
+      return 'border-0 bg-green-100/80 text-green-900/88 dark:bg-green-950/25 dark:text-green-300/85'
     }
-    if (warehouse > 0) {
-      return 'border-0 bg-sky-100/80 text-sky-950/90 dark:bg-sky-950/30 dark:text-sky-300/85'
+    if (store >= 5) {
+      return 'border-0 bg-amber-100/85 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
     }
-    return 'border-0 bg-red-100/85 text-red-900/85 dark:bg-red-950/30 dark:text-red-300/85'
+    return 'border-0 bg-orange-100/85 text-orange-950/90 dark:bg-orange-950/25 dark:text-orange-300/85'
+  }
+
+  const formatSalePrice = (product: Product) => {
+    const price = Number(product.retailPrice ?? product.price ?? 0)
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price)
   }
 
   const stockStatusOptions = [
@@ -295,13 +291,6 @@ export function ProductTable({
     { value: 'Disponible Local', label: 'Disponible Local' },
     { value: 'Stock Local Bajo', label: 'Stock Local Bajo' },
     { value: 'Stock Local Muy Bajo', label: 'Stock Local Muy Bajo' },
-    ...(isMainStore
-      ? [
-          { value: 'Solo Bodega', label: 'Solo Bodega' },
-          { value: 'Solo Bodega (Bajo)', label: 'Solo Bodega (Bajo)' },
-          { value: 'Solo Bodega (Muy Bajo)', label: 'Solo Bodega (Muy Bajo)' },
-        ]
-      : []),
   ]
 
   const thClass =
@@ -561,23 +550,20 @@ export function ProductTable({
                               </span>
                             </Badge>
                           </div>
-                          {isMainStore ? (
-                            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
-                              {(['Bodega', 'Local', 'Total'] as const).map((label, i) => (
-                                <div key={label} className="text-center">
-                                  <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</div>
-                                  <div className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                                    {i === 0 ? product.stock.warehouse : i === 1 ? product.stock.store : product.stock.total}
-                                  </div>
-                                </div>
-                              ))}
+                          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
+                            <div className="text-center">
+                              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Precio venta</div>
+                              <div className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                                {formatSalePrice(product)}
+                              </div>
                             </div>
-                          ) : (
-                            <div className="mt-3 border-t border-zinc-200/80 pt-3 text-center dark:border-zinc-800">
+                            <div className="text-center">
                               <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Stock</div>
-                              <div className="mt-0.5 text-sm font-semibold tabular-nums">{product.stock.store}</div>
+                              <div className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                                {product.stock.store}
+                              </div>
                             </div>
-                          )}
+                          </div>
                           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
                             <Badge
                               variant="outline"
@@ -615,15 +601,8 @@ export function ProductTable({
                       <thead>
                         <tr className="border-b border-zinc-200 dark:border-zinc-800">
                           <th className={cn(thClass, 'pl-4')}>Producto</th>
-                          {isMainStore ? (
-                            <>
-                              <th className={thClass}>Bodega</th>
-                              <th className={thClass}>Local</th>
-                              <th className={thClass}>Total</th>
-                            </>
-                          ) : (
-                            <th className={thClass}>Stock</th>
-                          )}
+                          <th className={thClass}>Precio venta</th>
+                          <th className={thClass}>Stock</th>
                           <th className={thClass}>Estado stock</th>
                           <th className={thClass}>Catálogo</th>
                           <th className={cn(thClass, 'w-[11rem] px-2 text-right')}>Acciones</th>
@@ -645,15 +624,12 @@ export function ProductTable({
                                   <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
                                 </div>
                               </td>
-                              {isMainStore ? (
-                                <>
-                                  <td className="whitespace-nowrap px-3 py-3 tabular-nums text-zinc-800 dark:text-zinc-200">{product.stock.warehouse}</td>
-                                  <td className="whitespace-nowrap px-3 py-3 tabular-nums text-zinc-800 dark:text-zinc-200">{product.stock.store}</td>
-                                  <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{product.stock.total}</td>
-                                </>
-                              ) : (
-                                <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{product.stock.store}</td>
-                              )}
+                              <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
+                                {formatSalePrice(product)}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
+                                {product.stock.store}
+                              </td>
                               <td className="px-3 py-3">
                                 <Badge variant="outline" className={cn(badgeTint, 'inline-flex border-0 px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}>
                                   {getStockStatusLabel(product)}
