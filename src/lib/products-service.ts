@@ -1002,6 +1002,43 @@ export class ProductsService {
     return results
   }
 
+  /**
+   * Sugiere la siguiente referencia numérica (p. ej. última 439 → 440).
+   * Conserva el padding de ceros de la última ref encontrada.
+   */
+  static async getSuggestedNextReference(): Promise<{ next: string; last: string } | null> {
+    try {
+      const { data, error } = await supabase.from('products').select('reference')
+      if (error || !data?.length) return null
+
+      let maxN = -1
+      let last = ''
+      let padLen = 1
+
+      for (const row of data) {
+        const raw = String(row.reference ?? '').trim()
+        if (!raw) continue
+        const digits = raw.replace(/\D/g, '')
+        if (!digits) continue
+        const n = Number.parseInt(digits, 10)
+        if (!Number.isFinite(n)) continue
+        if (n > maxN) {
+          maxN = n
+          last = raw
+          padLen = digits.length
+        }
+      }
+
+      if (maxN < 0) return null
+      const nextN = maxN + 1
+      const next = String(nextN).padStart(Math.max(padLen, String(nextN).length), '0')
+      return { next, last }
+    } catch (error) {
+      console.error('Error suggesting next product reference:', error)
+      return null
+    }
+  }
+
   // Crear nuevo producto
   static async createProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>, currentUserId?: string): Promise<Product | null> {
     try {

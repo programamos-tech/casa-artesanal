@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { X, Package, DollarSign, BarChart3, AlertTriangle, Store, ImageIcon } from 'lucide-react'
 import { Product, Category } from '@/types'
+import { ProductsService } from '@/lib/products-service'
 import { useProducts } from '@/contexts/products-context'
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
@@ -14,6 +15,24 @@ import { cn } from '@/lib/utils'
 import { formatMoneyInput, parseMoneyInput, formatIntegerInput, parseIntegerInput } from '@/lib/money-input'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
+const emptyProductForm = {
+  name: '',
+  reference: '',
+  description: '',
+  retailPrice: 0,
+  wholesalePrice: 0,
+  cost: 0,
+  stock: {
+    warehouse: 0,
+    store: 0,
+    total: 0,
+  },
+  categoryId: '',
+  brand: '',
+  status: 'active' as Product['status'],
+  initialLocation: 'store' as 'warehouse' | 'store',
+}
 
 const inputBase =
   'casa-artesanal-preserve-surface w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-600/80 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/25'
@@ -83,9 +102,12 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
   const [catalogImageUrl, setCatalogImageUrl] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadPreview, setUploadPreview] = useState<string | null>(null)
+  const [suggestedReference, setSuggestedReference] = useState<{ next: string; last: string } | null>(null)
   const catalogFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (!isOpen) return
+
     if (product) {
       setFormData({
         name: product.name || '',
@@ -105,11 +127,31 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         initialLocation: 'store' as 'warehouse' | 'store',
       })
       setCatalogImageUrl(product.imageUrl?.trim() || null)
-    } else {
-      setCatalogImageUrl(null)
+      setSuggestedReference(null)
+      setUploadPreview(null)
+      return
     }
+
+    // Nuevo producto: sugerir siguiente referencia (última + 1)
+    let cancelled = false
+    setCatalogImageUrl(null)
     setUploadPreview(null)
-  }, [product])
+    setSuggestedReference(null)
+    setFormData({ ...emptyProductForm })
+
+    void ProductsService.getSuggestedNextReference().then((suggestion) => {
+      if (cancelled || !suggestion) return
+      setSuggestedReference(suggestion)
+      setFormData((prev) => ({
+        ...prev,
+        reference: prev.reference.trim() ? prev.reference : suggestion.next,
+      }))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, product])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -253,25 +295,10 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
   }
 
   const handleClose = () => {
-    setFormData({
-      name: '',
-      reference: '',
-      description: '',
-      retailPrice: 0,
-      wholesalePrice: 0,
-      cost: 0,
-      stock: {
-        warehouse: 0,
-        store: 0,
-        total: 0,
-      },
-      categoryId: '',
-      brand: '',
-      status: 'active',
-      initialLocation: 'store',
-    })
+    setFormData({ ...emptyProductForm })
     setCatalogImageUrl(null)
     setUploadPreview(null)
+    setSuggestedReference(null)
     setErrors({})
     onClose()
   }
@@ -350,8 +377,22 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           value={formData.reference}
                           onChange={e => handleInputChange('reference', e.target.value)}
                           className={cn(inputBase, errors.reference && 'border-red-500/70 ring-1 ring-red-500/30')}
-                          placeholder="REF-001"
+                          placeholder={suggestedReference?.next || '439'}
                         />
+                        {!product && suggestedReference && (
+                          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                            Siguiente sugerida:{' '}
+                            <button
+                              type="button"
+                              className="font-semibold text-violet-700 underline-offset-2 hover:underline dark:text-violet-300"
+                              onClick={() => handleInputChange('reference', suggestedReference.next)}
+                            >
+                              {suggestedReference.next}
+                            </button>
+                            {' '}
+                            (última: {suggestedReference.last}). Puedes cambiarla.
+                          </p>
+                        )}
                         {errors.reference && <p className="mt-1.5 text-sm text-red-400">{errors.reference}</p>}
                       </div>
                     </div>
