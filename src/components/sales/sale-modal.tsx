@@ -826,8 +826,9 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-white/70 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-neutral-900 rounded-none xl:rounded-2xl shadow-2xl w-full h-full xl:h-[calc(98vh-4rem)] xl:w-[calc(100vw-18rem)] xl:max-h-[calc(98vh-4rem)] xl:max-w-[calc(100vw-18rem)] flex flex-col border-0 xl:border border-gray-200 dark:border-neutral-700 overflow-hidden">
+    /* xl:left-60 = mismo margen del main; el modal vive en el workspace, no tapa el sidebar */
+    <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-white/70 p-2 backdrop-blur-sm dark:bg-black/60 sm:p-3 xl:left-60 xl:p-4">
+        <div className="flex h-full w-full max-h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 sm:rounded-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 md:p-6 border-b border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-900/30 dark:to-green-900/20 flex-shrink-0">
           <div className="flex items-center space-x-3">
