@@ -83,7 +83,13 @@ export default function SalesPage() {
   }
 
   const handleUpdateSale = async (id: string, saleData: Omit<Sale, 'id' | 'createdAt'>) => {
-    await updateSale(id, saleData as Partial<Sale>)
+    // Si se finaliza desde el modal, primero guarda el contenido del borrador y luego factúra (descuenta stock).
+    if (saleData.status === 'completed') {
+      await updateSale(id, { ...saleData, status: 'draft' } as Partial<Sale>)
+      await finalizeDraftSale(id)
+    } else {
+      await updateSale(id, saleData as Partial<Sale>)
+    }
     setIsModalOpen(false)
     setSaleToEdit(null)
     await refreshSales()

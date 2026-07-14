@@ -388,7 +388,7 @@ export function SalesTable({
     }
   }
 
-  const statuses = ['all', 'completed', 'pending', 'cancelled']
+  const statuses = ['all', 'completed', 'draft', 'pending', 'cancelled']
 
   // Usar resultados de búsqueda si hay un término de búsqueda, sino usar todas las ventas
   // Pero si está buscando, no mostrar nada hasta que termine la búsqueda

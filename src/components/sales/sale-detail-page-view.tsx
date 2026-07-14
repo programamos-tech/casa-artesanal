@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Hash,
   DollarSign,
+  Pencil,
+  CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
@@ -108,12 +110,22 @@ export interface SaleDetailPageViewProps {
   onBack: () => void
   onPrint: (sale: Sale) => void | Promise<void>
   onCancel?: (saleId: string, reason: string) => Promise<{ success: boolean; totalRefund?: number }>
+  onEditDraft?: (sale: Sale) => void
+  onFinalizeDraft?: (saleId: string) => Promise<void>
 }
 
-export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDetailPageViewProps) {
+export function SaleDetailPageView({
+  sale,
+  onBack,
+  onPrint,
+  onCancel,
+  onEditDraft,
+  onFinalizeDraft,
+}: SaleDetailPageViewProps) {
   const [showCancelForm, setShowCancelForm] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
+  const [isFinalizing, setIsFinalizing] = useState(false)
   const [cancelSuccessMessage, setCancelSuccessMessage] = useState<string | null>(null)
   const cancelFormRef = useRef<HTMLDivElement>(null)
   const [credit, setCredit] = useState<Credit | null>(null)
@@ -272,9 +284,23 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
   }
 
   const titleInvoice = getInvoiceNumber(sale)
-  const canVoid = sale.status !== 'cancelled' && sale.status !== 'draft' && !transfer && Boolean(onCancel)
+  const isDraft = sale.status === 'draft'
+  const canVoid = sale.status !== 'cancelled' && !isDraft && !transfer && Boolean(onCancel)
   const paidOnCredit = credit ? credit.paidAmount : sale.total
   const pendingCredit = credit ? Math.max(0, credit.pendingAmount) : 0
+
+  const handleFinalizeDraft = async () => {
+    if (!onFinalizeDraft || isFinalizing) return
+    if (!confirm('¿Finalizar este borrador? Se descontará inventario y quedará como factura.')) return
+    setIsFinalizing(true)
+    try {
+      await onFinalizeDraft(sale.id)
+    } catch (error: any) {
+      alert(error?.message || 'Error al finalizar el borrador')
+    } finally {
+      setIsFinalizing(false)
+    }
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
@@ -284,12 +310,32 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
             <FileText className={cn('h-6 w-6 shrink-0', sectionIconClass)} strokeWidth={1.5} />
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                Factura {titleInvoice}
+                {isDraft ? 'Borrador' : 'Factura'} {titleInvoice}
               </h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Detalle del registro</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {isDraft ? 'Pendiente de finalizar · no descuenta inventario' : 'Detalle del registro'}
+              </p>
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {isDraft && onEditDraft && (
+              <Button size="sm" variant="outline" type="button" onClick={() => onEditDraft(sale)} disabled={isFinalizing}>
+                <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                Editar borrador
+              </Button>
+            )}
+            {isDraft && onFinalizeDraft && (
+              <Button
+                size="sm"
+                type="button"
+                className="border-transparent bg-emerald-700 text-white hover:bg-emerald-800"
+                onClick={() => void handleFinalizeDraft()}
+                disabled={isFinalizing}
+              >
+                <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />
+                {isFinalizing ? 'Finalizando…' : 'Finalizar factura'}
+              </Button>
+            )}
             {canVoid && (
               <Button
                 size="sm"
@@ -304,10 +350,12 @@ export function SaleDetailPageView({ sale, onBack, onPrint, onCancel }: SaleDeta
                 Anular factura
               </Button>
             )}
-            <Button size="sm" variant="outline" type="button" onClick={() => void onPrint(sale)} disabled={isCancelling}>
-              <Printer className="h-4 w-4" strokeWidth={1.5} />
-              Imprimir ticket
-            </Button>
+            {!isDraft && (
+              <Button size="sm" variant="outline" type="button" onClick={() => void onPrint(sale)} disabled={isCancelling}>
+                <Printer className="h-4 w-4" strokeWidth={1.5} />
+                Imprimir ticket
+              </Button>
+            )}
             <button
               type="button"
               onClick={onBack}

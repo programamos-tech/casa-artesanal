@@ -1687,36 +1687,74 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
               Cancelar
             </Button>
             {!sale && (
-              <Button
-                onClick={() => void handleSave(false)}
-                disabled={
-                  isSaving ||
-                  !selectedClient ||
-                  selectedProducts.length === 0 ||
-                  validProducts.length === 0 ||
-                  !paymentMethod ||
-                  hasAcquisitionCostIssues
-                }
-                className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
-              >
-                {isSaving ? 'Creando venta…' : 'Crear Venta'}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveAsDraft}
+                  disabled={
+                    isSaving ||
+                    !selectedClient ||
+                    selectedProducts.length === 0 ||
+                    validProducts.length === 0 ||
+                    !paymentMethod ||
+                    hasAcquisitionCostIssues
+                  }
+                  className="font-medium px-6 py-2.5"
+                >
+                  Dejar borrador
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSave(false)}
+                  disabled={
+                    isSaving ||
+                    !selectedClient ||
+                    selectedProducts.length === 0 ||
+                    validProducts.length === 0 ||
+                    !paymentMethod ||
+                    hasAcquisitionCostIssues
+                  }
+                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isSaving ? 'Creando venta…' : 'Crear Venta'}
+                </Button>
+              </>
             )}
             {sale && sale.status === 'draft' && (
-              <Button
-                onClick={() => void handleSave(false)}
-                disabled={
-                  isSaving ||
-                  !selectedClient ||
-                  selectedProducts.length === 0 ||
-                  validProducts.length === 0 ||
-                  !paymentMethod ||
-                  hasAcquisitionCostIssues
-                }
-                className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
-              >
-                {isSaving ? 'Facturando…' : 'Finalizar y Crear Venta'}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveAsDraft}
+                  disabled={
+                    isSaving ||
+                    !selectedClient ||
+                    selectedProducts.length === 0 ||
+                    validProducts.length === 0 ||
+                    !paymentMethod ||
+                    hasAcquisitionCostIssues
+                  }
+                  className="font-medium px-6 py-2.5"
+                >
+                  Dejar borrador
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSave(false)}
+                  disabled={
+                    isSaving ||
+                    !selectedClient ||
+                    selectedProducts.length === 0 ||
+                    validProducts.length === 0 ||
+                    !paymentMethod ||
+                    hasAcquisitionCostIssues
+                  }
+                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isSaving ? 'Facturando…' : 'Finalizar factura'}
+                </Button>
+              </>
             )}
           </div>
         </div>

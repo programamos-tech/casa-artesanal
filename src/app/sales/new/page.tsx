@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   CheckCircle,
   ArrowLeft,
-  ShoppingCart
+  ShoppingCart,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
@@ -641,7 +642,7 @@ export default function NewSalePage() {
     }
   }
 
-  const handleSave = async () => {
+  const handleSave = async (isDraft = false) => {
     if (isCreating || isSubmittingRef.current) return
     if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
 
@@ -670,7 +671,7 @@ export default function NewSalePage() {
     if (productsWithoutPrice.length > 0) {
       setStockAlert({
         show: true,
-        message: `Los siguientes productos no tienen precio asignado: ${productsWithoutPrice.join(', ')}. Por favor, asigna un precio a todos los productos antes de crear la venta.`,
+        message: `Los siguientes productos no tienen precio asignado: ${productsWithoutPrice.join(', ')}. Por favor, asigna un precio a todos los productos antes de ${isDraft ? 'dejar el borrador' : 'crear la venta'}.`,
         productId: undefined
       })
       return
@@ -690,7 +691,8 @@ export default function NewSalePage() {
       return
     }
 
-    if (paymentMethod === 'mixed') {
+    // En borrador no exigimos que el pago mixto cuadre al peso
+    if (!isDraft && paymentMethod === 'mixed') {
       const totalMixedPayments = getTotalMixedPayments()
       const roundedTotal = Math.round(total)
       const roundedPayments = Math.round(totalMixedPayments)
@@ -720,7 +722,7 @@ export default function NewSalePage() {
       transportPrice: amounts.transportPrice,
       discount: amounts.discount,
       discountType: amounts.discountType,
-      status: 'completed',
+      status: isDraft ? 'draft' : 'completed',
       paymentMethod,
       payments: paymentMethod === 'mixed' ? mixedPayments : undefined,
       items: saleItems,
@@ -740,7 +742,11 @@ export default function NewSalePage() {
     } catch (error) {
       console.error('Error creating sale:', error)
       setInvoiceNumber('Pendiente')
-      alert('Error al crear la venta. Por favor intenta de nuevo.')
+      alert(
+        isDraft
+          ? 'Error al dejar el borrador. Por favor intenta de nuevo.'
+          : 'Error al crear la venta. Por favor intenta de nuevo.'
+      )
     } finally {
       isSubmittingRef.current = false
       setIsCreating(false)
@@ -1649,9 +1655,10 @@ export default function NewSalePage() {
 
                       {saleBlockingAlert}
 
-                      <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                      <div className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                         <Button
-                          onClick={handleSave}
+                          type="button"
+                          onClick={() => void handleSave(false)}
                           disabled={
                             isCreating ||
                             !selectedClient || 
@@ -1677,6 +1684,29 @@ export default function NewSalePage() {
                             </>
                           )}
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void handleSave(true)}
+                          disabled={
+                            isCreating ||
+                            !selectedClient ||
+                            selectedProducts.length === 0 ||
+                            validProducts.length === 0 ||
+                            !paymentMethod ||
+                            !selectedSellerId ||
+                            validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) ||
+                            hasAcquisitionCostIssues
+                          }
+                          className="w-full"
+                          size="lg"
+                        >
+                          <ClipboardList className="mr-2 h-5 w-5" strokeWidth={1.5} />
+                          Dejar borrador
+                        </Button>
+                        <p className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+                          El borrador no descuenta inventario; puedes finalizarlo después desde Ventas.
+                        </p>
                         {validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) && (
                           <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-700 dark:text-amber-400">
                             <AlertTriangle className="h-4 w-4 shrink-0" />
