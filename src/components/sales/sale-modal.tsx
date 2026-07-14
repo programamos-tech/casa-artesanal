@@ -122,11 +122,14 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
 
       // Si hay una venta para editar (modo edición)
       if (sale && sale.status === 'draft') {
-        // Cargar cliente
-        const client = clients.find(c => c.id === sale.clientId)
+        // Cargar cliente (puede no venir en borradores incompletos)
+        const client = sale.clientId ? clients.find(c => c.id === sale.clientId) : null
         if (client) {
           setSelectedClient(client)
           setClientSearch(client.name)
+        } else {
+          setSelectedClient(null)
+          setClientSearch('')
         }
         
         // Cargar productos
@@ -139,8 +142,12 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
           setSelectedProducts(itemsWithAddedAt)
         }
         
-        // Cargar método de pago
-        setPaymentMethod(sale.paymentMethod)
+        // Cargar método de pago (pending = aún no elegido en borrador)
+        setPaymentMethod(
+          sale.paymentMethod && sale.paymentMethod !== 'pending'
+            ? sale.paymentMethod
+            : ''
+        )
         
         // Cargar pagos mixtos si aplica
         if (sale.paymentMethod === 'mixed' && sale.payments) {
@@ -678,29 +685,49 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
 
   const handleSave = async (isDraft: boolean = false) => {
     if (isSaving || isSubmittingRef.current) return
-    // Validar que hay cliente, productos, método de pago y que todos tengan cantidad > 0
-    if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
 
-    const invalidProducts = collectAcquisitionCostSaveViolations(validProducts, productId => {
-      const product = findProductById(productId)
-      return product ? getProductAcquisitionCost(product) : undefined
-    })
-
-    if (invalidProducts.length > 0) {
-      showStockAlert(invalidProducts.join(' • '), undefined)
+    if (selectedProducts.length === 0 || validProducts.length === 0) {
+      showStockAlert('Agrega al menos un producto.', undefined)
       return
     }
 
-    // Si NO es borrador, validar pagos mixtos si es necesario
-    if (!isDraft && paymentMethod === 'mixed') {
-      const totalMixedPayments = getTotalMixedPayments()
-      const roundedTotal = Math.round(total)
-      const roundedPayments = Math.round(totalMixedPayments)
-      
-      if (roundedPayments !== roundedTotal) {
-        const faltante = Math.abs(roundedTotal - roundedPayments)
-        setPaymentError(`El total ingresado ($${roundedPayments.toLocaleString('es-CO', { maximumFractionDigits: 0 })}) no coincide con el total de la venta ($${roundedTotal.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). Falta: $${faltante.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`)
+    if (!isDraft) {
+      if (!selectedClient || !paymentMethod || paymentMethod === 'pending') {
+        showStockAlert('Para facturar debes elegir cliente y método de pago.', undefined)
         return
+      }
+
+      const invalidProducts = collectAcquisitionCostSaveViolations(validProducts, productId => {
+        const product = findProductById(productId)
+        return product ? getProductAcquisitionCost(product) : undefined
+      })
+
+      if (invalidProducts.length > 0) {
+        showStockAlert(invalidProducts.join(' • '), undefined)
+        return
+      }
+
+      const productsWithoutPrice = validProducts.filter(
+        (item) => !item.unitPrice || item.unitPrice <= 0
+      )
+      if (productsWithoutPrice.length > 0) {
+        showStockAlert(
+          `Asigna precio a: ${productsWithoutPrice.map((p) => p.productName).join(', ')}`,
+          undefined
+        )
+        return
+      }
+
+      if (paymentMethod === 'mixed') {
+        const totalMixedPayments = getTotalMixedPayments()
+        const roundedTotal = Math.round(total)
+        const roundedPayments = Math.round(totalMixedPayments)
+
+        if (roundedPayments !== roundedTotal) {
+          const faltante = Math.abs(roundedTotal - roundedPayments)
+          setPaymentError(`El total ingresado ($${roundedPayments.toLocaleString('es-CO', { maximumFractionDigits: 0 })}) no coincide con el total de la venta ($${roundedTotal.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). Falta: $${faltante.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`)
+          return
+        }
       }
     }
 
@@ -708,14 +735,14 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
     const amounts = computeSaleAmounts(saleItems, false, {
-      transportPrice,
-      discount: orderDiscount,
+      transportPrice: isDraft && !sale ? 0 : transportPrice,
+      discount: isDraft && !sale ? 0 : orderDiscount,
       discountType: orderDiscountType,
     })
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
-      clientId: selectedClient.id,
-      clientName: selectedClient.name,
+      clientId: selectedClient?.id || '',
+      clientName: selectedClient?.name || 'Sin cliente',
       total: amounts.total,
       subtotal: amounts.subtotal,
       tax: amounts.tax,
@@ -723,10 +750,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       discount: amounts.discount,
       discountType: amounts.discountType,
       status: isDraft ? 'draft' : 'completed',
-      paymentMethod,
-      payments: paymentMethod === 'mixed' ? mixedPayments : undefined,
-      items: saleItems, // Solo incluir productos con cantidad > 0
-      invoiceNumber: sale?.invoiceNumber // Mantener número de factura si es edición
+      paymentMethod: (paymentMethod || 'pending') as Sale['paymentMethod'],
+      payments: !isDraft && paymentMethod === 'mixed' ? mixedPayments : undefined,
+      items: saleItems,
+      invoiceNumber: sale?.invoiceNumber
     }
 
     isSubmittingRef.current = true
@@ -1694,11 +1721,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                   onClick={handleSaveAsDraft}
                   disabled={
                     isSaving ||
-                    !selectedClient ||
                     selectedProducts.length === 0 ||
-                    validProducts.length === 0 ||
-                    !paymentMethod ||
-                    hasAcquisitionCostIssues
+                    validProducts.length === 0
                   }
                   className="font-medium px-6 py-2.5"
                 >
@@ -1729,11 +1753,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                   onClick={handleSaveAsDraft}
                   disabled={
                     isSaving ||
-                    !selectedClient ||
                     selectedProducts.length === 0 ||
-                    validProducts.length === 0 ||
-                    !paymentMethod ||
-                    hasAcquisitionCostIssues
+                    validProducts.length === 0
                   }
                   className="font-medium px-6 py-2.5"
                 >
@@ -1748,6 +1769,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                     selectedProducts.length === 0 ||
                     validProducts.length === 0 ||
                     !paymentMethod ||
+                    paymentMethod === 'pending' ||
                     hasAcquisitionCostIssues
                   }
                   className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white"

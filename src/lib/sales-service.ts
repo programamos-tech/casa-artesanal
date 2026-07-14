@@ -808,11 +808,26 @@ export class SalesService {
         sellerEmail = sellerLookup.email || sellerEmail
       }
 
+      const isDraft = saleData.status === 'draft'
+      const clientId = saleData.clientId?.trim() || null
+      const clientName = saleData.clientName?.trim() || (isDraft ? 'Sin cliente' : '')
+      const paymentMethod =
+        saleData.paymentMethod || (isDraft ? 'pending' : '')
+
+      if (!isDraft) {
+        if (!clientId || !clientName) {
+          throw new Error('Debes seleccionar un cliente para facturar.')
+        }
+        if (!paymentMethod || paymentMethod === 'pending') {
+          throw new Error('Debes seleccionar un método de pago para facturar.')
+        }
+      }
+
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert({
-          client_id: saleData.clientId,
-          client_name: saleData.clientName,
+          client_id: clientId,
+          client_name: clientName || 'Sin cliente',
           total: saleData.total,
           subtotal: saleData.subtotal,
           tax: saleData.tax,
@@ -820,7 +835,7 @@ export class SalesService {
           discount: saleData.discount,
           discount_type: saleData.discountType || 'amount',
           status: saleData.status,
-          payment_method: saleData.paymentMethod,
+          payment_method: paymentMethod || 'pending',
           invoice_number: invoiceNumber,
           seller_id: sellerId,
           seller_name: sellerName,
@@ -847,7 +862,6 @@ export class SalesService {
       }> = []
 
       const hasItems = Boolean(saleData.items && saleData.items.length > 0)
-      const isDraft = saleData.status === 'draft'
 
       if (hasItems && !isDraft) {
         const batchResult = await ProductsService.deductStockForSaleBatch(
@@ -1082,11 +1096,15 @@ export class SalesService {
       }
 
       // Actualizar la venta
+      const nextClientId = saleData.clientId?.trim() || null
+      const nextClientName = saleData.clientName?.trim() || 'Sin cliente'
+      const nextPaymentMethod = saleData.paymentMethod || 'pending'
+
       const { data, error } = await supabase
         .from('sales')
         .update({
-          client_id: saleData.clientId,
-          client_name: saleData.clientName,
+          client_id: nextClientId,
+          client_name: nextClientName,
           total: saleData.total,
           subtotal: saleData.subtotal,
           tax: saleData.tax,
@@ -1094,7 +1112,7 @@ export class SalesService {
           discount: saleData.discount,
           discount_type: saleData.discountType || 'amount',
           status: saleData.status,
-          payment_method: saleData.paymentMethod,
+          payment_method: nextPaymentMethod,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -1179,6 +1197,21 @@ export class SalesService {
 
       if (draftSale.status !== 'draft') {
         throw new Error('Esta venta no es un borrador')
+      }
+
+      if (!draftSale.clientId || !draftSale.clientName?.trim() || draftSale.clientName === 'Sin cliente') {
+        throw new Error('Asigna un cliente antes de finalizar el borrador.')
+      }
+      if (!draftSale.paymentMethod || draftSale.paymentMethod === 'pending') {
+        throw new Error('Asigna un método de pago antes de finalizar el borrador.')
+      }
+      if (!draftSale.items?.length) {
+        throw new Error('El borrador no tiene productos para facturar.')
+      }
+      for (const item of draftSale.items) {
+        if (!item.unitPrice || item.unitPrice <= 0) {
+          throw new Error(`Asigna precio a "${item.productName}" antes de finalizar.`)
+        }
       }
 
       // Obtener información del usuario actual

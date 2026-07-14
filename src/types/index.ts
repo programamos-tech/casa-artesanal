@@ -261,6 +261,7 @@ export interface WarrantyStatusHistory {
 
 export interface Sale {
   id: string
+  /** Puede ser null/vacío en borradores incompletos. */
   clientId: string
   clientName: string
   total: number
@@ -271,7 +272,8 @@ export interface Sale {
   discount: number
   discountType?: 'percentage' | 'amount'
   status: 'pending' | 'completed' | 'cancelled' | 'draft'
-  paymentMethod: 'cash' | 'credit' | 'transfer' | 'nequi' | 'bancolombia' | 'warranty' | 'mixed' | 'card'
+  /** pending = borrador sin método de pago asignado aún */
+  paymentMethod: 'cash' | 'credit' | 'transfer' | 'nequi' | 'bancolombia' | 'warranty' | 'mixed' | 'card' | 'pending'
   payments?: SalePayment[] // Para pagos mixtos
   invoiceNumber?: string
   sellerId?: string

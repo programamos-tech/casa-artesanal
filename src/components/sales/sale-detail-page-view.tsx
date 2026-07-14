@@ -241,6 +241,8 @@ export function SaleDetailPageView({
         return 'Garantía'
       case 'mixed':
         return 'Mixto'
+      case 'pending':
+        return 'Sin método'
       default:
         return method
     }

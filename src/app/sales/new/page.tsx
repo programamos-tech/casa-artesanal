@@ -644,78 +644,91 @@ export default function NewSalePage() {
 
   const handleSave = async (isDraft = false) => {
     if (isCreating || isSubmittingRef.current) return
-    if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
 
-    // El vendedor es obligatorio: el cajero debe asignar a quién corresponde la venta.
-    const seller = sellers.find((s) => s.id === selectedSellerId)
-    if (!seller) {
-      setStockAlert({
-        show: true,
-        message:
-          sellers.length === 0
-            ? 'No hay vendedores activos en esta tienda. Crea un usuario con rol "vendedor" en Roles antes de facturar.'
-            : 'Debes asignar un vendedor a esta venta antes de guardarla.',
-        productId: undefined,
-      })
-      return
-    }
-
-    // Verificar que todos los productos tengan precio > 0
-    const productsWithoutPrice: string[] = []
-    validProducts.forEach(item => {
-      if (!item.unitPrice || item.unitPrice <= 0) {
-        productsWithoutPrice.push(item.productName)
-      }
-    })
-
-    if (productsWithoutPrice.length > 0) {
-      setStockAlert({
-        show: true,
-        message: `Los siguientes productos no tienen precio asignado: ${productsWithoutPrice.join(', ')}. Por favor, asigna un precio a todos los productos antes de ${isDraft ? 'dejar el borrador' : 'crear la venta'}.`,
-        productId: undefined
-      })
-      return
-    }
-
-    const invalidProducts = collectAcquisitionCostSaveViolations(validProducts, productId => {
-      const product = findProductById(productId)
-      return product ? getProductAcquisitionCost(product) : undefined
-    })
-
-    if (invalidProducts.length > 0) {
-      setStockAlert({
-        show: true,
-        message: invalidProducts.join(' • '),
-        productId: undefined
-      })
-      return
-    }
-
-    // En borrador no exigimos que el pago mixto cuadre al peso
-    if (!isDraft && paymentMethod === 'mixed') {
-      const totalMixedPayments = getTotalMixedPayments()
-      const roundedTotal = Math.round(total)
-      const roundedPayments = Math.round(totalMixedPayments)
-      
-      if (roundedPayments !== roundedTotal) {
-        const faltante = Math.abs(roundedTotal - roundedPayments)
-        setPaymentError(`El total ingresado (${formatCurrency(roundedPayments)}) no coincide con el total de la venta (${formatCurrency(roundedTotal)}). Falta: ${formatCurrency(faltante)}`)
+    // Borrador: basta con tener productos agregados
+    if (isDraft) {
+      if (selectedProducts.length === 0 || validProducts.length === 0) {
+        setStockAlert({
+          show: true,
+          message: 'Agrega al menos un producto para dejar el borrador.',
+          productId: undefined,
+        })
         return
       }
+    } else {
+      if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
+
+      // El vendedor es obligatorio al facturar
+      const sellerCheck = sellers.find((s) => s.id === selectedSellerId)
+      if (!sellerCheck) {
+        setStockAlert({
+          show: true,
+          message:
+            sellers.length === 0
+              ? 'No hay vendedores activos en esta tienda. Crea un usuario con rol "vendedor" en Roles antes de facturar.'
+              : 'Debes asignar un vendedor a esta venta antes de guardarla.',
+          productId: undefined,
+        })
+        return
+      }
+
+      const productsWithoutPrice: string[] = []
+      validProducts.forEach(item => {
+        if (!item.unitPrice || item.unitPrice <= 0) {
+          productsWithoutPrice.push(item.productName)
+        }
+      })
+
+      if (productsWithoutPrice.length > 0) {
+        setStockAlert({
+          show: true,
+          message: `Los siguientes productos no tienen precio asignado: ${productsWithoutPrice.join(', ')}. Por favor, asigna un precio a todos los productos antes de crear la venta.`,
+          productId: undefined
+        })
+        return
+      }
+
+      const invalidProducts = collectAcquisitionCostSaveViolations(validProducts, productId => {
+        const product = findProductById(productId)
+        return product ? getProductAcquisitionCost(product) : undefined
+      })
+
+      if (invalidProducts.length > 0) {
+        setStockAlert({
+          show: true,
+          message: invalidProducts.join(' • '),
+          productId: undefined
+        })
+        return
+      }
+
+      if (paymentMethod === 'mixed') {
+        const totalMixedPayments = getTotalMixedPayments()
+        const roundedTotal = Math.round(total)
+        const roundedPayments = Math.round(totalMixedPayments)
+
+        if (roundedPayments !== roundedTotal) {
+          const faltante = Math.abs(roundedTotal - roundedPayments)
+          setPaymentError(`El total ingresado (${formatCurrency(roundedPayments)}) no coincide con el total de la venta (${formatCurrency(roundedTotal)}). Falta: ${formatCurrency(faltante)}`)
+          return
+        }
+      }
     }
+
+    const seller = sellers.find((s) => s.id === selectedSellerId)
 
     const saleItems = prepareSaleItemsForSave(
       validProductsForTotal.map(({ addedAt, ...item }) => item)
     )
     const amounts = computeSaleAmounts(saleItems, false, {
-      transportPrice,
-      discount: orderDiscount,
+      transportPrice: isDraft ? 0 : transportPrice,
+      discount: isDraft ? 0 : orderDiscount,
       discountType: orderDiscountType,
     })
 
     const saleData: Omit<Sale, 'id' | 'createdAt'> = {
-      clientId: selectedClient.id,
-      clientName: selectedClient.name,
+      clientId: selectedClient?.id || '',
+      clientName: selectedClient?.name || 'Sin cliente',
       total: amounts.total,
       subtotal: amounts.subtotal,
       tax: amounts.tax,
@@ -723,13 +736,13 @@ export default function NewSalePage() {
       discount: amounts.discount,
       discountType: amounts.discountType,
       status: isDraft ? 'draft' : 'completed',
-      paymentMethod,
-      payments: paymentMethod === 'mixed' ? mixedPayments : undefined,
+      paymentMethod: (paymentMethod || 'pending') as Sale['paymentMethod'],
+      payments: !isDraft && paymentMethod === 'mixed' ? mixedPayments : undefined,
       items: saleItems,
       invoiceNumber: undefined,
-      sellerId: seller.id,
-      sellerName: seller.name,
-      sellerEmail: seller.email,
+      sellerId: seller?.id,
+      sellerName: seller?.name,
+      sellerEmail: seller?.email,
     }
 
     isSubmittingRef.current = true
@@ -1690,13 +1703,8 @@ export default function NewSalePage() {
                           onClick={() => void handleSave(true)}
                           disabled={
                             isCreating ||
-                            !selectedClient ||
                             selectedProducts.length === 0 ||
-                            validProducts.length === 0 ||
-                            !paymentMethod ||
-                            !selectedSellerId ||
-                            validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) ||
-                            hasAcquisitionCostIssues
+                            validProducts.length === 0
                           }
                           className="w-full"
                           size="lg"
@@ -1705,7 +1713,7 @@ export default function NewSalePage() {
                           Dejar borrador
                         </Button>
                         <p className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
-                          El borrador no descuenta inventario; puedes finalizarlo después desde Ventas.
+                          Con solo productos puedes dejar borrador. Cliente, vendedor y pago se piden al facturar.
                         </p>
                         {validProducts.some(item => !item.unitPrice || item.unitPrice <= 0) && (
                           <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-700 dark:text-amber-400">
