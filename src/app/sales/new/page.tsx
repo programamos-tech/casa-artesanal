@@ -843,11 +843,14 @@ export default function NewSalePage() {
         await updateSale(editingDraftId, { ...saleData, status: 'draft' })
         if (!isDraft) {
           await finalizeDraftSale(editingDraftId)
+          router.replace(`/sales/${editingDraftId}`)
+        } else {
+          router.replace('/sales?status=draft')
         }
       } else {
         await createSale(saleData)
+        router.replace(isDraft ? '/sales?status=draft' : '/sales')
       }
-      router.replace('/sales')
     } catch (error) {
       console.error('Error creating sale:', error)
       if (!editingDraftId) setInvoiceNumber('Pendiente')

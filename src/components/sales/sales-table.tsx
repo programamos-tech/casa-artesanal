@@ -51,6 +51,8 @@ interface SalesTableProps {
   onPageChange: (page: number) => void
   onSearch: (searchTerm: string) => Promise<Sale[]>
   onRefresh?: () => void
+  /** Estado inicial del filtro (ej. draft al volver de “Dejar borrador”). */
+  initialStatusFilter?: string
 }
 
 export function SalesTable({ 
@@ -66,7 +68,8 @@ export function SalesTable({
   onPrint,
   onPageChange,
   onSearch,
-  onRefresh
+  onRefresh,
+  initialStatusFilter = 'all',
 }: SalesTableProps) {
   const { dateRange, setDateRange, clearDateRange } = useSales()
   const hasDateFilter = Boolean(dateRange.start || dateRange.end)
@@ -76,13 +79,15 @@ export function SalesTable({
   const isVendedorRole = roleNorm === 'vendedor' || roleNorm === 'vendedora'
   
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterStatus, setFilterStatus] = useState(initialStatusFilter || 'all')
   const [searchResults, setSearchResults] = useState<Sale[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [credits, setCredits] = useState<Record<string, Credit>>({})
   const [transfers, setTransfers] = useState<Record<string, StoreStockTransfer>>({})
 
-  // Cargar créditos para ventas de tipo crédito
+  useEffect(() => {
+    if (initialStatusFilter) setFilterStatus(initialStatusFilter)
+  }, [initialStatusFilter])
   useEffect(() => {
     const loadCredits = async () => {
       const creditSales = sales.filter(sale => sale.paymentMethod === 'credit' && sale.invoiceNumber)

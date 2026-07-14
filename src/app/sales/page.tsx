@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { SalesTable } from '@/components/sales/sales-table'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { useSales } from '@/contexts/sales-context'
@@ -10,6 +10,8 @@ import { printSaleTicket } from '@/lib/sales-print-ticket'
 
 export default function SalesPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const statusFromUrl = searchParams.get('status') || 'all'
   const {
     sales,
     loading,
@@ -102,6 +104,7 @@ export default function SalesPage() {
           onPageChange={goToPage}
           onSearch={searchSales}
           onRefresh={handleRefresh}
+          initialStatusFilter={statusFromUrl}
         />
       </div>
     </RoleProtectedRoute>

@@ -171,6 +171,7 @@ export class SalesService {
       dataQuery = applyCreatedAtRangeFilter(dataQuery, options?.dateRangeStart, options?.dateRangeEnd)
 
       const { data, error } = await dataQuery
+        .order('updated_at', { ascending: false })
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
