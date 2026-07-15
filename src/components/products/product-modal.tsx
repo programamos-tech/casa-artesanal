@@ -9,12 +9,9 @@ import { X, Package, DollarSign, BarChart3, AlertTriangle, Store, ImageIcon } fr
 import { Product, Category } from '@/types'
 import { ProductsService } from '@/lib/products-service'
 import { useProducts } from '@/contexts/products-context'
-import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { formatMoneyInput, parseMoneyInput, formatIntegerInput, parseIntegerInput } from '@/lib/money-input'
-
-const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
 const emptyProductForm = {
   name: '',
@@ -72,14 +69,12 @@ interface ProductModalProps {
 
 export function ProductModal({ isOpen, onClose, onSave, product, categories }: ProductModalProps) {
   const { products } = useProducts()
-  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
 
   useLayoutEffect(() => {
     setMounted(true)
   }, [])
 
-  const isMainStore = !user?.storeId || user.storeId === MAIN_STORE_ID
   const [formData, setFormData] = useState({
     name: product?.name || '',
     reference: product?.reference || '',
@@ -267,7 +262,10 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
 
   const handleSave = () => {
     if (validateForm()) {
-      const totalStock = formData.stock.warehouse + formData.stock.store
+      // Bodega no se usa en el formulario: en creación queda 0; en edición se preserva el valor existente
+      const warehouseStock = product ? formData.stock.warehouse : 0
+      const storeStock = formData.stock.store
+      const totalStock = warehouseStock + storeStock
       const productData: Omit<Product, 'id'> = {
         name: formData.name.trim(),
         reference: formData.reference.trim(),
@@ -277,8 +275,8 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         price: formData.retailPrice,
         cost: formData.cost,
         stock: {
-          warehouse: formData.stock.warehouse,
-          store: formData.stock.store,
+          warehouse: warehouseStock,
+          store: storeStock,
           total: totalStock,
         },
         categoryId: formData.categoryId,
@@ -516,41 +514,13 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                     </div>
                   )}
 
-                  {!product && isMainStore && (
-                    <div className="mb-4">
-                      <span className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Ubicación inicial</span>
-                      <div className="flex rounded-xl bg-zinc-100 p-1 ring-1 ring-zinc-200 dark:bg-zinc-800/90 dark:ring-zinc-700/80">
-                        <button
-                          type="button"
-                          onClick={() => handleInputChange('initialLocation', 'store')}
-                          className={cn(
-                            'flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                            formData.initialLocation === 'store'
-                              ? 'bg-white text-zinc-950 shadow-sm'
-                              : 'text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-200'
-                          )}
-                        >
-                          <Store className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                          Local
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleInputChange('initialLocation', 'warehouse')}
-                          className={cn(
-                            'flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                            formData.initialLocation === 'warehouse'
-                              ? 'bg-white text-zinc-950 shadow-sm'
-                              : 'text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-200'
-                          )}
-                        >
-                          <Package className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                          Bodega
-                        </button>
-                      </div>
-                    </div>
+                  {!product && (
+                    <p className="-mt-2 mb-4 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      El stock inicial queda en Local.
+                    </p>
                   )}
 
-                  <div className={cn('grid grid-cols-1 gap-6', isMainStore && 'md:grid-cols-2')}>
+                  <div className="grid grid-cols-1 gap-6">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
                         <Store className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
@@ -574,43 +544,13 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                         {errors.stockStore && <p className="mt-1.5 text-sm text-red-400">{errors.stockStore}</p>}
                       </div>
                     </div>
-
-                    {isMainStore && (
-                      <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
-                        <Package className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
-                          <h4 className="text-sm font-semibold">Bodega</h4>
-                        </div>
-                        <div>
-                          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Stock actual</label>
-                          {product ? (
-                            <div className="w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 dark:border-zinc-600/80 dark:bg-zinc-900/60 dark:text-zinc-400">
-                              {formatIntegerInput(formData.stock.warehouse)} unidades
-                            </div>
-                          ) : (
-                            <input
-                              type="text"
-                              value={formatIntegerInput(formData.stock.warehouse)}
-                              onChange={e => handleInputChange('stock.warehouse', parseIntegerInput(e.target.value))}
-                              className={cn(inputBase, errors.stockWarehouse && 'border-red-500/70')}
-                              placeholder="0"
-                            />
-                          )}
-                          {errors.stockWarehouse && (
-                            <p className="mt-1.5 text-sm text-red-400">{errors.stockWarehouse}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="mt-4 rounded-xl border border-teal-100/90 bg-teal-50/40 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/25">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Stock total</span>
                       <span className="text-lg font-semibold tabular-nums text-zinc-900 dark:text-white">
-                        {formatIntegerInput(
-                          isMainStore ? formData.stock.warehouse + formData.stock.store : formData.stock.store
-                        )}{' '}
+                        {formatIntegerInput(formData.stock.store)}{' '}
                         <span className="text-sm font-normal text-zinc-500 dark:text-zinc-500">unidades</span>
                       </span>
                     </div>
