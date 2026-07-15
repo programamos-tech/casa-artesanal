@@ -11,7 +11,6 @@ import {
   Trash2,
   Package,
   Store as StoreIcon,
-  Warehouse,
   ArrowRightLeft,
   AlertTriangle,
   Search,
@@ -194,7 +193,7 @@ export function TransferModal({
         productId: '',
         productName: '',
         productReference: '',
-        fromLocation: originStoreId === MAIN_STORE_ID ? 'warehouse' : 'store',
+        fromLocation: 'store',
         quantity: 0,
         unitPrice: 0,
         productCost: 0,
@@ -229,10 +228,10 @@ export function TransferModal({
         productId: product.id,
         productName: product.name || '',
         productReference: product.reference || '',
-        fromLocation: originStoreId === MAIN_STORE_ID ? 'warehouse' : 'store',
+        fromLocation: 'store',
         quantity: 0,
-        unitPrice: product.price || 0,
-        productCost: product.cost || 0,
+        unitPrice: 0,
+        productCost: 0,
       },
     ])
 
@@ -249,10 +248,10 @@ export function TransferModal({
         productId: value as string,
         productName: product?.name || '',
         productReference: product?.reference || '',
-        fromLocation: newItems[index].fromLocation,
+        fromLocation: 'store',
         quantity: newItems[index].quantity,
-        unitPrice: product?.price || 0, // Precio por defecto del producto
-        productCost: product?.cost || 0 // Costo como referencia
+        unitPrice: 0,
+        productCost: 0,
       }
       // Limpiar alerta cuando cambia el producto
       setStockAlerts(prev => {
@@ -301,31 +300,14 @@ export function TransferModal({
         return
       }
 
-      const wh = product.stock?.warehouse || 0
       const st = product.stock?.store || 0
-      const availableStock =
-        item.fromLocation === 'warehouse'
-          ? wh
-          : item.fromLocation === 'store'
-            ? st
-            : wh + st
+      // Origen fijo: solo Local (bodega no se usa en traslados)
+      const availableStock = st
 
       if (item.quantity > availableStock) {
-        const where =
-          item.fromLocation === 'warehouse'
-            ? 'Bodega'
-            : item.fromLocation === 'store'
-              ? 'Local'
-              : 'local y bodega combinados'
         toast.error(
-          `No hay suficiente stock (${where}) para ${item.productName}. Disponible: ${availableStock}`
+          `No hay suficiente stock (Local) para ${item.productName}. Disponible: ${availableStock}`
         )
-        return
-      }
-
-      // Precio puede ser 0 (transferencia sin cobro); solo rechazar negativos
-      if (item.unitPrice == null || item.unitPrice < 0) {
-        toast.error(`Debes ingresar un precio de venta válido para ${item.productName}`)
         return
       }
     }
@@ -375,8 +357,8 @@ export function TransferModal({
         productName: item.productName,
         productReference: item.productReference,
         quantity: item.quantity,
-        fromLocation: item.fromLocation,
-        unitPrice: item.unitPrice // Incluir precio en la transferencia
+        fromLocation: 'store' as const,
+        unitPrice: 0,
       }))
 
       // Preparar información de pago
@@ -747,24 +729,13 @@ export function TransferModal({
                       // Calcular el índice original para mantener las referencias correctas
                       const index = items.length - 1 - originalIndex
                       const product = availableProducts.find(p => p.id === item.productId)
-                      const warehouseStock = product ? (product.stock?.warehouse || 0) : 0
                       const storeStock = product ? (product.stock?.store || 0) : 0
-                      const isFromMainStoreOrigin = originStoreId === MAIN_STORE_ID
-                      const usedWarehouseExcl = item.productId
-                        ? getUsedQuantityExcluding(item.productId, 'warehouse', index)
-                        : 0
                       const usedStoreExcl = item.productId
                         ? getUsedQuantityExcluding(item.productId, 'store', index)
                         : 0
-                      const remainingWarehouse = warehouseStock - usedWarehouseExcl
                       const remainingStore = storeStock - usedStoreExcl
-                      const availableQty =
-                        item.fromLocation === 'warehouse'
-                          ? remainingWarehouse
-                          : item.fromLocation === 'store'
-                            ? remainingStore
-                            : remainingWarehouse + remainingStore
-                      const isComplete = item.quantity > 0 && item.productId && item.fromLocation
+                      const availableQty = remainingStore
+                      const isComplete = item.quantity > 0 && item.productId
                       const isCollapsed = collapsedRowIds.has(item.rowId)
                       const canToggleCollapse = Boolean(item.productId)
 
@@ -823,22 +794,10 @@ export function TransferModal({
                           {item.productId && isCollapsed && (
                             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-zinc-200 pt-3 text-sm dark:border-white/[0.06]">
                               <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-0 dark:bg-zinc-950/60 dark:text-zinc-200">
-                                {item.fromLocation === 'warehouse'
-                                  ? 'Bodega'
-                                  : item.fromLocation === 'store'
-                                    ? 'Local'
-                                    : 'Local + bodega'}
+                                Local
                               </span>
-                              {item.fromLocation === 'both' && (
-                                <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                  (primero local, luego bodega)
-                                </span>
-                              )}
                               <span className="text-zinc-600 dark:text-zinc-400">
-                                {formatNumber(item.quantity)} u. × {formatCurrency(item.unitPrice || 0)}
-                              </span>
-                              <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                                {formatCurrency((item.unitPrice || 0) * item.quantity)}
+                                {formatNumber(item.quantity)} u.
                               </span>
                               <span className="text-xs text-zinc-500 dark:text-zinc-500">
                                 Toca la flecha para editar
@@ -849,108 +808,23 @@ export function TransferModal({
                           {/* Controles cuando hay producto seleccionado y la fila está expandida */}
                           {item.productId && !isCollapsed && (
                             <div className="space-y-3">
-                              {/* Stock y Selección de Ubicación */}
-                              <div>
-                                <Label className="mb-2 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                  Transferir desde
-                                </Label>
-                                <div
-                                  className={cn(
-                                    'grid gap-2',
-                                    isFromMainStoreOrigin ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'
-                                  )}
-                                >
-                                  {(isFromMainStoreOrigin
-                                    ? (['store', 'warehouse', 'both'] as const)
-                                    : (['store'] as const)
-                                  ).map((location) => {
-                                    const isSelected = item.fromLocation === location
-                                    const stock =
-                                      location === 'warehouse'
-                                        ? warehouseStock
-                                        : location === 'store'
-                                          ? storeStock
-                                          : warehouseStock + storeStock
-                                    const remaining =
-                                      location === 'warehouse'
-                                        ? remainingWarehouse
-                                        : location === 'store'
-                                          ? remainingStore
-                                          : remainingWarehouse + remainingStore
-                                    const isDisabled = remaining <= 0 && !isSelected
-                                    const Icon =
-                                      location === 'warehouse'
-                                        ? Warehouse
-                                        : location === 'store'
-                                          ? StoreIcon
-                                          : ArrowRightLeft
-                                    const title =
-                                      location === 'warehouse'
-                                        ? 'Bodega'
-                                        : location === 'store'
-                                          ? 'Local'
-                                          : 'Local + bodega'
-                                    const subtitle =
-                                      location === 'both'
-                                        ? `Disponible en total: ${formatNumber(remaining)} (primero local, luego bodega)`
-                                        : `Stock: ${formatNumber(stock)} · Disponible: ${formatNumber(remaining)}`
-
-                                    return (
-                                      <button
-                                        key={location}
-                                        type="button"
-                                        onClick={() =>
-                                          !isDisabled && handleItemChange(index, 'fromLocation', location)
-                                        }
-                                        disabled={isDisabled}
-                                        className={cn(
-                                          'rounded-lg border p-3 text-left text-sm transition-colors',
-                                          isDisabled
-                                            ? 'cursor-not-allowed border-zinc-200 text-zinc-400 opacity-50 dark:border-0 dark:bg-zinc-950/30'
-                                            : isSelected
-                                              ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-0 dark:bg-zinc-700/70 dark:text-zinc-50'
-                                              : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-0 dark:bg-zinc-950/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60'
-                                        )}
-                                      >
-                                        <div className="mb-1 flex items-center gap-2">
-                                          <Icon
-                                            className={cn(
-                                              'h-4 w-4 shrink-0',
-                                              isSelected ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500'
-                                            )}
-                                            strokeWidth={1.5}
-                                          />
-                                          <span
-                                            className={cn(
-                                              'text-sm font-medium',
-                                              isSelected
-                                                ? 'text-zinc-900 dark:text-zinc-50'
-                                                : 'text-zinc-700 dark:text-zinc-300'
-                                            )}
-                                          >
-                                            {title}
-                                          </span>
-                                        </div>
-                                        <div
-                                          className={cn(
-                                            'text-xs leading-snug',
-                                            isSelected
-                                              ? 'text-zinc-600 dark:text-zinc-300'
-                                              : 'text-zinc-500 dark:text-zinc-400'
-                                          )}
-                                        >
-                                          {subtitle}
-                                        </div>
-                                      </button>
-                                    )
-                                  })}
+                              {/* Stock Local (origen fijo; bodega no se usa) */}
+                              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-0 dark:bg-zinc-950/60">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <StoreIcon
+                                    className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400"
+                                    strokeWidth={1.5}
+                                  />
+                                  <span className="font-medium text-zinc-900 dark:text-zinc-50">Local</span>
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Stock: {formatNumber(storeStock)} · Disponible:{' '}
+                                    {formatNumber(remainingStore)}
+                                  </span>
                                 </div>
                               </div>
                               
-                              {/* Cantidad, Costo y Precio */}
-                              <div className="grid grid-cols-3 gap-3">
-                                {/* Cantidad */}
-                                <div>
+                              {/* Cantidad */}
+                              <div className="max-w-xs">
                                 <Label className="mb-2 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                                   Cantidad
                                 </Label>
@@ -1005,77 +879,7 @@ export function TransferModal({
                                   </p>
                                 )}
                               </div>
-                              
-                              {/* Precio de venta (solo lectura, como referencia) */}
-                              <div>
-                                <Label className="mb-2 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                  Precio Venta (Ref.)
-                                </Label>
-                                <Input
-                                  type="text"
-                                  value={formatCurrency(item.unitPrice || 0)}
-                                  disabled
-                                  readOnly
-                                  className={cn(
-                                    inputClass,
-                                    'h-10 cursor-not-allowed bg-zinc-100 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400'
-                                  )}
-                                />
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                  Precio de venta
-                                </p>
-                              </div>
-                              
-                              {/* Precio de venta */}
-                              <div>
-                                <Label className="mb-2 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                  Precio Venta <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={item.unitPrice !== undefined && item.unitPrice !== null 
-                                    ? (item.unitPrice % 1 === 0 ? item.unitPrice.toString() : item.unitPrice.toFixed(2))
-                                    : ''}
-                                  onChange={(e) => {
-                                    // Permitir números y punto decimal
-                                    let value = e.target.value.replace(/[^\d.]/g, '')
-                                    // Permitir solo un punto decimal
-                                    const parts = value.split('.')
-                                    if (parts.length > 2) {
-                                      value = parts[0] + '.' + parts.slice(1).join('')
-                                    }
-                                    // Limitar a 2 decimales después del punto
-                                    if (parts.length === 2 && parts[1].length > 2) {
-                                      value = parts[0] + '.' + parts[1].substring(0, 2)
-                                    }
-                                    // Convertir a número, permitir vacío para edición
-                                    const price = value === '' || value === '.' ? 0 : parseFloat(value) || 0
-                                    handleItemChange(index, 'unitPrice', price)
-                                  }}
-                                  onBlur={(e) => {
-                                    // Asegurar que tenga formato decimal si es necesario
-                                    const value = e.target.value.trim()
-                                    if (value === '' || value === '.') {
-                                      handleItemChange(index, 'unitPrice', 0)
-                                    } else {
-                                      const price = parseFloat(value) || 0
-                                      // Mantener hasta 2 decimales
-                                      const roundedPrice = Math.round(price * 100) / 100
-                                      if (roundedPrice !== item.unitPrice) {
-                                        handleItemChange(index, 'unitPrice', roundedPrice)
-                                      }
-                                    }
-                                  }}
-                                  className={cn(inputClass, 'h-10 py-2 text-sm')}
-                                  placeholder="0.00"
-                                />
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                  Subtotal: {formatCurrency((item.unitPrice || 0) * item.quantity)}
-                                </p>
-                              </div>
                             </div>
-                          </div>
                           )}
                         </div>
                       )
@@ -1184,7 +988,7 @@ export function TransferModal({
             {/* Resumen compacto */}
             {items.length > 0 && (
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-0 dark:bg-zinc-900">
-                <div className="grid grid-cols-2 gap-3 text-center md:grid-cols-4">
+                <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
                     <div className="text-xs text-zinc-600 dark:text-zinc-400">Productos</div>
                     <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{items.length}</div>
@@ -1199,12 +1003,6 @@ export function TransferModal({
                     <div className="text-xs text-zinc-600 dark:text-zinc-400">Destino</div>
                     <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                       {stores.find(s => s.id === toStoreId)?.name || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400">Total Ingreso</div>
-                    <div className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                      {formatCurrency(calculateTotal())}
                     </div>
                   </div>
                 </div>

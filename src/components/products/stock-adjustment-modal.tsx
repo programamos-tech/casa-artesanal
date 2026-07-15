@@ -5,9 +5,8 @@ import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { X, Package, AlertTriangle, Warehouse, Store, TrendingUp, TrendingDown, FileText, Loader2 } from 'lucide-react'
+import { X, Package, AlertTriangle, Store, TrendingUp, TrendingDown, FileText, Loader2 } from 'lucide-react'
 import { Product } from '@/types'
-import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
 
 /** Misma caja secundaria que modales de abono (proveedor / crédito) */
@@ -30,9 +29,6 @@ const overlayInnerClass = 'flex h-full min-h-0 w-full touch-none items-center ju
 const shellClass =
   'isolate flex max-h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] w-full max-w-3xl touch-auto flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900'
 
-// Constante para identificar la tienda principal
-const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-
 interface StockAdjustmentModalProps {
   isOpen: boolean
   onClose: () => void
@@ -41,7 +37,6 @@ interface StockAdjustmentModalProps {
 }
 
 export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: StockAdjustmentModalProps) {
-  const { user } = useAuth()
   const [portalReady, setPortalReady] = useState(false)
 
   useEffect(() => {
@@ -61,11 +56,9 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
       body.style.overflow = prevBody
     }
   }, [isOpen])
-  
-  // Detectar si es tienda principal o microtienda
-  const isMainStore = !user?.storeId || user.storeId === MAIN_STORE_ID
+
+  // Solo Local; bodega no se usa en ajustes
   const [formData, setFormData] = useState({
-    location: 'store' as 'warehouse' | 'store',
     newQuantity: 0,
     reason: ''
   })
@@ -102,7 +95,6 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
   useEffect(() => {
     if (product) {
       setFormData({
-        location: 'store',
         newQuantity: 0,
         reason: ''
       })
@@ -149,7 +141,7 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
 
     setIsSubmitting(true)
     try {
-      await onAdjust(product.id, formData.location, formData.newQuantity, formData.reason)
+      await onAdjust(product.id, 'store', formData.newQuantity, formData.reason)
     } catch (error) {
       console.error('Error in stock adjustment:', error)
       // No cerrar el modal si hay error, dejar que el usuario vea el mensaje de error
@@ -160,17 +152,13 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
 
   const getCurrentStock = () => {
     if (!product) return 0
-    return formData.location === 'warehouse' ? product.stock.warehouse : product.stock.store
+    return product.stock.store
   }
 
   const getStockDifference = () => {
     const current = getCurrentStock()
     const newQty = formData.newQuantity
     return newQty - current
-  }
-
-  const getLocationLabel = (location: 'warehouse' | 'store') => {
-    return location === 'warehouse' ? 'Bodega' : 'Local'
   }
 
   if (!isOpen || !product) return null
@@ -230,20 +218,10 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                     <div className="font-mono text-sm text-zinc-900 dark:text-zinc-50">{product.reference}</div>
                   </div>
                 </div>
-                <div className={`grid ${isMainStore ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-                  {isMainStore && (
-                    <div>
-                      <span className="text-sm text-zinc-500 dark:text-zinc-400">Stock actual — Bodega</span>
-                      <div className="font-medium text-zinc-900 dark:text-zinc-50">
-                        {formatNumber(product.stock.warehouse)} unidades
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-sm text-zinc-500 dark:text-zinc-400">Stock actual — Local</span>
-                    <div className="font-medium text-zinc-900 dark:text-zinc-50">
-                      {formatNumber(product.stock.store)} unidades
-                    </div>
+                <div>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Stock actual — Local</span>
+                  <div className="font-medium text-zinc-900 dark:text-zinc-50">
+                    {formatNumber(product.stock.store)} unidades
                   </div>
                 </div>
               </CardContent>
@@ -259,89 +237,17 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="mb-3 block text-zinc-700 dark:text-zinc-300">Ubicación a ajustar *</Label>
-                  <div className={`grid ${isMainStore ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('location', 'store')}
-                      disabled={isSubmitting}
-                      className={cn(
-                        'rounded-lg border p-3 text-left text-sm font-medium transition-colors',
-                        formData.location === 'store'
-                          ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50'
-                          : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
-                        isSubmitting && 'cursor-not-allowed opacity-60'
-                      )}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Store
-                          className={cn(
-                            'h-5 w-5',
-                            formData.location === 'store'
-                              ? 'text-zinc-900 dark:text-zinc-100'
-                              : 'text-zinc-400 dark:text-zinc-500'
-                          )}
-                          strokeWidth={1.5}
-                        />
-                        <div>
-                          <div
-                            className={cn(
-                              'font-medium',
-                              formData.location === 'store'
-                                ? 'text-zinc-900 dark:text-zinc-50'
-                                : 'text-zinc-700 dark:text-zinc-300'
-                            )}
-                          >
-                            Local
-                          </div>
-                          <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                            Stock actual: {formatNumber(product.stock.store)}
-                          </div>
+                  <Label className="mb-3 block text-zinc-700 dark:text-zinc-300">Ubicación a ajustar</Label>
+                  <div className="rounded-lg border border-zinc-500 bg-zinc-100 p-3 text-left text-sm font-medium text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50">
+                    <div className="flex items-center space-x-3">
+                      <Store className="h-5 w-5 text-zinc-900 dark:text-zinc-100" strokeWidth={1.5} />
+                      <div>
+                        <div className="font-medium text-zinc-900 dark:text-zinc-50">Local</div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                          Stock actual: {formatNumber(product.stock.store)}
                         </div>
                       </div>
-                    </button>
-
-                    {isMainStore && (
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('location', 'warehouse')}
-                        disabled={isSubmitting}
-                        className={cn(
-                          'rounded-lg border p-3 text-left text-sm font-medium transition-colors',
-                          formData.location === 'warehouse'
-                            ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50'
-                            : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
-                          isSubmitting && 'cursor-not-allowed opacity-60'
-                        )}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Warehouse
-                            className={cn(
-                              'h-5 w-5',
-                              formData.location === 'warehouse'
-                                ? 'text-zinc-900 dark:text-zinc-100'
-                                : 'text-zinc-400 dark:text-zinc-500'
-                            )}
-                            strokeWidth={1.5}
-                          />
-                          <div>
-                            <div
-                              className={cn(
-                                'font-medium',
-                                formData.location === 'warehouse'
-                                  ? 'text-zinc-900 dark:text-zinc-50'
-                                  : 'text-zinc-700 dark:text-zinc-300'
-                              )}
-                            >
-                              Bodega
-                            </div>
-                            <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                              Stock actual: {formatNumber(product.stock.warehouse)}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    )}
+                    </div>
                   </div>
                 </div>
 
@@ -426,7 +332,7 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
                 </div>
               </div>
               <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                {getStockDifference() > 0 ? 'Incremento' : 'Reducción'} en {getLocationLabel(formData.location)}
+                {getStockDifference() > 0 ? 'Incremento' : 'Reducción'} en Local
               </p>
             </div>
           )}
