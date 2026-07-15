@@ -16,8 +16,6 @@ import {
   Search,
   CheckCircle,
   CreditCard,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react'
 import { Store, Product, TransferItem } from '@/types'
 import { ProductsService } from '@/lib/products-service'
@@ -113,23 +111,12 @@ export function TransferModal({
   }, [])
   const [paymentError, setPaymentError] = useState<string>('')
   const [showStoreError, setShowStoreError] = useState(false)
-  const [collapsedRowIds, setCollapsedRowIds] = useState<Set<string>>(() => new Set())
-
-  const toggleItemCollapsed = (rowId: string) => {
-    setCollapsedRowIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(rowId)) next.delete(rowId)
-      else next.add(rowId)
-      return next
-    })
-  }
 
   useEffect(() => {
     if (!isOpen) return
     const defaultOrigin = (fromStoreId && fromStoreId.trim()) || MAIN_STORE_ID
     setOriginStoreId(defaultOrigin)
     setItems([])
-    setCollapsedRowIds(new Set())
     setToStoreId(isRequest && requestingStoreId ? requestingStoreId : '')
     setDescription('')
     setGlobalProductSearch('')
@@ -202,15 +189,7 @@ export function TransferModal({
   }
 
   const handleRemoveItem = (index: number) => {
-    const removed = items[index]
     setItems(items.filter((_, i) => i !== index))
-    if (removed?.rowId) {
-      setCollapsedRowIds((prev) => {
-        const next = new Set(prev)
-        next.delete(removed.rowId)
-        return next
-      })
-    }
   }
 
   const handleSelectProductFromSearch = (product: Product) => {
@@ -736,96 +715,49 @@ export function TransferModal({
                       const remainingStore = storeStock - usedStoreExcl
                       const availableQty = remainingStore
                       const isComplete = item.quantity > 0 && item.productId
-                      const isCollapsed = collapsedRowIds.has(item.rowId)
-                      const canToggleCollapse = Boolean(item.productId)
 
                       return (
-                        <div
-                          key={item.rowId}
-                          className={itemCardClass}
-                        >
-                          <div
-                            className={cn(
-                              'flex items-start justify-between gap-2',
-                              item.productId && !isCollapsed && 'mb-3'
-                            )}
-                          >
-                            <div className="flex min-w-0 flex-1 items-start gap-2">
-                              {canToggleCollapse && (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleItemCollapsed(item.rowId)}
-                                  className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-0 dark:bg-zinc-950/80 dark:text-zinc-300 dark:hover:bg-zinc-700/50"
-                                  aria-expanded={!isCollapsed}
-                                  aria-label={isCollapsed ? 'Expandir línea' : 'Colapsar línea'}
-                                >
-                                  {isCollapsed ? (
-                                    <ChevronRight className="h-4 w-4" strokeWidth={2} />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" strokeWidth={2} />
-                                  )}
-                                </button>
+                        <div key={item.rowId} className={itemCardClass}>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                            {/* Producto */}
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              {isComplete ? (
+                                <CheckCircle className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
+                              ) : (
+                                <Package className="h-4 w-4 shrink-0 text-zinc-400" strokeWidth={1.5} />
                               )}
-                              {isComplete && (
-                                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-600 dark:text-brand-400" />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
                                   {item.productName || 'Seleccionar producto'}
                                 </div>
                                 {item.productReference && (
-                                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                                     Ref: {item.productReference}
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(index)}
-                              className="h-8 w-8 shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
 
-                          {item.productId && isCollapsed && (
-                            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-zinc-200 pt-3 text-sm dark:border-white/[0.06]">
-                              <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-0 dark:bg-zinc-950/60 dark:text-zinc-200">
-                                Local
-                              </span>
-                              <span className="text-zinc-600 dark:text-zinc-400">
-                                {formatNumber(item.quantity)} u.
-                              </span>
-                              <span className="text-xs text-zinc-500 dark:text-zinc-500">
-                                Toca la flecha para editar
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Controles cuando hay producto seleccionado y la fila está expandida */}
-                          {item.productId && !isCollapsed && (
-                            <div className="space-y-3">
-                              {/* Stock Local (origen fijo; bodega no se usa) */}
-                              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-0 dark:bg-zinc-950/60">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <StoreIcon
-                                    className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400"
-                                    strokeWidth={1.5}
-                                  />
-                                  <span className="font-medium text-zinc-900 dark:text-zinc-50">Local</span>
-                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                    Stock: {formatNumber(storeStock)} · Disponible:{' '}
-                                    {formatNumber(remainingStore)}
-                                  </span>
+                            {/* Stock Local */}
+                            {item.productId && (
+                              <div className="flex shrink-0 items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-0 dark:bg-zinc-950/60">
+                                <StoreIcon
+                                  className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400"
+                                  strokeWidth={1.5}
+                                />
+                                <div className="leading-tight">
+                                  <div className="text-xs font-medium text-zinc-900 dark:text-zinc-50">Local</div>
+                                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    Disp. {formatNumber(remainingStore)} / {formatNumber(storeStock)}
+                                  </div>
                                 </div>
                               </div>
-                              
-                              {/* Cantidad */}
-                              <div className="max-w-xs">
-                                <Label className="mb-2 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                            )}
+
+                            {/* Cantidad */}
+                            {item.productId && (
+                              <div className="w-full shrink-0 sm:w-28">
+                                <Label className="mb-1 block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
                                   Cantidad
                                 </Label>
                                 <input
@@ -833,11 +765,9 @@ export function TransferModal({
                                   inputMode="numeric"
                                   value={item.quantity || ''}
                                   onChange={(e) => {
-                                    // Solo permitir números
                                     const value = e.target.value.replace(/[^\d]/g, '')
                                     const qty = value === '' ? 0 : parseInt(value, 10)
-                                    
-                                    // Validar stock disponible
+
                                     if (qty > availableQty) {
                                       setStockAlerts(prev => ({
                                         ...prev,
@@ -850,37 +780,47 @@ export function TransferModal({
                                         return newAlerts
                                       })
                                     }
-                                    
+
                                     handleItemChange(index, 'quantity', qty)
                                   }}
                                   onBlur={(e) => {
-                                    // Asegurar que no tenga ceros a la izquierda
                                     const value = e.target.value.replace(/^0+/, '') || '0'
                                     const qty = parseInt(value, 10) || 0
                                     if (qty !== item.quantity) {
                                       handleItemChange(index, 'quantity', qty)
                                     }
                                   }}
-                                  disabled={!item.productId || availableQty <= 0}
+                                  disabled={availableQty <= 0}
                                   className={cn(
                                     inputClass,
-                                    'h-10 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+                                    'h-10 py-2 text-center text-sm disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
                                   )}
                                   placeholder="0"
                                 />
                                 {stockAlerts[index] ? (
-                                  <div className="mt-1 flex items-center gap-1.5 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
-                                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span>{stockAlerts[index]}</span>
+                                  <div className="mt-1 flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400">
+                                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                                    <span className="leading-tight">{stockAlerts[index]}</span>
                                   </div>
                                 ) : (
-                                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Max: {formatNumber(availableQty)}
+                                  <p className="mt-1 text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    Máx {formatNumber(availableQty)}
                                   </p>
                                 )}
                               </div>
-                            </div>
-                          )}
+                            )}
+
+                            {/* Eliminar */}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveItem(index)}
+                              className="h-8 w-8 shrink-0 self-start text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20 sm:self-center"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       )
                     })}
