@@ -89,91 +89,33 @@ export interface CashCloseReportInput {
   egresos: CashCloseEgresoLine[]
 }
 
-const MAX_WHATSAPP_CHARS = 3500
-
 export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): string {
-  const lines: string[] = []
-  lines.push('*CIERRE DE CAJA — La Casa Artesanal*')
-  lines.push(`Tienda: ${input.storeName}`)
-  lines.push(`Apertura: ${formatDateTimeCo(input.openedAt)}`)
-  lines.push(`Cierre: ${formatDateTimeCo(input.closedAt)}`)
-  lines.push(`Abrió: ${input.openedByName || '—'}`)
-  lines.push(`Cerró: ${input.closedByName || '—'}`)
-  lines.push('')
-  lines.push('*RESUMEN*')
-  lines.push(`Fondo inicial: ${moneyCop(input.openingCash)}`)
-  lines.push(`Ingresos: ${moneyCop(input.totalIngresos)}`)
-  lines.push(`Egresos: ${moneyCop(input.totalEgresos)}`)
-  lines.push(`Efectivo esperado: ${moneyCop(input.expectedCash)}`)
-  lines.push(`Efectivo contado: ${moneyCop(input.countedCash)}`)
+  const transfers =
+    (input.salesNequi || 0) +
+    (input.salesBancolombia || 0) +
+    (input.salesTransfer || 0)
   const diffLabel =
     input.difference === 0 ? 'Cuadra' : input.difference > 0 ? 'Sobra' : 'Falta'
-  lines.push(`Diferencia: ${moneyCop(input.difference)} (${diffLabel})`)
-  lines.push('')
-  lines.push('*INGRESOS POR MEDIO*')
-  lines.push(`Efectivo: ${moneyCop(input.salesCash)}`)
-  lines.push(`Nequi: ${moneyCop(input.salesNequi)}`)
-  lines.push(`Bancolombia: ${moneyCop(input.salesBancolombia)}`)
-  lines.push(`Transferencia: ${moneyCop(input.salesTransfer)}`)
-  lines.push(`Tarjeta: ${moneyCop(input.salesCard)}`)
-  lines.push(`Crédito facturado: ${moneyCop(input.salesCredit)}`)
-  lines.push(`Otros: ${moneyCop(input.salesOther)}`)
-  lines.push(`Abonos crédito (efectivo): ${moneyCop(input.creditAbonosCash)}`)
-  lines.push(`Abonos crédito (otros): ${moneyCop(input.creditAbonosOther)}`)
-  lines.push('')
-  lines.push('*EGRESOS POR MEDIO*')
-  lines.push(`Efectivo: ${moneyCop(input.egresosCash)}`)
-  lines.push(`Otros: ${moneyCop(input.egresosOther)}`)
+
+  const lines: string[] = [
+    '*CIERRE DE CAJA*',
+    input.storeName,
+    `Apertura: ${formatDateTimeCo(input.openedAt)}`,
+    `Cierre: ${formatDateTimeCo(input.closedAt)}`,
+    '',
+    `Vendido: ${moneyCop(input.totalIngresos)} (${input.salesCount} facturas)`,
+    `Efectivo: ${moneyCop(input.salesCash)}`,
+    `Transferencias: ${moneyCop(transfers)}`,
+    `Egresos: ${moneyCop(input.totalEgresos)} (${input.egresosCount})`,
+    `Caja contada: ${moneyCop(input.countedCash)}`,
+    `Diferencia: ${moneyCop(input.difference)} (${diffLabel})`,
+  ]
 
   if (input.notes?.trim()) {
-    lines.push('')
-    lines.push(`*Nota:* ${input.notes.trim()}`)
+    lines.push(`Nota: ${input.notes.trim()}`)
   }
 
-  lines.push('')
-  lines.push(`*VENTAS DEL TURNO* (${input.salesCount})`)
-  if (input.sales.length === 0) {
-    lines.push('Sin ventas en el turno.')
-  } else {
-    for (let i = 0; i < input.sales.length; i++) {
-      const sale = input.sales[i]
-      const header = `${i + 1}. ${sale.invoiceNumber || 'S/N'} | ${sale.clientName || 'Cliente'} | ${paymentLabel(sale.paymentMethod)} | ${moneyCop(sale.total)}`
-      lines.push(header)
-      if (sale.sellerName) lines.push(`   Vendedor: ${sale.sellerName}`)
-      for (const item of sale.items.slice(0, 8)) {
-        lines.push(
-          `   • ${item.productName} x${item.quantity} = ${moneyCop(item.total)}`
-        )
-      }
-      if (sale.items.length > 8) {
-        lines.push(`   • … +${sale.items.length - 8} productos más`)
-      }
-    }
-  }
-
-  lines.push('')
-  lines.push(`*EGRESOS DEL TURNO* (${input.egresosCount})`)
-  if (input.egresos.length === 0) {
-    lines.push('Sin egresos en el turno.')
-  } else {
-    for (let i = 0; i < input.egresos.length; i++) {
-      const e = input.egresos[i]
-      const desc = e.description?.trim() ? ` — ${e.description.trim()}` : ''
-      lines.push(
-        `${i + 1}. ${e.concept}${desc} | ${paymentLabel(e.paymentMethod)} | ${moneyCop(e.amount)}`
-      )
-    }
-  }
-
-  lines.push('')
-  lines.push('_Informe generado automáticamente al cerrar caja._')
-
-  let message = lines.join('\n')
-  if (message.length > MAX_WHATSAPP_CHARS) {
-    const cut = message.slice(0, MAX_WHATSAPP_CHARS - 80)
-    message = `${cut}\n\n… Informe truncado. Detalle completo en el sistema.`
-  }
-  return message
+  return lines.join('\n')
 }
 
 export function buildWhatsAppDeepLink(phone: string, message: string): string {
