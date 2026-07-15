@@ -281,11 +281,11 @@ export function LogDetailModal({ isOpen, onClose, log }: LogDetailModalProps) {
     if (module === 'transfers') {
       switch (action) {
         case 'transfer_created':
-          return 'Transferencia Creada'
+          return 'Traslado Creado'
         case 'transfer_received':
-          return 'Recepción de Transferencia'
+          return 'Recepción de Traslado'
         case 'transfer_cancelled':
-          return 'Cancelar Transferencia'
+          return 'Cancelar Traslado'
         default:
           return action
       }
@@ -317,11 +317,11 @@ export function LogDetailModal({ isOpen, onClose, log }: LogDetailModalProps) {
       case 'transfer':
         return 'Transferencia de Stock'
       case 'transfer_created':
-        return 'Transferencia Creada'
+        return 'Traslado Creado'
       case 'transfer_received':
-        return 'Recepción de Transferencia'
+        return 'Recepción de Traslado'
       case 'transfer_cancelled':
-        return 'Transferencia Cancelada'
+        return 'Traslado Cancelado'
       case 'sale':
       case 'sale_create':
         return 'Venta'
@@ -357,7 +357,7 @@ export function LogDetailModal({ isOpen, onClose, log }: LogDetailModalProps) {
       case 'roles':
         return 'Gestión de Usuarios'
       case 'transfers':
-        return 'Gestión de Transferencias'
+        return 'Gestión de Traslados'
       case 'user_create':
         return 'Usuario Creado'
       case 'user_edit':
@@ -1744,7 +1744,7 @@ export function LogDetailModal({ isOpen, onClose, log }: LogDetailModalProps) {
                         <div className="space-y-3">
                           <div className="flex items-center space-x-2 font-medium text-gray-900 dark:text-white mb-3">
                             <ArrowRightLeft className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                            <span className="text-gray-900 dark:text-white">Transferencia Creada</span>
+                            <span className="text-gray-900 dark:text-white">Traslado Creado</span>
                           </div>
                           
                           {log.details.transferNumber && (
@@ -1837,7 +1837,7 @@ export function LogDetailModal({ isOpen, onClose, log }: LogDetailModalProps) {
                         <div className="space-y-3">
                           <div className="flex items-center space-x-2 font-medium text-gray-900 dark:text-white mb-3">
                             <CheckCircle className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                            <span className="text-gray-900 dark:text-white">Recepción de Transferencia</span>
+                            <span className="text-gray-900 dark:text-white">Recepción de Traslado</span>
                           </div>
                           
                           {log.details.transferNumber && (
@@ -1909,7 +1909,7 @@ export function LogDetailModal({ isOpen, onClose, log }: LogDetailModalProps) {
                         <div className="space-y-3">
                           <div className="flex items-center space-x-2 font-medium text-gray-900 dark:text-white mb-3">
                             <X className="h-4 w-4 text-red-600 dark:text-red-400" />
-                            <span className="text-gray-900 dark:text-white">Transferencia Cancelada</span>
+                            <span className="text-gray-900 dark:text-white">Traslado Cancelado</span>
                           </div>
                           
                           {log.details.transferNumber && (

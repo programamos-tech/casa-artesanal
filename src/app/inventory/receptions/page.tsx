@@ -146,7 +146,7 @@ export default function ReceptionsPage() {
         receivedItems
       )
       if (success) {
-        toast.success('Transferencia recibida exitosamente. El stock ha sido actualizado.')
+        toast.success('Traslado recibido exitosamente. El stock ha sido actualizado.')
         setIsReceiveModalOpen(false)
         setTransferToReceive(null)
         await loadTransfers()

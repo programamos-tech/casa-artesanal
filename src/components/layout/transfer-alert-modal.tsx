@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRightLeft, PackageCheck, X } from 'lucide-react'
+import { Truck, PackageCheck, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { canAccessAllStores } from '@/lib/store-helper'
@@ -152,7 +152,7 @@ export function TransferAlertModal() {
               )}
             >
               {isApproval || isWaiting ? (
-                <ArrowRightLeft className="h-5 w-5" strokeWidth={1.75} />
+                <Truck className="h-5 w-5" strokeWidth={1.75} />
               ) : (
                 <PackageCheck className="h-5 w-5" strokeWidth={1.75} />
               )}

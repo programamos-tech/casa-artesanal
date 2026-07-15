@@ -254,7 +254,7 @@ export function LogsTable({
     { value: 'credits', label: 'Créditos' },
     { value: 'egresos', label: 'Egresos' },
     { value: 'warranties', label: 'Garantías' },
-    { value: 'transfers', label: 'Transferencias' },
+    { value: 'transfers', label: 'Traslados' },
     { value: 'roles', label: 'Roles' }
   ]
 

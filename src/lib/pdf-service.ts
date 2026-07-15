@@ -83,7 +83,7 @@ export class PDFService {
 
     // Transfer Number
     doc.setFont('helvetica', 'bold')
-    doc.text('Número de Transferencia:', margin, currentY)
+    doc.text('Número de Traslado:', margin, currentY)
     doc.setFont('helvetica', 'normal')
     doc.text(transfer.transferNumber || `#${transfer.id.substring(0, 8)}`, margin + 60, currentY)
 
@@ -282,7 +282,7 @@ export class PDFService {
     }
 
     // Generate filename
-    const filename = `Transferencia_${transfer.transferNumber || transfer.id.substring(0, 8)}_${new Date().toISOString().split('T')[0]}.pdf`
+    const filename = `Traslado_${transfer.transferNumber || transfer.id.substring(0, 8)}_${new Date().toISOString().split('T')[0]}.pdf`
     
     // Save PDF
     doc.save(filename)

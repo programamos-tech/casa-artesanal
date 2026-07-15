@@ -87,7 +87,7 @@ export function TransferDetailModal({ isOpen, onClose, transfer }: TransferDetai
         <CardHeader className="flex flex-row items-center justify-between flex-shrink-0">
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Package className="h-6 w-6 text-cyan-500" />
-            Detalles de Transferencia
+            Detalles del Traslado
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
             <X className="h-5 w-5" />
@@ -97,7 +97,7 @@ export function TransferDetailModal({ isOpen, onClose, transfer }: TransferDetai
           {/* Información General */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Número de Transferencia</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Número de Traslado</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                 {transfer.transferNumber || transfer.id.substring(0, 8)}
               </p>
@@ -226,7 +226,7 @@ export function TransferDetailModal({ isOpen, onClose, transfer }: TransferDetai
             <div>
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
-                Valor de la Transferencia
+                Valor del Traslado
               </p>
               <Card className="dark:bg-neutral-900 dark:border-neutral-700 border-2 border-cyan-500">
                 <CardContent className="p-4">

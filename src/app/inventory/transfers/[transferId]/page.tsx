@@ -100,7 +100,7 @@ export default function TransferDetailPage() {
     try {
       const result = await StoreStockTransferService.cancelTransfer(transfer.id, reason, user.id)
       if (result.success) {
-        toast.success('Transferencia cancelada')
+        toast.success('Traslado cancelado')
         setCancelOpen(false)
         await load()
       } else {
@@ -148,7 +148,7 @@ export default function TransferDetailPage() {
       <RoleProtectedRoute module={accessModule} requiredAction="view">
         <div className="min-h-screen bg-white px-4 py-16 dark:bg-zinc-950">
           <div className="mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-            <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">Transferencia no encontrada</p>
+            <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">Traslado no encontrado</p>
             <button
               type="button"
               onClick={() => router.push(backHref)}

@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ArrowRightLeft,
+  Truck,
   CreditCard,
   FileText,
   Package,
@@ -53,9 +53,9 @@ const KIND_META: Record<
     tagClass: 'text-fuchsia-600 dark:text-fuchsia-400',
   },
   transfer: {
-    section: 'Transferencias',
-    tag: 'Transferencia',
-    icon: ArrowRightLeft,
+    section: 'Traslados',
+    tag: 'Traslado',
+    icon: Truck,
     sectionClass: 'text-teal-600 dark:text-teal-400',
     tagClass: 'text-teal-600 dark:text-teal-400',
   },

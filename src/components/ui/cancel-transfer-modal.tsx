@@ -50,7 +50,7 @@ export function CancelTransferModal({
               <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
             </div>
             <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">
-              Cancelar Transferencia
+              Cancelar Traslado
             </h2>
           </div>
           <Button
@@ -113,7 +113,7 @@ export function CancelTransferModal({
             className="bg-red-600 hover:bg-red-700 text-white"
             disabled={!reason.trim() || isLoading}
           >
-            {isLoading ? 'Cancelando...' : 'Cancelar Transferencia'}
+            {isLoading ? 'Cancelando...' : 'Cancelar Traslado'}
           </Button>
         </div>
       </div>

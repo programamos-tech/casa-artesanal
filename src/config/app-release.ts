@@ -12,7 +12,7 @@ export const releaseNotes = {
     'Modo claro y barra lateral: mejor contraste en tarjetas y textos; sidebar más ancho y aspecto uniforme entre tema claro y oscuro.',
     'Productos: modal de edición más legible en modo claro; badges de stock y catálogo más claros; al ajustar stock, “Nueva cantidad” usa placeholder en lugar de un 0 editable.',
     'Panel principal: el selector de fecha del día queda alineado y con mejor borde para que “Hoy” se vea correctamente.',
-    'Microtienda: acceso a Transferencias desde la barra inferior para administradores con alcance global.',
+    'Microtienda: acceso a Traslados desde la barra inferior para administradores con alcance global.',
     'Recepciones: contador de pendientes en el menú y detalle por producto (esperado, recibido, faltante y estado).',
   ],
 } as const

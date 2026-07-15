@@ -16,7 +16,7 @@ import {
   UserCog,
   Store as StoreIcon,
   Warehouse,
-  ArrowRightLeft,
+  Truck,
   CheckCircle,
   ChevronDown,
   ChevronRight,
@@ -41,7 +41,7 @@ const navigation = [
     module: 'products',
     submenu: [
       { name: 'Productos', href: '/inventory/products', icon: Package, module: 'products' },
-      { name: 'Transferencias', href: '/inventory/transfers', icon: ArrowRightLeft, module: 'transfers' },
+      { name: 'Traslados', href: '/inventory/transfers', icon: Truck, module: 'transfers' },
       { name: 'Recepciones', href: '/inventory/receptions', icon: CheckCircle, module: 'receptions' },
     ]
   },
@@ -354,7 +354,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                           {item.submenu.map((subitem) => {
                             if (!canView(subitem.module)) return null
                             
-                            // Transferencias: visible si tiene permiso (incl. microtienda que debe aprobar salidas)
+                            // Traslados: visible si tiene permiso (incl. microtienda que debe aprobar salidas)
                             if (subitem.href === '/inventory/transfers' && !canView('transfers')) return null
                             
                             // Verificar si requiere acceso a todas las tiendas (para el subitem de Tiendas)

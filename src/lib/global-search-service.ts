@@ -251,8 +251,8 @@ export class GlobalSearchService {
     return data.map(row => ({
       kind: 'transfer' as const,
       id: row.id,
-      title: row.transfer_number || 'Transferencia',
-      subtitle: row.status ? String(row.status) : 'Transferencia',
+      title: row.transfer_number || 'Traslado',
+      subtitle: row.status ? String(row.status) : 'Traslado',
       href: `/inventory/transfers/${row.id}`,
     }))
   }

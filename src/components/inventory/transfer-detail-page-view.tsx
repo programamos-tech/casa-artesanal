@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft,
-  ArrowRightLeft,
+  Truck,
   Calendar,
   CheckCircle2,
   CreditCard,
@@ -166,7 +166,7 @@ export function TransferDetailPageView({
       <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
         <div className="flex w-full min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-5 md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <ArrowRightLeft className="h-6 w-6 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+            <Truck className="h-6 w-6 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
             <div className="min-w-0">
               <h1 className="truncate font-mono text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
                 {titleTrf}
@@ -253,7 +253,7 @@ export function TransferDetailPageView({
                 <div className="flex gap-3 px-4 py-3">
                   <FileText className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
                   <div className="min-w-0 flex-1">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Número de transferencia</dt>
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Número de traslado</dt>
                     <dd className="mt-1 font-mono text-sm text-zinc-900 dark:text-zinc-100">{titleTrf}</dd>
                   </div>
                 </div>

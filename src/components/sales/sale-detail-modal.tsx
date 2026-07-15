@@ -1209,7 +1209,7 @@ export default function SaleDetailModal({
             {sale.status !== 'cancelled' && transfer && (
               <div className="text-xs text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Esta factura solo puede anularse desde Transferencias
+                Esta factura solo puede anularse desde Traslados
               </div>
             )}
           </div>

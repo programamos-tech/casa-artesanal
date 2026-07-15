@@ -32,7 +32,7 @@ const roleOptions = [
 const moduleOptions = [
   { value: 'dashboard', label: 'Reportes' },
   { value: 'products', label: 'Productos' },
-  { value: 'transfers', label: 'Transferencias' },
+  { value: 'transfers', label: 'Traslados' },
   { value: 'receptions', label: 'Recepciones' },
   { value: 'clients', label: 'Clientes' },
   { value: 'sales', label: 'Ventas' },

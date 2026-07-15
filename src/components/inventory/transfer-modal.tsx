@@ -11,7 +11,7 @@ import {
   Trash2,
   Package,
   Store as StoreIcon,
-  ArrowRightLeft,
+  Truck,
   AlertTriangle,
   Search,
   CheckCircle,
@@ -381,7 +381,7 @@ export function TransferModal({
         toast.success(
           isRequest
             ? 'Solicitud enviada. La tienda origen debe aprobar cada referencia.'
-            : 'Transferencia creada exitosamente'
+            : 'Traslado creado exitosamente'
         )
         setItems([])
         setCollapsedRowIds(new Set())
@@ -482,9 +482,9 @@ export function TransferModal({
         {/* Header */}
         <div className="flex flex-shrink-0 items-center justify-between border-b border-zinc-200 !bg-zinc-50 px-4 py-3 dark:border-white/[0.06] dark:!bg-zinc-950">
           <div className="flex min-w-0 items-center gap-2.5">
-            <ArrowRightLeft className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
+            <Truck className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
             <h2 id="transfer-modal-title" className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              {isRequest ? 'Solicitar traslado' : 'Nueva Transferencia'}
+              {isRequest ? 'Solicitar traslado' : 'Nuevo Traslado'}
             </h2>
           </div>
           <Button
@@ -981,8 +981,8 @@ export function TransferModal({
                 </span>
               ) : (
                 <>
-                  <ArrowRightLeft className="h-4 w-4" strokeWidth={1.5} />
-                  {isRequest ? 'Enviar solicitud' : 'Crear Transferencia'}
+                  <Truck className="h-4 w-4" strokeWidth={1.5} />
+                  {isRequest ? 'Enviar solicitud' : 'Crear Traslado'}
                 </>
               )}
             </Button>

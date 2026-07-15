@@ -626,7 +626,7 @@ export function SaleDetailPageView({
                   <div className="px-4 py-5 md:px-6">
                     <p className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300/95">
                       <AlertTriangle className="h-4 w-4 shrink-0" />
-                      Esta factura solo puede anularse desde Transferencias.
+                      Esta factura solo puede anularse desde Traslados.
                     </p>
                   </div>
                 )}

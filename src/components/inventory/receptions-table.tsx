@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  ArrowRightLeft,
+  Truck,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
@@ -390,7 +390,7 @@ export function ReceptionsTable({
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800">
                     <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
-                      Transferencia
+                      Traslado
                     </th>
                     <th className="whitespace-nowrap bg-zinc-50/80 px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-500">
                       Venta / ID
@@ -493,8 +493,8 @@ export function ReceptionsTable({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1 space-y-1.5">
               <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                <ArrowRightLeft className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
-                <span>Recepción de Transferencias</span>
+                <Truck className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
+                <span>Recepción de Traslados</span>
                 <StoreBadge />
               </CardTitle>
               <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -508,7 +508,7 @@ export function ReceptionsTable({
               </Button>
               {onRequestTransfer && (
                 <Button onClick={onRequestTransfer} size="sm" className="flex-1 sm:flex-none">
-                  <ArrowRightLeft className="h-3.5 w-3.5 shrink-0" />
+                  <Truck className="h-3.5 w-3.5 shrink-0" />
                   <span className="hidden sm:inline">Solicitar traslado</span>
                   <span className="sm:hidden">Solicitar</span>
                 </Button>

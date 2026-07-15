@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Receipt, Package, Users, CreditCard, Wallet, Activity, UserCog, UserCircle, ArrowRightLeft, CheckCircle, Store, FileText, Banknote } from 'lucide-react'
+import { BarChart3, Receipt, Package, Users, CreditCard, Wallet, Activity, UserCog, UserCircle, Truck, CheckCircle, Store, FileText, Banknote } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
 import { isMainStoreUser, canAccessAllStores } from '@/lib/store-helper'
@@ -14,7 +14,7 @@ import { Logo } from '@/components/ui/logo'
 const items = [
   { href: '/dashboard', label: 'Reportes', icon: BarChart3, module: 'dashboard', alwaysVisible: true },
   { href: '/inventory/products', label: 'Productos', icon: Package, module: 'products' },
-  { href: '/inventory/transfers', label: 'Transferencias', icon: ArrowRightLeft, module: 'transfers' },
+  { href: '/inventory/transfers', label: 'Traslados', icon: Truck, module: 'transfers' },
   { href: '/inventory/receptions', label: 'Recepciones', icon: CheckCircle, module: 'receptions' },
   { href: '/clients', label: 'Clientes', icon: Users, module: 'clients' },
   { href: '/sales', label: 'Ventas', icon: Receipt, module: 'sales' },
@@ -78,7 +78,7 @@ export function BottomNav() {
       if (item.alwaysVisible && user) {
         return true
       }
-      // Transferencias: quien tenga permiso del módulo (incluye microtienda / vendedores)
+      // Traslados: quien tenga permiso del módulo (incluye microtienda / vendedores)
       if (item.href === '/inventory/transfers') {
         return canView(item.module)
       }

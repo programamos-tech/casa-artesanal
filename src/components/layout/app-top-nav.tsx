@@ -7,7 +7,7 @@ import {
   Activity,
   Bell,
   ChevronDown,
-  ArrowRightLeft,
+  Truck,
   CircleHelp,
   Clock,
   LogOut,
@@ -394,7 +394,7 @@ export function AppTopNav() {
                           className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
                         >
                           <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-                            <ArrowRightLeft className="h-4 w-4" strokeWidth={1.75} />
+                            <Truck className="h-4 w-4" strokeWidth={1.75} />
                           </span>
                           <span className="min-w-0">
                             <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
@@ -463,7 +463,7 @@ export function AppTopNav() {
                         onClick={() => setBellOpen(false)}
                         className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-950/40"
                       >
-                        Ver transferencias
+                        Ver traslados
                       </Link>
                     )}
                     {receptions.length > 0 && (

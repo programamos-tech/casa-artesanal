@@ -150,7 +150,7 @@ export function labelForLogType(type: string): string {
     case 'roles':
       return 'Gestión de Usuarios'
     case 'transfers':
-      return 'Gestión de Transferencias'
+      return 'Gestión de Traslados'
     case 'user_create':
       return 'Usuario Creado'
     case 'user_edit':
@@ -194,7 +194,7 @@ export function getModuleBadgeLabel(log: ActivityLogRecord): string {
     case 'payments':
       return 'Abonos'
     case 'transfers':
-      return 'Transferencias'
+      return 'Traslados'
     case 'logs':
       return 'Logs'
     case 'auth':
@@ -230,9 +230,9 @@ export function getLogActionLabel(log: ActivityLogRecord): string {
     return log.action
   }
   if (log.module === 'transfers') {
-    if (log.action === 'transfer_created') return 'Transferencia Creada'
-    if (log.action === 'transfer_received') return 'Transferencia Recibida'
-    if (log.action === 'transfer_cancelled') return 'Transferencia Cancelada'
+    if (log.action === 'transfer_created') return 'Traslado Creado'
+    if (log.action === 'transfer_received') return 'Traslado Recibido'
+    if (log.action === 'transfer_cancelled') return 'Traslado Cancelado'
     return log.action
   }
   if (log.module === 'categories') {

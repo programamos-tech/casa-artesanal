@@ -161,7 +161,7 @@ export default function TransfersPage() {
           }}
           onRefresh={loadTransfers}
           onCreate={canCreateTransfer ? () => setIsCreateModalOpen(true) : undefined}
-          createLabel={createAsRequest ? 'Solicitar traslado' : 'Nueva Transferencia'}
+          createLabel={createAsRequest ? 'Solicitar traslado' : 'Nuevo Traslado'}
           canManageAllStores={canManageAllStores || isMainStore}
           onView={t => router.push(`/inventory/transfers/${t.id}`)}
           onOpenSale={saleId => router.push(`/sales/${saleId}`)}
