@@ -195,8 +195,10 @@ export function SaleDetailPageView({
   }
 
   const getInvoiceNumber = (s: Sale) => {
-    if (s.invoiceNumber?.toString().startsWith('#')) return s.invoiceNumber.toString()
-    return `#${s.invoiceNumber?.toString().padStart(3, '0') || '000'}`
+    const raw = s.invoiceNumber?.toString().trim() || ''
+    if (!raw) return 'S/N'
+    if (/^(CAP|CA2P|CA)-/i.test(raw) || raw.startsWith('#')) return raw
+    return `#${raw.padStart(3, '0')}`
   }
 
   const formatCurrency = (amount: number) =>

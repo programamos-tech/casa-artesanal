@@ -54,9 +54,23 @@ function applyCreatedAtRangeFilter<T extends { gte: (col: string, v: string) => 
 }
 
 export class SalesService {
+  /** Prefijo de factura por tienda: CAP (Parque) / CA2P (2 Piso). */
+  static getInvoicePrefixForStore(storeId?: string | null): string {
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+    const SECOND_FLOOR_ID = '8ad34b95-e611-4117-a03d-b44627297ae4'
+    if (!storeId || storeId === MAIN_STORE_ID) return 'CAP'
+    if (storeId === SECOND_FLOOR_ID) return 'CA2P'
+    return 'CA'
+  }
+
+  static formatInvoiceNumber(prefix: string, sequence: number): string {
+    const n = Number.isFinite(sequence) && sequence > 0 ? Math.floor(sequence) : 1
+    return `${prefix}-${String(n).padStart(3, '0')}`
+  }
+
   /**
    * Siguiente número de factura por tienda.
-   * Usa la última venta (por fecha) en lugar de COUNT(*) — mucho más rápido en tablas grandes.
+   * Formato: CAP-001 (Parque) / CA2P-001 (2 Piso).
    * Con `forStoreId`: secuencia para esa tienda (traslados / admin); usa service role.
    */
   static async getNextInvoiceNumber(forStoreId?: string): Promise<string> {
@@ -65,12 +79,9 @@ export class SalesService {
       const useExplicit = typeof forStoreId === 'string' && forStoreId.length > 0
       const storeId = useExplicit ? forStoreId : getCurrentUserStoreId()
       const db = useExplicit ? supabaseAdmin : supabase
+      const prefix = this.getInvoicePrefixForStore(storeId)
 
-      let query = db
-        .from('sales')
-        .select('invoice_number')
-        .order('created_at', { ascending: false })
-        .limit(1)
+      let query = db.from('sales').select('invoice_number')
 
       if (!storeId || storeId === MAIN_STORE_ID) {
         query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
@@ -81,18 +92,23 @@ export class SalesService {
       const { data, error } = await query
 
       if (error || !data?.length) {
-        return '#001'
+        return this.formatInvoiceNumber(prefix, 1)
       }
 
-      const last = String(data[0].invoice_number || '')
-      const match = last.match(/(\d+)/)
-      const nextNumber = match ? Number.parseInt(match[1], 10) + 1 : 1
-      if (!Number.isFinite(nextNumber) || nextNumber < 1) {
-        return '#001'
+      let maxNumber = 0
+      for (const row of data) {
+        const match = String(row.invoice_number || '').match(/(\d+)/)
+        if (!match) continue
+        const n = Number.parseInt(match[1], 10)
+        if (Number.isFinite(n) && n > maxNumber) maxNumber = n
       }
-      return `#${nextNumber.toString().padStart(3, '0')}`
+
+      return this.formatInvoiceNumber(prefix, maxNumber + 1)
     } catch {
-      return '#001'
+      return this.formatInvoiceNumber(
+        this.getInvoicePrefixForStore(forStoreId || getCurrentUserStoreId()),
+        1
+      )
     }
   }
 
@@ -961,9 +977,17 @@ export class SalesService {
               })
             })()
           )
-        } else {
+        } else if (saleData.paymentMethod) {
           parallelTasks.push(
             (async () => {
+              // Canal de cobro para reportes
+              const { error: salePayError } = await supabase.from('sale_payments').insert({
+                sale_id: sale.id,
+                payment_type: saleData.paymentMethod,
+                amount: saleData.total,
+              })
+              if (salePayError) throw salePayError
+
               const { error: paymentError } = await supabase.from('payments').insert({
                 sale_id: sale.id,
                 client_id: saleData.clientId,
@@ -1096,26 +1120,34 @@ export class SalesService {
         throw new Error('Solo se pueden editar ventas en estado borrador')
       }
 
-      // Actualizar la venta
-      const nextClientId = saleData.clientId?.trim() || null
-      const nextClientName = saleData.clientName?.trim() || 'Sin cliente'
-      const nextPaymentMethod = saleData.paymentMethod || 'pending'
+      // Solo actualizar campos enviados (evita borrar cliente/pago al pasar solo status)
+      const updatePayload: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      }
+      if (saleData.clientId !== undefined) {
+        updatePayload.client_id = saleData.clientId?.trim() || null
+      }
+      if (saleData.clientName !== undefined) {
+        updatePayload.client_name = saleData.clientName?.trim() || 'Sin cliente'
+      }
+      if (saleData.paymentMethod !== undefined) {
+        updatePayload.payment_method = saleData.paymentMethod || 'pending'
+      }
+      if (saleData.total !== undefined) updatePayload.total = saleData.total
+      if (saleData.subtotal !== undefined) updatePayload.subtotal = saleData.subtotal
+      if (saleData.tax !== undefined) updatePayload.tax = saleData.tax
+      if (saleData.transportPrice !== undefined) {
+        updatePayload.transport_price = saleData.transportPrice ?? 0
+      }
+      if (saleData.discount !== undefined) updatePayload.discount = saleData.discount
+      if (saleData.discountType !== undefined) {
+        updatePayload.discount_type = saleData.discountType || 'amount'
+      }
+      if (saleData.status !== undefined) updatePayload.status = saleData.status
 
       const { data, error } = await supabase
         .from('sales')
-        .update({
-          client_id: nextClientId,
-          client_name: nextClientName,
-          total: saleData.total,
-          subtotal: saleData.subtotal,
-          tax: saleData.tax,
-          transport_price: saleData.transportPrice ?? 0,
-          discount: saleData.discount,
-          discount_type: saleData.discountType || 'amount',
-          status: saleData.status,
-          payment_method: nextPaymentMethod,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', id)
         .select()
         .single()
@@ -1298,8 +1330,48 @@ export class SalesService {
         })
       }
 
-      // Actualizar el status a 'completed'
-      const updatedSale = await this.updateSale(id, { status: 'completed' }, currentUserId)
+      // Registrar pago (excepto crédito, que ya creó su registro)
+      if (draftSale.paymentMethod === 'mixed' && draftSale.payments && draftSale.payments.length > 0) {
+        const paymentRecords = draftSale.payments.map((payment) => ({
+          sale_id: id,
+          payment_type: payment.paymentType,
+          amount: payment.amount,
+        }))
+        const { error: paymentsError } = await supabase.from('sale_payments').insert(paymentRecords)
+        if (paymentsError) throw paymentsError
+      } else if (draftSale.paymentMethod && draftSale.paymentMethod !== 'credit') {
+        const { data: existingPay } = await supabase
+          .from('sale_payments')
+          .select('id')
+          .eq('sale_id', id)
+          .limit(1)
+        if (!existingPay?.length) {
+          const { error: salePayError } = await supabase.from('sale_payments').insert({
+            sale_id: id,
+            payment_type: draftSale.paymentMethod,
+            amount: draftSale.total,
+          })
+          if (salePayError) throw salePayError
+        }
+      }
+
+      // Marcar completed sin pisar cliente/pago ya guardados
+      const updatedSale = await this.updateSale(
+        id,
+        {
+          status: 'completed',
+          clientId: draftSale.clientId,
+          clientName: draftSale.clientName,
+          paymentMethod: draftSale.paymentMethod,
+          total: draftSale.total,
+          subtotal: draftSale.subtotal,
+          tax: draftSale.tax,
+          transportPrice: draftSale.transportPrice,
+          discount: draftSale.discount,
+          discountType: draftSale.discountType,
+        },
+        currentUserId
+      )
 
       // Log de actividad
       await AuthService.logActivity(
@@ -1658,10 +1730,13 @@ export class SalesService {
       if (!isNaN(Number(cleanTerm))) {
         const numericValue = Number(cleanTerm)
 
-        // Buscar por número de factura exacto (sin el #)
-        searchConditions.push(`invoice_number.eq.#${cleanTerm.padStart(3, '0')}`)
+        // Buscar por número de factura exacto (legacy # y prefijos CAP/CA2P)
+        const paddedInv = cleanTerm.padStart(3, '0')
+        searchConditions.push(`invoice_number.eq.#${paddedInv}`)
+        searchConditions.push(`invoice_number.eq.CAP-${paddedInv}`)
+        searchConditions.push(`invoice_number.eq.CA2P-${paddedInv}`)
 
-        // Buscar por número de factura que contenga el número (para casos como #010, #100, etc.)
+        // Buscar por número de factura que contenga el número
         searchConditions.push(`invoice_number.ilike.%${cleanTerm}%`)
 
         // Buscar por monto exacto
@@ -1814,7 +1889,10 @@ export class SalesService {
       // Buscar en ambos campos: número de factura Y nombre del cliente
       if (isNumber) {
         // Si es un número, buscar por número de factura Y nombre del cliente
-        query = query.or(`invoice_number.eq.#${numericValue.padStart(3, '0')},invoice_number.ilike.%${numericValue}%,client_name.ilike.%${cleanTerm}%`)
+        const padded = numericValue.padStart(3, '0')
+        query = query.or(
+          `invoice_number.eq.#${padded},invoice_number.eq.CAP-${padded},invoice_number.eq.CA2P-${padded},invoice_number.ilike.%${numericValue}%,client_name.ilike.%${cleanTerm}%`
+        )
       } else {
         // Si no es un número, buscar solo por nombre del cliente
         query = query.ilike('client_name', `%${cleanTerm}%`)

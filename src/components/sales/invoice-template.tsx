@@ -31,10 +31,10 @@ export function InvoiceTemplate({ sale, company, client }: InvoiceTemplateProps)
   }
 
   const getInvoiceNumber = (sale: Sale) => {
-    if (sale.invoiceNumber?.toString().startsWith('#')) {
-      return sale.invoiceNumber.toString()
-    }
-    return `#${sale.invoiceNumber?.toString().padStart(3, '0') || '000'}`
+    const raw = sale.invoiceNumber?.toString().trim() || ''
+    if (!raw) return 'S/N'
+    if (/^(CAP|CA2P|CA)-/i.test(raw) || raw.startsWith('#')) return raw
+    return `#${raw.padStart(3, '0')}`
   }
 
   const getPaymentMethodLabel = (method: string) => {

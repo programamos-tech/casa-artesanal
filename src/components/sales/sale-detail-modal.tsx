@@ -184,8 +184,10 @@ export default function SaleDetailModal({
   }
 
   const getInvoiceNumber = (sale: Sale) => {
+    const raw = sale.invoiceNumber?.toString().trim() || ''
+    if (/^(CAP|CA2P|CA)-/i.test(raw)) return raw
     // Si invoiceNumber ya incluye #, devolverlo tal como está
-    if (sale.invoiceNumber?.toString().startsWith('#')) {
+    if (raw.startsWith('#')) {
       return sale.invoiceNumber.toString()
     }
     // Si no incluye #, agregarlo

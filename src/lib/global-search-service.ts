@@ -164,7 +164,7 @@ export class GlobalSearchService {
     if (isNumber) {
       const padded = numeric.padStart(3, '0')
       query = query.or(
-        `invoice_number.eq.#${padded},invoice_number.ilike.%${numeric}%,client_name.ilike.${pattern}`
+        `invoice_number.eq.#${padded},invoice_number.eq.CAP-${padded},invoice_number.eq.CA2P-${padded},invoice_number.ilike.%${numeric}%,client_name.ilike.${pattern}`
       )
     } else {
       query = query.ilike('client_name', pattern)

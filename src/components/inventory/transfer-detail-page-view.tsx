@@ -81,9 +81,9 @@ function statusLabel(status: string) {
 }
 
 function getInvoiceDisplay(sale: Sale) {
-  const n = sale.invoiceNumber?.toString()
+  const n = sale.invoiceNumber?.toString().trim()
   if (!n) return '—'
-  if (n.startsWith('#')) return n
+  if (/^(CAP|CA2P|CA)-/i.test(n) || n.startsWith('#')) return n
   return `#${n.padStart(3, '0')}`
 }
 
