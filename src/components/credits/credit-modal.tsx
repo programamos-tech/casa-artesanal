@@ -98,6 +98,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
   const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
+  const isSubmittingRef = useRef(false)
   const [stockAlert, setStockAlert] = useState<{show: boolean, message: string, productId?: string}>({show: false, message: ''})
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([])
   const [isSearchingProducts, setIsSearchingProducts] = useState(false)
@@ -447,55 +448,58 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
 
   const handleSubmit = async (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault()
-    
-    if (!formData.clientId) {
-      showStockAlert('❌ Por favor selecciona un cliente')
-      return
-    }
-    
-    // Solo validar fecha de vencimiento si NO es borrador
-    if (!isDraft && !formData.dueDate) {
-      showStockAlert('❌ Por favor selecciona una fecha de vencimiento')
-      return
-    }
-    
-    if (selectedProducts.length === 0) {
-      showStockAlert('❌ Por favor agrega al menos un producto')
-      return
-    }
-    
-    // Validar que todos los precios de venta sean >= costo de adquisición (en Sincelejo y microtiendas)
-    const invalidProducts: string[] = []
-    selectedProducts.forEach(item => {
-      const product = products.find(p => p.id === item.productId)
-      if (!product) return
-      
-      // Precio mínimo: siempre el costo de adquisición (en Sincelejo y microtiendas)
-      const minPrice = product.cost || 0
-      const priceType = 'costo de adquisición'
-      
-      if (item.unitPrice < minPrice) {
-        invalidProducts.push(`${item.productName} no puede ser vendido por menos de $${minPrice.toLocaleString('es-CO')} (${priceType})`)
-      }
-    })
-
-    if (invalidProducts.length > 0) {
-      showStockAlert(invalidProducts.join(' • '))
-      return
-    }
-    
+    // Bloqueo inmediato: evita 4–6 facturas iguales por doble/triple clic
+    if (loading || isSubmittingRef.current) return
+    isSubmittingRef.current = true
     setLoading(true)
-    
+
     try {
-      // Obtener información del cliente
-      const client = filteredClients.find(c => c.id === formData.clientId) || clients.find(c => c.id === formData.clientId)
+      if (!formData.clientId) {
+        showStockAlert('❌ Por favor selecciona un cliente')
+        return
+      }
+
+      // Solo validar fecha de vencimiento si NO es borrador
+      if (!isDraft && !formData.dueDate) {
+        showStockAlert('❌ Por favor selecciona una fecha de vencimiento')
+        return
+      }
+
+      if (selectedProducts.length === 0) {
+        showStockAlert('❌ Por favor agrega al menos un producto')
+        return
+      }
+
+      // Validar que todos los precios de venta sean >= costo de adquisición
+      const invalidProducts: string[] = []
+      selectedProducts.forEach((item) => {
+        const product = products.find((p) => p.id === item.productId)
+        if (!product) return
+
+        const minPrice = product.cost || 0
+        const priceType = 'costo de adquisición'
+
+        if (item.unitPrice < minPrice) {
+          invalidProducts.push(
+            `${item.productName} no puede ser vendido por menos de $${minPrice.toLocaleString('es-CO')} (${priceType})`
+          )
+        }
+      })
+
+      if (invalidProducts.length > 0) {
+        showStockAlert(invalidProducts.join(' • '))
+        return
+      }
+
+      const client =
+        filteredClients.find((c) => c.id === formData.clientId) ||
+        clients.find((c) => c.id === formData.clientId)
       if (!client) {
         alert('❌ Cliente no encontrado')
         return
       }
-      
-      // Preparar los items para la venta
-      const saleItems = selectedProducts.map(item => ({
+
+      const saleItems = selectedProducts.map((item) => ({
         productId: item.productId,
         productName: item.productName,
         productReferenceCode: item.productReferenceCode || undefined,
@@ -503,11 +507,10 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
         unitPrice: item.unitPrice,
         total: item.totalPrice,
         discount: 0,
-        discountType: 'amount',
-        tax: 0
+        discountType: 'amount' as const,
+        tax: 0,
       }))
-      
-      // Crear la venta
+
       const saleData = {
         clientId: formData.clientId,
         clientName: client.name,
@@ -517,39 +520,34 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
         tax: calculateTax(),
         discount: 0,
         status: isDraft ? 'draft' : 'completed',
-        paymentMethod: 'credit',
+        paymentMethod: 'credit' as const,
         notes: formData.notes,
-        dueDate: formData.dueDate
+        dueDate: formData.dueDate,
       }
-      
-      // Crear la venta
+
       const newSale = await SalesService.createSale(saleData, user?.id || '')
-      
-      // Si NO es borrador, obtener el crédito creado automáticamente por el SalesService
+
       if (!isDraft) {
         const newCredit = await CreditsService.getCreditBySaleId(newSale.id, {
           ignoreStoreFilter: true,
         })
-        
+
         if (!newCredit) {
           throw new Error('No se pudo encontrar el crédito creado')
         }
-        
+
         onCreateCredit(newCredit)
         handleClose()
       } else {
-        // Si es borrador, cerrar el modal y redirigir a ventas para ver el borrador
         handleClose()
-        // Redirigir a la página de ventas después de un breve delay
         setTimeout(() => {
           window.location.href = '/sales'
         }, 500)
       }
-      
     } catch (error) {
-      // Error silencioso en producción
       alert('❌ Error al crear el crédito. Por favor intenta de nuevo.')
     } finally {
+      isSubmittingRef.current = false
       setLoading(false)
     }
   }
@@ -1020,29 +1018,15 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
             paddingBottom: `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))`
           }}
         >
-          <Button type="button" onClick={handleClose} variant="outline" size="sm">
+          <Button type="button" onClick={handleClose} variant="outline" size="sm" disabled={loading}>
             Cancelar
           </Button>
-          {/* Botón de borrador comentado
-          <Button
-            onClick={(e) => handleSubmit(e, true)}
-            disabled={loading || selectedProducts.length === 0 || !formData.clientId}
-            className="bg-gray-600 hover:bg-gray-700 text-white disabled:bg-gray-400"
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Guardando...
-              </div>
-            ) : (
-              'Guardar como Borrador'
-            )}
-          </Button>
-          */}
           <Button
             size="sm"
-            onClick={(e) => handleSubmit(e, false)}
+            type="button"
+            onClick={(e) => void handleSubmit(e, false)}
             disabled={loading || selectedProducts.length === 0 || !formData.clientId || !formData.dueDate}
+            aria-busy={loading}
           >
             {loading ? (
               <div className="flex items-center gap-2">

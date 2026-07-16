@@ -684,15 +684,19 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   }
 
   const handleSave = async (isDraft: boolean = false) => {
-    if (isSaving || isSubmittingRef.current) return
+    // Bloqueo síncrono antes de cualquier await (doble clic = facturas duplicadas)
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
 
     if (selectedProducts.length === 0 || validProducts.length === 0) {
+      isSubmittingRef.current = false
       showStockAlert('Agrega al menos un producto.', undefined)
       return
     }
 
     if (!isDraft) {
       if (!selectedClient || !paymentMethod || paymentMethod === 'pending') {
+        isSubmittingRef.current = false
         showStockAlert('Para facturar debes elegir cliente y método de pago.', undefined)
         return
       }
@@ -703,6 +707,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       })
 
       if (invalidProducts.length > 0) {
+        isSubmittingRef.current = false
         showStockAlert(invalidProducts.join(' • '), undefined)
         return
       }
@@ -711,6 +716,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         (item) => !item.unitPrice || item.unitPrice <= 0
       )
       if (productsWithoutPrice.length > 0) {
+        isSubmittingRef.current = false
         showStockAlert(
           `Asigna precio a: ${productsWithoutPrice.map((p) => p.productName).join(', ')}`,
           undefined
@@ -724,6 +730,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         const roundedPayments = Math.round(totalMixedPayments)
 
         if (roundedPayments !== roundedTotal) {
+          isSubmittingRef.current = false
           const faltante = Math.abs(roundedTotal - roundedPayments)
           setPaymentError(`El total ingresado ($${roundedPayments.toLocaleString('es-CO', { maximumFractionDigits: 0 })}) no coincide con el total de la venta ($${roundedTotal.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). Falta: $${faltante.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`)
           return
@@ -756,7 +763,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       invoiceNumber: sale?.invoiceNumber
     }
 
-    isSubmittingRef.current = true
     setIsSaving(true)
     if (!sale?.invoiceNumber) {
       setInvoiceNumber('Generando...')

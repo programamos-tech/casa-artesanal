@@ -733,13 +733,15 @@ export default function NewSalePage() {
   }
 
   const handleSave = async (isDraft = false) => {
-    if (isCreating || isSubmittingRef.current) return
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
 
     const action: 'draft' | 'finalize' = isDraft ? 'draft' : 'finalize'
 
     // Borrador: basta con tener productos agregados
     if (isDraft) {
       if (selectedProducts.length === 0 || validProducts.length === 0) {
+        isSubmittingRef.current = false
         setStockAlert({
           show: true,
           message: 'Agrega al menos un producto para dejar el borrador.',
@@ -748,11 +750,15 @@ export default function NewSalePage() {
         return
       }
     } else {
-      if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) return
+      if (!selectedClient || selectedProducts.length === 0 || validProducts.length === 0 || !paymentMethod) {
+        isSubmittingRef.current = false
+        return
+      }
 
       // El vendedor es obligatorio al facturar
       const sellerCheck = sellers.find((s) => s.id === selectedSellerId)
       if (!sellerCheck) {
+        isSubmittingRef.current = false
         setStockAlert({
           show: true,
           message:
@@ -772,6 +778,7 @@ export default function NewSalePage() {
       })
 
       if (productsWithoutPrice.length > 0) {
+        isSubmittingRef.current = false
         setStockAlert({
           show: true,
           message: `Los siguientes productos no tienen precio asignado: ${productsWithoutPrice.join(', ')}. Por favor, asigna un precio a todos los productos antes de crear la venta.`,
@@ -786,6 +793,7 @@ export default function NewSalePage() {
       })
 
       if (invalidProducts.length > 0) {
+        isSubmittingRef.current = false
         setStockAlert({
           show: true,
           message: invalidProducts.join(' • '),
@@ -800,6 +808,7 @@ export default function NewSalePage() {
         const roundedPayments = Math.round(totalMixedPayments)
 
         if (roundedPayments !== roundedTotal) {
+          isSubmittingRef.current = false
           const faltante = Math.abs(roundedTotal - roundedPayments)
           setPaymentError(`El total ingresado (${formatCurrency(roundedPayments)}) no coincide con el total de la venta (${formatCurrency(roundedTotal)}). Falta: ${formatCurrency(faltante)}`)
           return
@@ -837,7 +846,6 @@ export default function NewSalePage() {
       sellerEmail: seller?.email,
     }
 
-    isSubmittingRef.current = true
     setIsCreating(true)
     setSavingAction(action)
     const previousInvoice = invoiceNumber

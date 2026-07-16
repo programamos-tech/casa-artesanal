@@ -126,6 +126,7 @@ export function SaleDetailPageView({
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [isFinalizing, setIsFinalizing] = useState(false)
+  const isFinalizingRef = useRef(false)
   const [cancelSuccessMessage, setCancelSuccessMessage] = useState<string | null>(null)
   const cancelFormRef = useRef<HTMLDivElement>(null)
   const [credit, setCredit] = useState<Credit | null>(null)
@@ -297,14 +298,16 @@ export function SaleDetailPageView({
   const pendingCredit = credit ? Math.max(0, credit.pendingAmount) : 0
 
   const handleFinalizeDraft = async () => {
-    if (!onFinalizeDraft || isFinalizing) return
+    if (!onFinalizeDraft || isFinalizingRef.current) return
     if (!confirm('¿Finalizar este borrador? Se descontará inventario y quedará como factura.')) return
+    isFinalizingRef.current = true
     setIsFinalizing(true)
     try {
       await onFinalizeDraft(sale.id)
     } catch (error: any) {
       alert(error?.message || 'Error al finalizar el borrador')
     } finally {
+      isFinalizingRef.current = false
       setIsFinalizing(false)
     }
   }

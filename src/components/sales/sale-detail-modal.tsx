@@ -52,6 +52,7 @@ export default function SaleDetailModal({
   const [isLoadingPrint, setIsLoadingPrint] = useState(false)
   const [cancelSuccessMessage, setCancelSuccessMessage] = useState<string | null>(null)
   const [isFinalizing, setIsFinalizing] = useState(false)
+  const isFinalizingRef = useRef(false)
   const cancelFormRef = useRef<HTMLDivElement>(null)
   const [credit, setCredit] = useState<Credit | null>(null)
   const [transfer, setTransfer] = useState<StoreStockTransfer | null>(null)
@@ -309,8 +310,9 @@ export default function SaleDetailModal({
   }
 
   const handleFinalizeDraft = async () => {
-    if (!sale || !onFinalizeDraft || isFinalizing) return
-    
+    if (!sale || !onFinalizeDraft || isFinalizingRef.current) return
+
+    isFinalizingRef.current = true
     setIsFinalizing(true)
     try {
       await onFinalizeDraft(sale.id)
@@ -325,6 +327,7 @@ export default function SaleDetailModal({
         alert(`Error al facturar el borrador: ${errorMessage}`)
       }
     } finally {
+      isFinalizingRef.current = false
       setIsFinalizing(false)
     }
   }
