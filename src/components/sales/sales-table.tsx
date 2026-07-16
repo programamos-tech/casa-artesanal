@@ -90,14 +90,16 @@ export function SalesTable({
   }, [initialStatusFilter])
   useEffect(() => {
     const loadCredits = async () => {
-      const creditSales = sales.filter(sale => sale.paymentMethod === 'credit' && sale.invoiceNumber)
+      const creditSales = sales.filter((sale) => sale.paymentMethod === 'credit' && sale.id)
       const creditsToLoad: Record<string, Credit> = {}
-      
+
       await Promise.all(
         creditSales.map(async (sale) => {
-          if (!credits[sale.id] && sale.invoiceNumber) {
+          if (!credits[sale.id]) {
             try {
-              const credit = await CreditsService.getCreditByInvoiceNumber(sale.invoiceNumber)
+              const credit = await CreditsService.getCreditBySaleId(sale.id, {
+                ignoreStoreFilter: true,
+              })
               if (credit) {
                 creditsToLoad[sale.id] = credit
               }
@@ -107,12 +109,12 @@ export function SalesTable({
           }
         })
       )
-      
+
       if (Object.keys(creditsToLoad).length > 0) {
-        setCredits(prev => ({ ...prev, ...creditsToLoad }))
+        setCredits((prev) => ({ ...prev, ...creditsToLoad }))
       }
     }
-    
+
     if (sales.length > 0) {
       loadCredits()
     }

@@ -115,14 +115,9 @@ export async function printSaleTicket(sale: Sale): Promise<void> {
   if (showCreditOnTicket) {
     try {
       const { CreditsService } = await import('@/lib/credits-service')
-      let credit = await CreditsService.getCreditBySaleId(sale.id)
-      if (!credit && sale.invoiceNumber) {
-        const inv = sale.invoiceNumber.replace(/^#\s*/, '').trim()
-        credit = await CreditsService.getCreditByInvoiceNumber(sale.invoiceNumber)
-        if (!credit && inv !== sale.invoiceNumber) {
-          credit = await CreditsService.getCreditByInvoiceNumber(inv)
-        }
-      }
+      let credit = await CreditsService.getCreditBySaleId(sale.id, {
+        ignoreStoreFilter: true,
+      })
       if (credit) {
         let history: PaymentRecord[] = []
         try {

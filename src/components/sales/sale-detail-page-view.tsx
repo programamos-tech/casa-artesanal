@@ -133,9 +133,12 @@ export function SaleDetailPageView({
 
   useEffect(() => {
     const loadCredit = async () => {
-      if (sale.paymentMethod === 'credit' && sale.invoiceNumber) {
+      if (sale.paymentMethod === 'credit' && sale.id) {
         try {
-          const creditData = await CreditsService.getCreditByInvoiceNumber(sale.invoiceNumber)
+          // 1:1 por sale_id — nunca por invoice_number (puede estar duplicado)
+          const creditData = await CreditsService.getCreditBySaleId(sale.id, {
+            ignoreStoreFilter: true,
+          })
           setCredit(creditData)
         } catch {
           setCredit(null)

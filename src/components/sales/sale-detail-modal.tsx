@@ -56,12 +56,14 @@ export default function SaleDetailModal({
   const [credit, setCredit] = useState<Credit | null>(null)
   const [transfer, setTransfer] = useState<StoreStockTransfer | null>(null)
 
-  // Cargar crédito si la venta es de tipo crédito
+  // Cargar crédito si la venta es de tipo crédito (1:1 por sale_id)
   useEffect(() => {
     const loadCredit = async () => {
-      if (sale && sale.paymentMethod === 'credit' && sale.invoiceNumber) {
+      if (sale && sale.paymentMethod === 'credit' && sale.id) {
         try {
-          const creditData = await CreditsService.getCreditByInvoiceNumber(sale.invoiceNumber)
+          const creditData = await CreditsService.getCreditBySaleId(sale.id, {
+            ignoreStoreFilter: true,
+          })
           setCredit(creditData)
         } catch (error) {
           setCredit(null)
@@ -411,14 +413,9 @@ export default function SaleDetailModal({
       let creditPrintSection = ''
       if (showCreditOnPrint) {
         try {
-          let creditRow = await CreditsService.getCreditBySaleId(sale.id)
-          if (!creditRow && sale.invoiceNumber) {
-            const inv = sale.invoiceNumber.replace(/^#\s*/, '').trim()
-            creditRow = await CreditsService.getCreditByInvoiceNumber(sale.invoiceNumber)
-            if (!creditRow && inv !== sale.invoiceNumber) {
-              creditRow = await CreditsService.getCreditByInvoiceNumber(inv)
-            }
-          }
+          let creditRow = await CreditsService.getCreditBySaleId(sale.id, {
+            ignoreStoreFilter: true,
+          })
           if (creditRow) {
             let history: PaymentRecord[] = []
             try {

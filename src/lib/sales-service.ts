@@ -231,19 +231,19 @@ export class SalesService {
         }
       }
 
-      const creditInvoiceNumbers: string[] = []
+      const creditSaleIds: string[] = []
       for (const sale of data || []) {
-        if (sale.payment_method === 'credit' && sale.invoice_number) {
-          creditInvoiceNumbers.push(sale.invoice_number)
+        if (sale.payment_method === 'credit' && sale.id) {
+          creditSaleIds.push(sale.id)
         }
       }
 
       const creditStatusMap = new Map<string, string>()
-      if (creditInvoiceNumbers.length > 0) {
+      if (creditSaleIds.length > 0) {
         let creditQuery = supabase
           .from('credits')
-          .select('invoice_number, status')
-          .in('invoice_number', creditInvoiceNumbers)
+          .select('sale_id, status')
+          .in('sale_id', creditSaleIds)
         if (!storeId || storeId === MAIN_STORE_ID) {
           creditQuery = creditQuery.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
         } else {
@@ -252,7 +252,7 @@ export class SalesService {
         const { data: creditsData } = await creditQuery
         if (creditsData) {
           for (const c of creditsData) {
-            creditStatusMap.set(c.invoice_number, c.status)
+            if (c.sale_id) creditStatusMap.set(c.sale_id, c.status)
           }
         }
       }
@@ -277,8 +277,8 @@ export class SalesService {
           }
         })
 
-        const creditStatus = sale.payment_method === 'credit' && sale.invoice_number
-          ? creditStatusMap.get(sale.invoice_number) || null
+        const creditStatus = sale.payment_method === 'credit'
+          ? creditStatusMap.get(sale.id) || null
           : null
 
         return {
@@ -2030,12 +2030,14 @@ export class SalesService {
           }))
         }
 
-        // Obtener información del crédito si es una venta a crédito
+        // Obtener información del crédito si es una venta a crédito (1:1 por sale_id)
         let creditStatus = null
-        if (sale.payment_method === 'credit' && sale.invoice_number) {
+        if (sale.payment_method === 'credit' && sale.id) {
           try {
             const { CreditsService } = await import('./credits-service')
-            const credit = await CreditsService.getCreditByInvoiceNumber(sale.invoice_number)
+            const credit = await CreditsService.getCreditBySaleId(sale.id, {
+              ignoreStoreFilter: true,
+            })
             if (credit) {
               creditStatus = credit.status
             }

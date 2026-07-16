@@ -1162,7 +1162,10 @@ export class CreditsService {
     }
   }
 
-  // Obtener crédito por número de factura
+  /**
+   * @deprecated Preferir getCreditBySaleId — el invoice_number puede repetirse entre ventas.
+   * Solo para búsquedas legacy cuando no hay sale_id.
+   */
   static async getCreditByInvoiceNumber(invoiceNumber: string): Promise<Credit | null> {
     try {
       const user = getCurrentUser()
