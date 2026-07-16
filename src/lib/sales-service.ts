@@ -71,59 +71,39 @@ export class SalesService {
   /**
    * Siguiente número de factura por tienda.
    * Formato: CAP-001 (Parque) / CA2P-001 (2 Piso).
-   * Con `forStoreId`: secuencia para esa tienda (traslados / admin); usa service role.
-   * En el navegador: siempre pide el número por API (service role) para no chocar con RLS.
+   * Usa RPC con advisory lock (y API en el navegador) para no repetir números.
    */
   static async getNextInvoiceNumber(forStoreId?: string): Promise<string> {
-    try {
-      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-      const useExplicit = typeof forStoreId === 'string' && forStoreId.length > 0
-      const storeId = useExplicit ? forStoreId : getCurrentUserStoreId()
-      const prefix = this.getInvoicePrefixForStore(storeId)
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+    const useExplicit = typeof forStoreId === 'string' && forStoreId.length > 0
+    const storeId = useExplicit ? forStoreId : getCurrentUserStoreId()
+    const resolvedStoreId = storeId || MAIN_STORE_ID
+    const prefix = this.getInvoicePrefixForStore(resolvedStoreId)
 
-      // Cliente: no usar anon+RLS (generaba el mismo CA2P-003 para muchas ventas)
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams()
-        if (storeId) params.set('storeId', storeId)
-        const res = await fetch(`/api/sales/next-invoice?${params.toString()}`)
-        if (!res.ok) {
-          throw new Error('No se pudo obtener el siguiente número de factura')
-        }
-        const body = (await res.json()) as { invoiceNumber?: string }
-        if (body.invoiceNumber) return body.invoiceNumber
-        throw new Error('Respuesta inválida al pedir número de factura')
+    // Cliente: API con service role + RPC atómica
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams()
+      params.set('storeId', resolvedStoreId)
+      const res = await fetch(`/api/sales/next-invoice?${params.toString()}`)
+      if (!res.ok) {
+        throw new Error('No se pudo obtener el siguiente número de factura')
       }
+      const body = (await res.json()) as { invoiceNumber?: string }
+      if (body.invoiceNumber) return body.invoiceNumber
+      throw new Error('Respuesta inválida al pedir número de factura')
+    }
 
-      const db = supabaseAdmin
-      let query = db.from('sales').select('invoice_number')
+    const { data, error } = await supabaseAdmin.rpc('allocate_next_invoice_number', {
+      p_store_id: resolvedStoreId,
+    })
 
-      if (!storeId || storeId === MAIN_STORE_ID) {
-        query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
-      } else {
-        query = query.eq('store_id', storeId)
-      }
-
-      const { data, error } = await query
-
-      if (error || !data?.length) {
-        return this.formatInvoiceNumber(prefix, 1)
-      }
-
-      let maxNumber = 0
-      for (const row of data) {
-        const match = String(row.invoice_number || '').match(/(\d+)/)
-        if (!match) continue
-        const n = Number.parseInt(match[1], 10)
-        if (Number.isFinite(n) && n > maxNumber) maxNumber = n
-      }
-
-      return this.formatInvoiceNumber(prefix, maxNumber + 1)
-    } catch {
-      return this.formatInvoiceNumber(
-        this.getInvoicePrefixForStore(forStoreId || getCurrentUserStoreId()),
-        1
+    if (error || !data) {
+      throw new Error(
+        error?.message || `No se pudo asignar número de factura (${prefix})`
       )
     }
+
+    return String(data)
   }
 
   static async getAllSales(
@@ -816,18 +796,15 @@ export class SalesService {
       const needsSellerLookup =
         Boolean(saleData.sellerId) && (!saleData.sellerName || !saleData.sellerEmail)
 
-      const [invoiceNumber, sellerLookup] = await Promise.all([
-        this.getNextInvoiceNumber(),
-        needsSellerLookup
-          ? supabase
-              .from('users')
-              .select('id, name, email')
-              .eq('id', saleData.sellerId!)
-              .maybeSingle()
-              .then(({ data }) => data)
-              .catch(() => null)
-          : Promise.resolve(null),
-      ])
+      const sellerLookup = needsSellerLookup
+        ? await supabase
+            .from('users')
+            .select('id, name, email')
+            .eq('id', saleData.sellerId!)
+            .maybeSingle()
+            .then(({ data }) => data)
+            .catch(() => null)
+        : null
 
       let sellerId = saleData.sellerId || currentUser?.id || currentUserId
       let sellerName = saleData.sellerName || currentUser?.name || 'Usuario'
@@ -854,30 +831,50 @@ export class SalesService {
         }
       }
 
-      const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-          client_id: clientId,
-          client_name: clientName || 'Sin cliente',
-          total: saleData.total,
-          subtotal: saleData.subtotal,
-          tax: saleData.tax,
-          transport_price: saleData.transportPrice ?? 0,
-          discount: saleData.discount,
-          discount_type: saleData.discountType || 'amount',
-          status: saleData.status,
-          payment_method: paymentMethod || 'pending',
-          invoice_number: invoiceNumber,
-          seller_id: sellerId,
-          seller_name: sellerName,
-          seller_email: sellerEmail,
-          store_id: storeId || '00000000-0000-0000-0000-000000000001'
-        })
-        .select()
-        .single()
+      const resolvedStoreId = storeId || '00000000-0000-0000-0000-000000000001'
+      let sale: any = null
+      let invoiceNumber = ''
 
-      if (saleError) {
-        throw saleError
+      // Reintentar si choca el índice único de factura (carrera entre dos ventas)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        invoiceNumber = await this.getNextInvoiceNumber(resolvedStoreId)
+        const { data, error: saleError } = await supabase
+          .from('sales')
+          .insert({
+            client_id: clientId,
+            client_name: clientName || 'Sin cliente',
+            total: saleData.total,
+            subtotal: saleData.subtotal,
+            tax: saleData.tax,
+            transport_price: saleData.transportPrice ?? 0,
+            discount: saleData.discount,
+            discount_type: saleData.discountType || 'amount',
+            status: saleData.status,
+            payment_method: paymentMethod || 'pending',
+            invoice_number: invoiceNumber,
+            seller_id: sellerId,
+            seller_name: sellerName,
+            seller_email: sellerEmail,
+            store_id: resolvedStoreId,
+          })
+          .select()
+          .single()
+
+        if (!saleError && data) {
+          sale = data
+          break
+        }
+
+        const isDupInvoice =
+          saleError?.code === '23505' &&
+          String(saleError.message || saleError.details || '').includes('sales_unique_invoice')
+        if (!isDupInvoice || attempt === 4) {
+          throw saleError
+        }
+      }
+
+      if (!sale) {
+        throw new Error('No se pudo crear la venta con un número de factura único')
       }
 
       let itemsWithStockInfo: Array<any> = []
