@@ -8,6 +8,47 @@ export class CreditsService {
   static async createCredit(creditData: Omit<Credit, 'id' | 'createdAt' | 'updatedAt'>): Promise<Credit> {
     const storeId = creditData.storeId || getCurrentUserStoreId() || '00000000-0000-0000-0000-000000000001'
 
+    // Evitar duplicados: una venta → un crédito
+    if (creditData.saleId) {
+      if (typeof window !== 'undefined') {
+        const existing = await this.getCreditBySaleId(creditData.saleId, { ignoreStoreFilter: true })
+        if (existing && existing.status !== 'cancelled') {
+          return existing
+        }
+      } else {
+        const { data: existingRow } = await supabaseAdmin
+          .from('credits')
+          .select('*')
+          .eq('sale_id', creditData.saleId)
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (existingRow) {
+          return {
+            id: existingRow.id,
+            saleId: existingRow.sale_id,
+            clientId: existingRow.client_id,
+            clientName: existingRow.client_name,
+            invoiceNumber: existingRow.invoice_number,
+            totalAmount: existingRow.total_amount,
+            paidAmount: existingRow.paid_amount,
+            pendingAmount: existingRow.pending_amount,
+            status: existingRow.status,
+            dueDate: existingRow.due_date,
+            lastPaymentAmount: existingRow.last_payment_amount,
+            lastPaymentDate: existingRow.last_payment_date,
+            lastPaymentUser: existingRow.last_payment_user,
+            createdBy: existingRow.created_by,
+            createdByName: existingRow.created_by_name,
+            storeId: existingRow.store_id || undefined,
+            createdAt: existingRow.created_at,
+            updatedAt: existingRow.updated_at
+          }
+        }
+      }
+    }
+
     if (typeof window !== 'undefined') {
       try {
         const res = await fetch('/api/credits', {
@@ -323,17 +364,22 @@ export class CreditsService {
   }
 
   /** Crédito vinculado a una venta (típicamente uno por venta). */
-  static async getCreditBySaleId(saleId: string): Promise<Credit | null> {
+  static async getCreditBySaleId(
+    saleId: string,
+    options?: { ignoreStoreFilter?: boolean }
+  ): Promise<Credit | null> {
     if (!saleId) return null
     const storeId = getCurrentUserStoreId()
     const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
     let query = supabase.from('credits').select('*').eq('sale_id', saleId)
 
-    if (!storeId || storeId === MAIN_STORE_ID) {
-      query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
-    } else {
-      query = query.eq('store_id', storeId)
+    if (!options?.ignoreStoreFilter) {
+      if (!storeId || storeId === MAIN_STORE_ID) {
+        query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
+      } else {
+        query = query.eq('store_id', storeId)
+      }
     }
 
     const { data: rows, error } = await query.order('created_at', { ascending: false }).limit(1)
@@ -1139,7 +1185,7 @@ export class CreditsService {
         query = query.eq('store_id', storeId)
       }
 
-      const { data, error } = await query.single()
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle()
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -1147,6 +1193,8 @@ export class CreditsService {
         }
         throw error
       }
+
+      if (!data) return null
 
       return {
         id: data.id,

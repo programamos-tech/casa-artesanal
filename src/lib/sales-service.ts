@@ -72,15 +72,29 @@ export class SalesService {
    * Siguiente número de factura por tienda.
    * Formato: CAP-001 (Parque) / CA2P-001 (2 Piso).
    * Con `forStoreId`: secuencia para esa tienda (traslados / admin); usa service role.
+   * En el navegador: siempre pide el número por API (service role) para no chocar con RLS.
    */
   static async getNextInvoiceNumber(forStoreId?: string): Promise<string> {
     try {
       const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
       const useExplicit = typeof forStoreId === 'string' && forStoreId.length > 0
       const storeId = useExplicit ? forStoreId : getCurrentUserStoreId()
-      const db = useExplicit ? supabaseAdmin : supabase
       const prefix = this.getInvoicePrefixForStore(storeId)
 
+      // Cliente: no usar anon+RLS (generaba el mismo CA2P-003 para muchas ventas)
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams()
+        if (storeId) params.set('storeId', storeId)
+        const res = await fetch(`/api/sales/next-invoice?${params.toString()}`)
+        if (!res.ok) {
+          throw new Error('No se pudo obtener el siguiente número de factura')
+        }
+        const body = (await res.json()) as { invoiceNumber?: string }
+        if (body.invoiceNumber) return body.invoiceNumber
+        throw new Error('Respuesta inválida al pedir número de factura')
+      }
+
+      const db = supabaseAdmin
       let query = db.from('sales').select('invoice_number')
 
       if (!storeId || storeId === MAIN_STORE_ID) {
@@ -1449,52 +1463,122 @@ export class SalesService {
       let totalRefund = 0
       const invoiceNumber = sale.invoiceNumber || ''
 
-      const cancelCreditPayments = async (): Promise<{ refund: number; creditId: string | null }> => {
-        if (sale.paymentMethod !== 'credit' || !invoiceNumber) {
-          return { refund: 0, creditId: null }
+      /** Créditos de ESTA venta (por sale_id). No usar invoice_number: puede estar duplicado. */
+      const cancelLinkedCredits = async (): Promise<{ refund: number; creditIds: string[] }> => {
+        if (sale.paymentMethod !== 'credit') {
+          return { refund: 0, creditIds: [] }
         }
 
-        const { CreditsService } = await import('./credits-service')
-        const foundCredit = await CreditsService.getCreditByInvoiceNumber(invoiceNumber)
-        if (!foundCredit) return { refund: 0, creditId: null }
-
-        const { data: paymentData, error: paymentError } = await supabase
-          .from('payments')
-          .select('id')
-          .eq('invoice_number', invoiceNumber)
-          .eq('client_id', sale.clientId)
-          .maybeSingle()
-
-        if (paymentError || !paymentData) {
-          return { refund: 0, creditId: foundCredit.id }
-        }
-
-        const { data: paymentRecords, error: recordsError } = await supabase
-          .from('payment_records')
-          .select('id, amount')
-          .eq('payment_id', paymentData.id)
+        let creditQuery = supabase
+          .from('credits')
+          .select('id, status')
+          .eq('sale_id', id)
           .neq('status', 'cancelled')
 
-        if (recordsError || !paymentRecords?.length) {
-          return { refund: 0, creditId: foundCredit.id }
+        // Si no hay sale_id en créditos viejos, fallback por factura + cliente + tienda de la venta
+        let { data: linkedCredits, error: creditsLookupError } = await creditQuery
+
+        if (creditsLookupError) {
+          linkedCredits = []
         }
 
-        const refund = paymentRecords.reduce((sum, payment) => sum + (payment.amount || 0), 0)
-        const recordIds = paymentRecords.map((r) => r.id)
+        if (!linkedCredits?.length && invoiceNumber && sale.clientId) {
+          let fallback = supabase
+            .from('credits')
+            .select('id, status')
+            .eq('invoice_number', invoiceNumber)
+            .eq('client_id', sale.clientId)
+            .neq('status', 'cancelled')
 
-        // Un solo UPDATE para todos los abonos (antes: N updates en serie)
+          if (sale.storeId) {
+            fallback = fallback.eq('store_id', sale.storeId)
+          }
+
+          const { data: fallbackCredits } = await fallback
+          linkedCredits = fallbackCredits || []
+        }
+
+        if (!linkedCredits?.length) {
+          return { refund: 0, creditIds: [] }
+        }
+
+        const creditIds = linkedCredits.map((c) => c.id)
+        const nowIso = new Date().toISOString()
+        const cancelReason = `Cancelación de factura: ${invoiceNumber || id} - ${reason}`
+
+        // Abonos: payment_records se enlazan vía payments.sale_id (no hay credit_id)
+        const { data: paymentRows } = await supabase
+          .from('payments')
+          .select('id')
+          .eq('sale_id', id)
+
+        const paymentIds = (paymentRows || []).map((p) => p.id)
+        let refund = 0
+
+        if (paymentIds.length > 0) {
+          const { data: paymentRecords } = await supabase
+            .from('payment_records')
+            .select('id, amount')
+            .in('payment_id', paymentIds)
+            .neq('status', 'cancelled')
+
+          refund = (paymentRecords || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+          if (paymentRecords?.length) {
+            await supabase
+              .from('payment_records')
+              .update({
+                status: 'cancelled',
+                cancelled_at: nowIso,
+                cancelled_by: currentUserId,
+                cancelled_by_name: userName,
+                cancellation_reason: cancelReason,
+              })
+              .in(
+                'id',
+                paymentRecords.map((r) => r.id)
+              )
+          }
+
+          await supabase
+            .from('payments')
+            .update({
+              status: 'cancelled',
+              cancelled_at: nowIso,
+              cancelled_by: currentUserId,
+              cancelled_by_name: userName,
+              cancellation_reason: cancelReason,
+            })
+            .in('id', paymentIds)
+        }
+
+        // Anular todos los créditos de esta venta (no depende de otras facturas con el mismo número)
         await supabase
-          .from('payment_records')
+          .from('credits')
           .update({
+            total_amount: 0,
+            pending_amount: 0,
+            paid_amount: 0,
             status: 'cancelled',
-            cancelled_at: new Date().toISOString(),
+            cancelled_at: nowIso,
             cancelled_by: currentUserId,
             cancelled_by_name: userName,
-            cancellation_reason: `Cancelación de factura: ${invoiceNumber} - ${reason}`,
+            cancellation_reason: cancelReason,
+            updated_at: nowIso,
           })
-          .in('id', recordIds)
+          .in('id', creditIds)
 
-        return { refund, creditId: foundCredit.id }
+        for (const creditId of creditIds) {
+          void AuthService.logActivity(currentUserId, 'credit_cancelled', 'credits', {
+            description: `Crédito cancelado por anulación de factura: ${invoiceNumber || id} - ${reason}`,
+            creditId,
+            invoiceNumber: invoiceNumber || null,
+            clientName: sale.clientName || null,
+            reason: cancelReason,
+            cancelledSaleId: id,
+          })
+        }
+
+        return { refund, creditIds }
       }
 
       const stockReturnItems = (sale.items || []).map((item) => ({
@@ -1503,17 +1587,17 @@ export class SalesService {
         productName: item.productName,
       }))
 
-      // Devolver stock y anular abonos en paralelo
+      // Devolver stock y anular créditos/abonos en paralelo
       const [stockReturnResult, creditResult] = await Promise.all([
         ProductsService.returnStockFromSaleBatch(
           stockReturnItems,
           currentUserId,
           sale.storeId ?? null
         ),
-        cancelCreditPayments(),
+        cancelLinkedCredits(),
       ])
 
-      const creditId = creditResult.creditId
+      const creditIds = creditResult.creditIds
 
       if (sale.paymentMethod === 'credit') {
         totalRefund = creditResult.refund
@@ -1571,13 +1655,6 @@ export class SalesService {
 
       if (error) throw error
 
-      if (sale.paymentMethod === 'credit' && creditId) {
-        await this.updateCreditStatusAfterSaleCancellation(creditId, id, currentUserId, {
-          invoiceNumber,
-          clientName: sale.clientName,
-        })
-      }
-
       // No bloquear la UI por el log
       void AuthService.logActivity(currentUserId, 'sale_cancel', 'sales', {
         description:
@@ -1589,7 +1666,7 @@ export class SalesService {
         reason,
         totalRefund,
         isCreditSale: sale.paymentMethod === 'credit',
-        creditId,
+        creditIds,
         clientName: sale.clientName || null,
         stockReturnInfo,
       })

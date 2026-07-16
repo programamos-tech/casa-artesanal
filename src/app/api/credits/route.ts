@@ -35,6 +35,41 @@ export async function POST(request: NextRequest) {
     const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
     const resolvedStoreId = storeId || MAIN_STORE_ID
 
+    // Una venta → un crédito activo (evita duplicados por reintentos)
+    if (saleId) {
+      const { data: existing } = await supabaseAdmin
+        .from('credits')
+        .select('*')
+        .eq('sale_id', saleId)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existing) {
+        return NextResponse.json({
+          id: existing.id,
+          saleId: existing.sale_id,
+          clientId: existing.client_id,
+          clientName: existing.client_name,
+          invoiceNumber: existing.invoice_number,
+          totalAmount: existing.total_amount,
+          paidAmount: existing.paid_amount,
+          pendingAmount: existing.pending_amount,
+          status: existing.status,
+          dueDate: existing.due_date,
+          lastPaymentAmount: existing.last_payment_amount,
+          lastPaymentDate: existing.last_payment_date,
+          lastPaymentUser: existing.last_payment_user,
+          createdBy: existing.created_by,
+          createdByName: existing.created_by_name,
+          storeId: existing.store_id || undefined,
+          createdAt: existing.created_at,
+          updatedAt: existing.updated_at
+        })
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('credits')
       .insert([{
