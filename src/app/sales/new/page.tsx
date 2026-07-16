@@ -643,14 +643,32 @@ export default function NewSalePage() {
         .reduce((sum, p) => sum + (p.amount || 0), 0),
     [mixedPayments]
   )
-  const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashAmount : total
-  const mixedRemaining = Math.round(total) - Math.round(getTotalMixedPayments())
+  const mixedDigitalAmount = useMemo(
+    () =>
+      mixedPayments
+        .filter((p) => p.paymentType !== 'cash')
+        .reduce((sum, p) => sum + (p.amount || 0), 0),
+    [mixedPayments]
+  )
+  const roundedSaleTotal = Math.round(total)
+  /** Lo que debe quedar en efectivo después del monto digital */
+  const mixedCashOwed = Math.max(0, roundedSaleTotal - Math.round(mixedDigitalAmount))
+  /** Vuelto = efectivo entregado − lo que debía pagar en efectivo */
+  const mixedCashChange = mixedCashAmount - mixedCashOwed
+  const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashOwed : total
 
   const updateMixedPayment = (index: number, field: keyof SalePayment, value: any) => {
     const updated = [...mixedPayments]
     updated[index] = { ...updated[index], [field]: value }
     setMixedPayments(updated)
     setPaymentError('')
+  }
+
+  /** Pagos mixtos listos para guardar: efectivo = lo adeudado (sin vuelto). */
+  const buildMixedPaymentsForSave = (): SalePayment[] => {
+    return mixedPayments.map((p) =>
+      p.paymentType === 'cash' ? { ...p, amount: mixedCashOwed } : p
+    )
   }
 
   const getPaymentTypeLabel = (type: string) => {
@@ -803,14 +821,22 @@ export default function NewSalePage() {
       }
 
       if (paymentMethod === 'mixed') {
-        const totalMixedPayments = getTotalMixedPayments()
-        const roundedTotal = Math.round(total)
-        const roundedPayments = Math.round(totalMixedPayments)
+        const digital = Math.round(mixedDigitalAmount)
+        const cashEntered = Math.round(mixedCashAmount)
+        const cashOwed = Math.max(0, Math.round(total) - digital)
 
-        if (roundedPayments !== roundedTotal) {
+        if (digital > Math.round(total)) {
           isSubmittingRef.current = false
-          const faltante = Math.abs(roundedTotal - roundedPayments)
-          setPaymentError(`El total ingresado (${formatCurrency(roundedPayments)}) no coincide con el total de la venta (${formatCurrency(roundedTotal)}). Falta: ${formatCurrency(faltante)}`)
+          setPaymentError(
+            `El monto digital (${formatCurrency(digital)}) supera el total de la venta (${formatCurrency(Math.round(total))}).`
+          )
+          return
+        }
+        if (cashEntered < cashOwed) {
+          isSubmittingRef.current = false
+          setPaymentError(
+            `En efectivo faltan ${formatCurrency(cashOwed - cashEntered)}. Restante a cubrir: ${formatCurrency(cashOwed)}.`
+          )
           return
         }
       }
@@ -838,7 +864,7 @@ export default function NewSalePage() {
       discountType: amounts.discountType,
       status: isDraft ? 'draft' : 'completed',
       paymentMethod: (paymentMethod || 'pending') as Sale['paymentMethod'],
-      payments: !isDraft && paymentMethod === 'mixed' ? mixedPayments : undefined,
+      payments: !isDraft && paymentMethod === 'mixed' ? buildMixedPaymentsForSave() : undefined,
       items: saleItems,
       invoiceNumber: editingDraftId ? invoiceNumber : undefined,
       sellerId: seller?.id,
@@ -1537,53 +1563,106 @@ export default function NewSalePage() {
                             placeholder="0"
                             className={cn(inputClass, 'py-2 text-sm')}
                           />
+                          {/* Digital: cuánto falta en el otro medio (efectivo) */}
+                          {index === 1 && mixedDigitalAmount > 0 && (
+                            <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                              Restante en efectivo:{' '}
+                              <span className="tabular-nums font-bold">
+                                {formatCurrency(mixedCashOwed)}
+                              </span>
+                            </p>
+                          )}
+                          {/* Efectivo: vuelto sobre lo que debía pagar en efectivo */}
+                          {index === 0 && mixedCashAmount > 0 && (
+                            <div className="mt-1.5 space-y-1">
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Debe cubrir en efectivo:{' '}
+                                <span className="tabular-nums font-medium text-zinc-700 dark:text-zinc-300">
+                                  {formatCurrency(mixedCashOwed)}
+                                </span>
+                              </p>
+                              {mixedCashChange > 0 && (
+                                <p className="text-sm font-semibold text-brand-700 dark:text-brand-400">
+                                  Vuelto a devolver:{' '}
+                                  <span className="tabular-nums">{formatCurrency(mixedCashChange)}</span>
+                                </p>
+                              )}
+                              {mixedCashChange < 0 && (
+                                <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                                  Faltan en efectivo:{' '}
+                                  <span className="tabular-nums">
+                                    {formatCurrency(Math.abs(mixedCashChange))}
+                                  </span>
+                                </p>
+                              )}
+                              {mixedCashChange === 0 && mixedCashOwed > 0 && (
+                                <p className="text-xs font-medium text-brand-700 dark:text-brand-400">
+                                  Efectivo exacto — sin vuelto
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                       <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
                         <div className="flex justify-between text-sm">
                           <span className="text-zinc-500 dark:text-zinc-400">Total a pagar</span>
                           <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                            {formatCurrency(Math.round(total))}
+                            {formatCurrency(roundedSaleTotal)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500 dark:text-zinc-400">Total ingresado</span>
-                          <span
-                            className={cn(
-                              'font-semibold tabular-nums',
-                              mixedRemaining === 0 && getTotalMixedPayments() > 0
-                                ? 'text-brand-700 dark:text-brand-400'
-                                : 'text-zinc-900 dark:text-zinc-100'
+                          <span className="text-zinc-500 dark:text-zinc-400">Digital + efectivo aplicado</span>
+                          <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                            {formatCurrency(
+                              Math.round(mixedDigitalAmount) +
+                                Math.min(Math.round(mixedCashAmount), mixedCashOwed)
                             )}
-                          >
-                            {formatCurrency(getTotalMixedPayments())}
                           </span>
                         </div>
-                        {getTotalMixedPayments() > 0 && mixedRemaining > 0 && (
+                        {mixedDigitalAmount > 0 && mixedCashAmount === 0 && mixedCashOwed > 0 && (
                           <div className="flex items-center justify-between rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/25">
                             <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                              Te faltan
+                              Restante en efectivo
                             </span>
                             <span className="text-base font-bold tabular-nums text-amber-800 dark:text-amber-300">
-                              {formatCurrency(mixedRemaining)}
+                              {formatCurrency(mixedCashOwed)}
                             </span>
                           </div>
                         )}
-                        {getTotalMixedPayments() > 0 && mixedRemaining < 0 && (
+                        {mixedCashAmount > 0 && mixedCashChange > 0 && (
+                          <div className="flex items-center justify-between rounded-lg border border-brand-200/80 bg-brand-50/90 px-3 py-2 dark:border-brand-900/40 dark:bg-brand-950/25">
+                            <span className="text-sm font-medium text-brand-800 dark:text-brand-300">
+                              Vuelto a devolver
+                            </span>
+                            <span className="text-base font-bold tabular-nums text-brand-800 dark:text-brand-300">
+                              {formatCurrency(mixedCashChange)}
+                            </span>
+                          </div>
+                        )}
+                        {mixedCashAmount > 0 && mixedCashChange < 0 && (
                           <div className="flex items-center justify-between rounded-lg border border-red-200/80 bg-red-50/90 px-3 py-2 dark:border-red-900/40 dark:bg-red-950/25">
-                            <span className="text-sm font-medium text-red-700 dark:text-red-300">Sobran</span>
+                            <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                              Faltan en efectivo
+                            </span>
                             <span className="text-base font-bold tabular-nums text-red-700 dark:text-red-300">
-                              {formatCurrency(Math.abs(mixedRemaining))}
+                              {formatCurrency(Math.abs(mixedCashChange))}
                             </span>
                           </div>
                         )}
-                        {getTotalMixedPayments() > 0 && mixedRemaining === 0 && (
-                          <div className="flex items-center gap-1.5 text-sm font-medium text-brand-700 dark:text-brand-400">
-                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                            Pago completo
-                          </div>
-                        )}
+                        {mixedCashAmount >= mixedCashOwed &&
+                          mixedCashOwed >= 0 &&
+                          Math.round(mixedDigitalAmount) + mixedCashOwed === roundedSaleTotal &&
+                          (mixedDigitalAmount > 0 || mixedCashAmount > 0) && (
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-brand-700 dark:text-brand-400">
+                              <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                              Pago completo
+                              {mixedCashChange > 0
+                                ? ` · vuelto ${formatCurrency(mixedCashChange)}`
+                                : ''}
+                            </div>
+                          )}
                       </div>
                     </div>
                   )}
@@ -1594,19 +1673,12 @@ export default function NewSalePage() {
                     </div>
                   )}
 
-                  {/* Vuelto: efectivo total, o efectivo del mixto */}
-                  {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
-                    validProducts.length > 0 &&
-                    (paymentMethod === 'cash' || mixedCashAmount > 0) && (
+                  {/* Vuelto solo en efectivo puro (en mixto el vuelto va junto al campo Efectivo) */}
+                  {paymentMethod === 'cash' && validProducts.length > 0 && (
                     <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
                       <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        {paymentMethod === 'mixed' ? 'Dinero recibido en efectivo' : 'Dinero recibido'}
+                        Dinero recibido
                       </label>
-                      {paymentMethod === 'mixed' && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          Vuelto sobre la parte en efectivo ({formatCurrency(mixedCashAmount)})
-                        </p>
-                      )}
                       <input
                         type="text"
                         value={receivedAmount ? parseFloat(receivedAmount.replace(/[^\d]/g, '') || '0').toLocaleString('es-CO') : ''}

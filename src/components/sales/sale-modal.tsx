@@ -465,6 +465,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     .filter((p) => p.paymentType === 'cash')
     .reduce((sum, p) => sum + (p.amount || 0), 0)
 
+  const mixedDigitalAmount = mixedPayments
+    .filter((p) => p.paymentType !== 'cash')
+    .reduce((sum, p) => sum + (p.amount || 0), 0)
+
   // Solo considerar productos con cantidad > 0 para cálculos
   const validProducts = selectedProducts.filter(item => item.quantity > 0)
 
@@ -489,20 +493,19 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     discountType: orderDiscountType,
   })
   const { itemsSubtotal, orderDiscountAmount, subtotal, total } = saleAmounts
-  const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashAmount : total
+  const roundedSaleTotal = Math.round(total)
+  const mixedCashOwed = Math.max(0, roundedSaleTotal - Math.round(mixedDigitalAmount))
+  const mixedCashChange = mixedCashAmount - mixedCashOwed
+  const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashOwed : total
   const totalLineDiscount = validProductsForTotal.reduce(
     (sum, item) => sum + getLineDiscountAmount(item),
     0
   )
 
-  const getRemainingAmount = () => {
-    // Si no hay productos seleccionados, no hay pago que completar
-    if (validProducts.length === 0) {
-      return Math.round(total) // Devolver el total redondeado (que será 0) para que no muestre "Pago completo"
-    }
-    // Redondear el faltante a números enteros (sin centavos)
-    return Math.round(total - getTotalMixedPayments())
-  }
+  const buildMixedPaymentsForSave = (): SalePayment[] =>
+    mixedPayments.map((p) =>
+      p.paymentType === 'cash' ? { ...p, amount: mixedCashOwed } : p
+    )
 
   const handleAddProduct = (product: Product) => {
     const pricedProduct = productCache[product.id] ?? product
@@ -725,14 +728,22 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       }
 
       if (paymentMethod === 'mixed') {
-        const totalMixedPayments = getTotalMixedPayments()
-        const roundedTotal = Math.round(total)
-        const roundedPayments = Math.round(totalMixedPayments)
+        const digital = Math.round(mixedDigitalAmount)
+        const cashEntered = Math.round(mixedCashAmount)
+        const cashOwed = Math.max(0, Math.round(total) - digital)
 
-        if (roundedPayments !== roundedTotal) {
+        if (digital > Math.round(total)) {
           isSubmittingRef.current = false
-          const faltante = Math.abs(roundedTotal - roundedPayments)
-          setPaymentError(`El total ingresado ($${roundedPayments.toLocaleString('es-CO', { maximumFractionDigits: 0 })}) no coincide con el total de la venta ($${roundedTotal.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). Falta: $${faltante.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`)
+          setPaymentError(
+            `El monto digital ($${digital.toLocaleString('es-CO')}) supera el total de la venta ($${Math.round(total).toLocaleString('es-CO')}).`
+          )
+          return
+        }
+        if (cashEntered < cashOwed) {
+          isSubmittingRef.current = false
+          setPaymentError(
+            `En efectivo faltan $${(cashOwed - cashEntered).toLocaleString('es-CO')}. Restante a cubrir: $${cashOwed.toLocaleString('es-CO')}.`
+          )
           return
         }
       }
@@ -758,7 +769,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       discountType: amounts.discountType,
       status: isDraft ? 'draft' : 'completed',
       paymentMethod: (paymentMethod || 'pending') as Sale['paymentMethod'],
-      payments: !isDraft && paymentMethod === 'mixed' ? mixedPayments : undefined,
+      payments: !isDraft && paymentMethod === 'mixed' ? buildMixedPaymentsForSave() : undefined,
       items: saleItems,
       invoiceNumber: sale?.invoiceNumber
     }
@@ -1409,7 +1420,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                   type="text"
                                   value={payment.amount ? payment.amount.toLocaleString('es-CO') : ''}
                                   onChange={(e) => {
-                                    // Remover todos los caracteres no numéricos excepto puntos
                                     const cleanValue = e.target.value.replace(/[^\d]/g, '')
                                     const numericValue = cleanValue ? parseInt(cleanValue, 10) : 0
                                     updateMixedPayment(index, 'amount', numericValue)
@@ -1417,6 +1427,40 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                   placeholder="0"
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-neutral-700 text-gray-900 dark:text-white text-sm"
                                 />
+                                {index === 1 && mixedDigitalAmount > 0 && (
+                                  <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                                    Restante en efectivo:{' '}
+                                    <span className="font-bold tabular-nums">
+                                      ${mixedCashOwed.toLocaleString('es-CO')}
+                                    </span>
+                                  </p>
+                                )}
+                                {index === 0 && mixedCashAmount > 0 && (
+                                  <div className="mt-1.5 space-y-1">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      Debe cubrir en efectivo:{' '}
+                                      <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                                        ${mixedCashOwed.toLocaleString('es-CO')}
+                                      </span>
+                                    </p>
+                                    {mixedCashChange > 0 && (
+                                      <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                        Vuelto a devolver:{' '}
+                                        <span className="tabular-nums">
+                                          ${mixedCashChange.toLocaleString('es-CO')}
+                                        </span>
+                                      </p>
+                                    )}
+                                    {mixedCashChange < 0 && (
+                                      <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                                        Faltan en efectivo:{' '}
+                                        <span className="tabular-nums">
+                                          ${Math.abs(mixedCashChange).toLocaleString('es-CO')}
+                                        </span>
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -1430,7 +1474,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                               type="text"
                               value={mixedPayments[0]?.notes || ''}
                               onChange={(e) => {
-                                // Actualizar las notas en todos los pagos
                                 const updatedPayments = mixedPayments.map(payment => ({
                                   ...payment,
                                   notes: e.target.value
@@ -1447,44 +1490,52 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                             <div className="flex items-center justify-between rounded-md bg-gray-50 p-2 text-sm dark:bg-neutral-900/50">
                               <span className="font-medium text-gray-600 dark:text-gray-400">Total a pagar:</span>
                               <span className="text-base font-bold text-gray-900 dark:text-white">
-                                ${Math.round(total).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                                ${roundedSaleTotal.toLocaleString('es-CO')}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600 dark:text-gray-400">Total ingresado:</span>
-                              <span
-                                className={`font-medium ${
-                                  getRemainingAmount() === 0 && validProducts.length > 0
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-gray-900 dark:text-white'
-                                }`}
-                              >
-                                ${Math.round(getTotalMixedPayments()).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
-                              </span>
-                            </div>
-                            {getTotalMixedPayments() > 0 && getRemainingAmount() > 0 && (
+                            {mixedDigitalAmount > 0 && mixedCashAmount === 0 && mixedCashOwed > 0 && (
                               <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
                                 <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
                                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                                  Te faltan
+                                  Restante en efectivo
                                 </span>
                                 <span className="text-base font-bold text-amber-800 dark:text-amber-300">
-                                  ${getRemainingAmount().toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                                  ${mixedCashOwed.toLocaleString('es-CO')}
                                 </span>
                               </div>
                             )}
-                            {getTotalMixedPayments() > 0 && getRemainingAmount() < 0 && (
+                            {mixedCashAmount > 0 && mixedCashChange > 0 && (
+                              <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/20">
+                                <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                  Vuelto a devolver
+                                </span>
+                                <span className="text-base font-bold text-green-800 dark:text-green-300">
+                                  ${mixedCashChange.toLocaleString('es-CO')}
+                                </span>
+                              </div>
+                            )}
+                            {mixedCashAmount > 0 && mixedCashChange < 0 && (
                               <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-900/20">
-                                <span className="text-sm font-medium text-red-700 dark:text-red-300">Sobran</span>
+                                <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                                  Faltan en efectivo
+                                </span>
                                 <span className="text-base font-bold text-red-700 dark:text-red-300">
-                                  ${Math.abs(getRemainingAmount()).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                                  ${Math.abs(mixedCashChange).toLocaleString('es-CO')}
                                 </span>
                               </div>
                             )}
-                            {getTotalMixedPayments() > 0 && getRemainingAmount() === 0 && validProducts.length > 0 && (
-                              <div className="flex items-center gap-2 border-t border-gray-200 pt-1 text-sm font-medium text-green-600 dark:border-neutral-700 dark:text-green-400">
+                            {mixedCashAmount >= mixedCashOwed &&
+                              Math.round(mixedDigitalAmount) + mixedCashOwed === roundedSaleTotal &&
+                              (mixedDigitalAmount > 0 || mixedCashAmount > 0) &&
+                              validProducts.length > 0 && (
+                              <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
                                 <CheckCircle className="h-4 w-4" />
-                                <span>Pago completo</span>
+                                <span>
+                                  Pago completo
+                                  {mixedCashChange > 0
+                                    ? ` · vuelto $${mixedCashChange.toLocaleString('es-CO')}`
+                                    : ''}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -1619,37 +1670,23 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                             </div>
                           </div>
 
-                          {/* Cálculo de vuelto: efectivo total, o efectivo del mixto */}
-                          {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
-                            validProducts.length > 0 &&
-                            (paymentMethod === 'cash' || mixedCashAmount > 0) && (
+                          {/* Cálculo de vuelto: solo efectivo puro (mixto ya muestra vuelto en el desglose) */}
+                          {paymentMethod === 'cash' && validProducts.length > 0 && (
                             <div className="border-t border-gray-200 dark:border-neutral-600 pt-3 mt-3 space-y-3">
                               <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {paymentMethod === 'mixed'
-                                    ? 'Dinero recibido en efectivo:'
-                                    : 'Dinero recibido:'}
+                                  Dinero recibido:
                                 </label>
-                                {paymentMethod === 'mixed' && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Vuelto sobre la parte en efectivo ($
-                                    {mixedCashAmount.toLocaleString('es-CO')})
-                                  </p>
-                                )}
-                                
-                                {/* Input para monto recibido */}
                                 <div className="relative">
                                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">$</span>
                                   <input
                                     type="text"
                                     value={receivedAmount ? parseFloat(receivedAmount.replace(/[^\d]/g, '') || '0').toLocaleString('es-CO') : ''}
                                     onChange={(e) => {
-                                      // Permitir solo números
                                       const value = e.target.value.replace(/[^\d]/g, '')
                                       setReceivedAmount(value)
                                     }}
                                     onFocus={(e) => {
-                                      // Seleccionar todo el texto al enfocar
                                       e.target.select()
                                     }}
                                     placeholder="Ingresa el monto recibido"
@@ -1658,7 +1695,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 </div>
                               </div>
                               
-                              {/* Mostrar vuelto si hay monto recibido */}
                               {receivedAmount && parseFloat(receivedAmount.replace(/[^\d]/g, '')) > 0 && (
                                 <div className={`rounded-lg p-4 border-2 ${
                                   parseFloat(receivedAmount.replace(/[^\d]/g, '')) >= changeBaseAmount
