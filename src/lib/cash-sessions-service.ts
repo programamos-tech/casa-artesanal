@@ -51,7 +51,7 @@ function mapRow(row: any): CashSession {
   }
 }
 
-function emptySummary(openingCash = 0): CashSessionLiveSummary {
+function emptySummary(_openingCash = 0): CashSessionLiveSummary {
   return {
     salesCash: 0,
     salesTransfer: 0,
@@ -68,7 +68,8 @@ function emptySummary(openingCash = 0): CashSessionLiveSummary {
     egresosCount: 0,
     totalIngresos: 0,
     totalEgresos: 0,
-    expectedCash: openingCash,
+    // El fondo/base de apertura no entra en el efectivo esperado del cierre
+    expectedCash: 0,
   }
 }
 
@@ -316,11 +317,9 @@ export class CashSessionsService {
 
       summary.totalEgresos = summary.egresosCash + summary.egresosOther
 
+      // Efectivo esperado del día: ventas/abonos en efectivo − egresos en efectivo (sin la base de apertura)
       summary.expectedCash =
-        session.openingCash +
-        summary.salesCash +
-        summary.creditAbonosCash -
-        summary.egresosCash
+        summary.salesCash + summary.creditAbonosCash - summary.egresosCash
 
       return summary
     } catch (error) {

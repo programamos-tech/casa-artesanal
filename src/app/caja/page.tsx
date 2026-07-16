@@ -169,8 +169,8 @@ export default function CajaPage() {
                 />
                 <SummaryTile
                   icon={Wallet}
-                  label="Efectivo esperado"
-                  value={money(live?.expectedCash || openSession.openingCash)}
+                  label="Efectivo esperado (sin base)"
+                  value={money(live?.expectedCash ?? 0)}
                   tone="cash"
                 />
               </div>

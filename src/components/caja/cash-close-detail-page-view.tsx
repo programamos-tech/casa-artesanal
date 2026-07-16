@@ -91,10 +91,10 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
           </dl>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryTile icon={Banknote} label="Fondo inicial" value={money(report.openingCash)} />
+            <SummaryTile icon={Banknote} label="Fondo inicial (no se suma)" value={money(report.openingCash)} />
             <SummaryTile icon={ArrowUpCircle} label="Ingresos" value={money(report.totalIngresos)} tone="income" />
             <SummaryTile icon={ArrowDownCircle} label="Egresos" value={money(report.totalEgresos)} tone="expense" />
-            <SummaryTile icon={Wallet} label="Efectivo esperado" value={money(report.expectedCash)} tone="cash" />
+            <SummaryTile icon={Wallet} label="Efectivo esperado (sin base)" value={money(report.expectedCash)} tone="cash" />
           </div>
 
           <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:grid-cols-3">

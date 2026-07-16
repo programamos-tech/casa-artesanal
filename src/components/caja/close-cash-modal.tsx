@@ -38,7 +38,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
 
   useEffect(() => {
     if (!isOpen) return
-    setCountedCash(String(Math.round(live?.expectedCash ?? session.openingCash)))
+    setCountedCash(String(Math.round(live?.expectedCash ?? 0)))
     setNotes('')
     setSummary(live)
     void CashSessionsService.computeLiveSummary(session).then(setSummary)
@@ -47,7 +47,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   if (!isOpen) return null
 
   const counted = parseInt(countedCash.replace(/[^\d]/g, ''), 10) || 0
-  const expected = summary?.expectedCash ?? session.openingCash
+  const expected = summary?.expectedCash ?? 0
   const diff = counted - expected
 
   const notifyWhatsApp = async (sessionId: string, previewWindows: Window[]) => {
@@ -189,11 +189,11 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
               <p className="font-semibold tabular-nums">{money(summary?.totalEgresos || 0)}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Fondo inicial</p>
+              <p className="text-xs text-zinc-500">Fondo inicial (no se suma)</p>
               <p className="font-semibold tabular-nums">{money(session.openingCash)}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Efectivo esperado</p>
+              <p className="text-xs text-zinc-500">Efectivo esperado (sin base)</p>
               <p className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                 {money(expected)}
               </p>
