@@ -637,9 +637,8 @@ export default function ClientCreditsPage() {
                         <div className="mt-0.5 font-mono text-xs text-zinc-500">{credit.invoiceNumber}</div>
                       </div>
                       <Badge
-                        variant="outline"
                         className={cn(
-                          'shrink-0 border px-2 py-0.5 text-[11px] font-normal',
+                          'shrink-0 px-2 py-0.5 text-[11px] font-medium',
                           creditStatusBadgeClass(displayStatus, credit)
                         )}
                       >
@@ -779,9 +778,8 @@ export default function ClientCreditsPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <Badge
-                              variant="outline"
                               className={cn(
-                                'inline-flex border px-2 py-0.5 text-[11px] font-normal',
+                                'inline-flex px-2 py-0.5 text-[11px] font-medium',
                                 creditStatusBadgeClass(displayStatus, credit)
                               )}
                             >

@@ -68,25 +68,24 @@ const iconSize = {
 } as const
 
 /**
- * Chip con borde (tablas, listas, Badge outline).
+ * Chip con fondo de color (tablas, listas).
+ * Anulado=rojo, Pendiente=ámbar, Completado=verde, Parcial=azul, Vencido=rosa.
  */
 export function creditStatusBadgeClass(status: string, credit?: Credit | null): string {
-  if (isCreditCancelled(credit)) {
-    return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/55 dark:text-zinc-400'
+  if (isCreditCancelled(credit) || status === 'cancelled') {
+    return 'border-transparent bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
   }
   switch (status) {
     case 'completed':
-      return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
+      return 'border-transparent bg-green-100 text-green-800 dark:bg-green-950/45 dark:text-green-300'
     case 'partial':
-      return 'border-0 bg-sky-100/85 text-sky-950/90 dark:bg-sky-950/35 dark:text-sky-200/88'
+      return 'border-transparent bg-sky-100 text-sky-900 dark:bg-sky-950/45 dark:text-sky-300'
     case 'pending':
-      return 'border-0 bg-amber-100/90 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
+      return 'border-transparent bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'
     case 'overdue':
-      return 'border-0 bg-rose-100/90 text-rose-950/90 dark:bg-rose-950/35 dark:text-rose-300/88'
-    case 'cancelled':
-      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/55 dark:text-zinc-400'
+      return 'border-transparent bg-rose-100 text-rose-900 dark:bg-rose-950/45 dark:text-rose-300'
     default:
-      return 'border-0 bg-zinc-100/90 text-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400'
+      return 'border-transparent bg-zinc-100 text-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400'
   }
 }
 
@@ -94,22 +93,20 @@ export function creditStatusBadgeClass(status: string, credit?: Credit | null): 
  * Badge relleno (modales), con hover suave.
  */
 export function creditStatusSolidBadgeClass(status: string, credit?: Credit | null): string {
-  if (isCreditCancelled(credit)) {
-    return 'border-transparent bg-zinc-200/90 text-zinc-800 shadow-none dark:bg-zinc-700/90 dark:text-zinc-100 hover:bg-zinc-300/90 dark:hover:bg-zinc-600'
+  if (isCreditCancelled(credit) || status === 'cancelled') {
+    return 'border-transparent bg-red-600 text-white shadow-none hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600'
   }
   switch (status) {
     case 'completed':
-      return 'border-transparent bg-brand-500/18 text-brand-950 shadow-none dark:bg-brand-500/22 dark:text-brand-100 hover:bg-brand-500/26 dark:hover:bg-brand-500/30'
+      return 'border-transparent bg-green-600 text-white shadow-none hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600'
     case 'partial':
-      return 'border-transparent bg-sky-500/18 text-sky-950 shadow-none dark:bg-sky-500/22 dark:text-sky-100 hover:bg-sky-500/26 dark:hover:bg-sky-500/30'
+      return 'border-transparent bg-sky-600 text-white shadow-none hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600'
     case 'pending':
-      return 'border-transparent bg-amber-500/20 text-amber-950 shadow-none dark:bg-amber-500/22 dark:text-amber-100 hover:bg-amber-500/28 dark:hover:bg-amber-500/32'
+      return 'border-transparent bg-amber-500 text-white shadow-none hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
     case 'overdue':
-      return 'border-transparent bg-rose-500/18 text-rose-950 shadow-none dark:bg-rose-500/22 dark:text-rose-100 hover:bg-rose-500/28 dark:hover:bg-rose-500/32'
-    case 'cancelled':
-      return 'border-transparent bg-zinc-200/90 text-zinc-800 shadow-none dark:bg-zinc-700/90 dark:text-zinc-100 hover:bg-zinc-300/90 dark:hover:bg-zinc-600'
+      return 'border-transparent bg-rose-600 text-white shadow-none hover:bg-rose-700 dark:bg-rose-700 dark:hover:bg-rose-600'
     default:
-      return 'border-transparent bg-zinc-200/80 text-zinc-900 shadow-none dark:bg-zinc-700/80 dark:text-zinc-100'
+      return 'border-transparent bg-zinc-500 text-white shadow-none hover:bg-zinc-600'
   }
 }
 
@@ -120,20 +117,18 @@ export function creditStatusIconClass(
 ): string {
   const dim = iconSize[size]
   const base = `${dim} shrink-0`
-  if (isCreditCancelled(credit)) {
-    return `${base} text-zinc-500 dark:text-zinc-400`
+  if (isCreditCancelled(credit) || status === 'cancelled') {
+    return `${base} text-red-700 dark:text-red-400`
   }
   switch (status) {
     case 'completed':
-      return `${base} text-brand-600 dark:text-brand-400`
+      return `${base} text-green-700 dark:text-green-400`
     case 'partial':
-      return `${base} text-sky-600 dark:text-sky-400`
+      return `${base} text-sky-700 dark:text-sky-400`
     case 'pending':
-      return `${base} text-amber-600 dark:text-amber-500`
+      return `${base} text-amber-700 dark:text-amber-400`
     case 'overdue':
-      return `${base} text-rose-600 dark:text-rose-400`
-    case 'cancelled':
-      return `${base} text-zinc-500 dark:text-zinc-400`
+      return `${base} text-rose-700 dark:text-rose-400`
     default:
       return `${base} text-zinc-500 dark:text-zinc-400`
   }

@@ -736,8 +736,10 @@ export function ClientDetailPageView({
                           </td>
                           <td className="px-3 py-3 text-center">
                             <Badge
-                              variant="outline"
-                              className={cn('border px-2 py-0.5 text-[11px] font-normal', creditStatusBadgeClass(displayStatus, credit))}
+                              className={cn(
+                                'px-2 py-0.5 text-[11px] font-medium',
+                                creditStatusBadgeClass(displayStatus, credit)
+                              )}
                             >
                               {creditStatusLabel(displayStatus, credit, { completedLabel: 'Pagado' })}
                             </Badge>
@@ -772,8 +774,10 @@ export function ClientDetailPageView({
                             </p>
                           </div>
                           <Badge
-                            variant="outline"
-                            className={cn('shrink-0 border px-2 py-0.5 text-[11px] font-normal', creditStatusBadgeClass(displayStatus, credit))}
+                            className={cn(
+                              'shrink-0 px-2 py-0.5 text-[11px] font-medium',
+                              creditStatusBadgeClass(displayStatus, credit)
+                            )}
                           >
                             {creditStatusLabel(displayStatus, credit, { completedLabel: 'Pagado' })}
                           </Badge>
