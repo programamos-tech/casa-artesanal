@@ -257,6 +257,12 @@ export function InvoiceTemplate({ sale, company, client }: InvoiceTemplateProps)
             )}
           </div>
         </div>
+        {sale.notes?.trim() && (
+          <div className="mt-4 text-sm">
+            <p><strong>Notas:</strong></p>
+            <p className="mt-1 whitespace-pre-wrap text-gray-700">{sale.notes.trim()}</p>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

@@ -630,6 +630,18 @@ export function SaleDetailPageView({
                     </div>
                   </div>
                 )}
+                {sale.notes?.trim() && (
+                  <div className="px-4 py-5 md:px-6">
+                    <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Notas
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-200">
+                        {sale.notes.trim()}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {sale.status !== 'cancelled' && transfer && (
                   <div className="px-4 py-5 md:px-6">
                     <p className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300/95">

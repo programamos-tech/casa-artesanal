@@ -1027,6 +1027,17 @@ export default function SaleDetailModal({
                       </div>
                     </div>
                   )}
+
+                  {sale.notes?.trim() && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-600">
+                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Notas
+                      </div>
+                      <div className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-600 rounded-md p-3 whitespace-pre-wrap">
+                        {sale.notes.trim()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -280,6 +280,8 @@ export interface Sale {
   sellerName?: string
   sellerEmail?: string
   storeId?: string // ID de la tienda donde se realizó la venta
+  /** Notas u observaciones de la factura */
+  notes?: string | null
   createdAt: string
   items: SaleItem[]
   creditStatus?: 'pending' | 'partial' | 'completed' | 'overdue' | 'cancelled' // Estado del crédito asociado (solo para ventas a crédito)

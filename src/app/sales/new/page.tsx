@@ -133,6 +133,7 @@ export default function NewSalePage() {
   const [showMixedPayments, setShowMixedPayments] = useState(false)
   const [paymentError, setPaymentError] = useState('')
   const [receivedAmount, setReceivedAmount] = useState<string>('')
+  const [notes, setNotes] = useState('')
 
   // Vendedor asignado (lo elige el cajero al crear la factura)
   const [sellers, setSellers] = useState<AppUser[]>([])
@@ -215,6 +216,7 @@ export default function NewSalePage() {
         setTransportPrice(draft.transportPrice ?? 0)
         setOrderDiscount(draft.discount ?? 0)
         setOrderDiscountType(draft.discountType ?? 'amount')
+        setNotes(draft.notes?.trim() || '')
         if (draft.sellerId) setSelectedSellerId(draft.sellerId)
       } catch {
         if (!cancelled) {
@@ -870,6 +872,7 @@ export default function NewSalePage() {
       sellerId: seller?.id,
       sellerName: seller?.name,
       sellerEmail: seller?.email,
+      notes: notes.trim() || null,
     }
 
     setIsCreating(true)
@@ -1735,6 +1738,27 @@ export default function NewSalePage() {
                       )}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              <Card className={cn(cardShell, 'relative z-0 overflow-hidden')}>
+                <CardHeader className="space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                    <FileText className={cn(sectionIconClass, 'text-sky-600 dark:text-sky-400')} strokeWidth={1.5} />
+                    Notas
+                  </CardTitle>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Observaciones opcionales de la factura.
+                  </p>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6 md:pt-4">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Ej. entrega parcial, pedido especial, referencia interna…"
+                    rows={3}
+                    className={cn(inputClass, 'min-h-[5rem] resize-y leading-relaxed')}
+                  />
                 </CardContent>
               </Card>
 

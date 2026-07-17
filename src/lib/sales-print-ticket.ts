@@ -598,6 +598,16 @@ export async function printSaleTicket(sale: Sale): Promise<void> {
                 <span>Estado:</span>
                 <span>${sale.status === 'completed' ? 'Completada' : sale.status === 'pending' ? 'Pendiente' : 'Anulada'}</span>
               </div>
+              ${
+                sale.notes?.trim()
+                  ? `
+              <div style="margin-top: 8px;">
+                <div style="font-weight: bold; margin-bottom: 4px;">Notas:</div>
+                <div style="font-size: 11px; white-space: pre-wrap;">${escHtml(sale.notes.trim())}</div>
+              </div>
+              `
+                  : ''
+              }
             </div>
 
             ${creditBlockHtml}

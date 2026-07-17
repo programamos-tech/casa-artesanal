@@ -21,7 +21,8 @@ import {
   Shield,
   RefreshCw,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  FileText,
 } from 'lucide-react'
 import { Sale, SaleItem, Product, Client, SalePayment } from '@/types'
 import { useClients } from '@/contexts/clients-context'
@@ -114,6 +115,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   // Estado para cálculo de vuelto (solo efectivo)
   const [receivedAmount, setReceivedAmount] = useState<string>('')
   const [isSaving, setIsSaving] = useState(false)
+  const [notes, setNotes] = useState('')
   const isSubmittingRef = useRef(false)
 
   // Cargar clientes y productos cuando se abre el modal
@@ -163,6 +165,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         setTransportPrice(sale.transportPrice ?? 0)
         setOrderDiscount(sale.discount ?? 0)
         setOrderDiscountType(sale.discountType ?? 'amount')
+        setNotes(sale.notes?.trim() || '')
       } else {
         // Resetear formulario si no hay venta para editar
         setSelectedClient(null)
@@ -176,6 +179,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
         setTransportPrice(0)
         setOrderDiscount(0)
         setOrderDiscountType('amount')
+        setNotes('')
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale]) // Ejecutar cuando se abre/cierra el modal o cambia la venta
@@ -771,7 +775,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       paymentMethod: (paymentMethod || 'pending') as Sale['paymentMethod'],
       payments: !isDraft && paymentMethod === 'mixed' ? buildMixedPaymentsForSave() : undefined,
       items: saleItems,
-      invoiceNumber: sale?.invoiceNumber
+      invoiceNumber: sale?.invoiceNumber,
+      notes: notes.trim() || null,
     }
 
     setIsSaving(true)
@@ -815,6 +820,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     setTransportPrice(0)
     setOrderDiscount(0)
     setOrderDiscountType('amount')
+    setNotes('')
     setInvoiceNumber('Pendiente')
     setMixedPayments([])
     setShowMixedPayments(false)
@@ -1553,6 +1559,24 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+                    <FileText className="h-4 w-4 mr-2 text-sky-600" />
+                    Notas (opcional)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Observaciones de la factura…"
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-neutral-700 text-gray-900 dark:text-white resize-y min-h-[5rem]"
+                  />
                 </CardContent>
               </Card>
 

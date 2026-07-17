@@ -521,7 +521,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
         discount: 0,
         status: isDraft ? 'draft' : 'completed',
         paymentMethod: 'credit' as const,
-        notes: formData.notes,
+        notes: formData.notes?.trim() || null,
         dueDate: formData.dueDate,
       }
 

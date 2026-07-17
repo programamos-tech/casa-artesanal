@@ -286,6 +286,7 @@ export class SalesService {
           sellerName: sale.seller_name,
           sellerEmail: sale.seller_email,
           storeId: sale.store_id || undefined,
+          notes: sale.notes || undefined,
           createdAt: sale.created_at,
           items: itemsWithReferences,
           creditStatus: creditStatus,
@@ -533,6 +534,7 @@ export class SalesService {
           sellerName: sale.seller_name,
           sellerEmail: sale.seller_email,
           storeId: sale.store_id || undefined,
+          notes: sale.notes || undefined,
           createdAt: sale.created_at,
           items: itemsWithReferences,
           cancellationReason: sale.cancellation_reason || undefined
@@ -646,6 +648,7 @@ export class SalesService {
         sellerName: sale.seller_name,
         sellerEmail: sale.seller_email,
         storeId: sale.store_id || undefined,
+        notes: sale.notes || undefined,
         createdAt: sale.created_at,
         cancellationReason: sale.cancellation_reason || undefined,
         items: (sale.sale_items || []).map((item: any) => ({
@@ -761,6 +764,7 @@ export class SalesService {
         discount: data.discount,
         discountType: data.discount_type || 'amount',
         cancellationReason: data.cancellation_reason || undefined,
+        notes: data.notes || undefined,
         status: data.status,
         paymentMethod: data.payment_method,
         payments: data.sale_payments?.map((payment: any) => ({
@@ -856,6 +860,7 @@ export class SalesService {
             seller_name: sellerName,
             seller_email: sellerEmail,
             store_id: resolvedStoreId,
+            notes: saleData.notes?.trim() || null,
           })
           .select()
           .single()
@@ -1083,6 +1088,7 @@ export class SalesService {
         sellerName: sale.seller_name,
         sellerEmail: sale.seller_email,
         storeId: sale.store_id ?? undefined,
+        notes: sale.notes || undefined,
         createdAt: sale.created_at,
         items: insertedItems.map((row) => ({
           id: row.id,
@@ -1155,6 +1161,9 @@ export class SalesService {
         updatePayload.discount_type = saleData.discountType || 'amount'
       }
       if (saleData.status !== undefined) updatePayload.status = saleData.status
+      if (saleData.notes !== undefined) {
+        updatePayload.notes = saleData.notes?.trim() || null
+      }
 
       const { data, error } = await supabase
         .from('sales')
@@ -1880,6 +1889,7 @@ export class SalesService {
         sellerId: sale.seller_id,
         sellerName: sale.seller_name,
         sellerEmail: sale.seller_email,
+        notes: sale.notes || undefined,
         createdAt: sale.created_at,
         items: sale.sale_items?.map((item: any) => ({
           id: item.id,
@@ -2060,6 +2070,7 @@ export class SalesService {
           sellerName: sale.seller_name || '',
           sellerEmail: sale.seller_email || '',
           storeId: sale.store_id || undefined,
+          notes: sale.notes || undefined,
           createdAt: sale.created_at,
           items,
           payments: payments.length > 0 ? payments : undefined,
@@ -2235,6 +2246,7 @@ export class SalesService {
           sellerName: sale.seller_name || '',
           sellerEmail: sale.seller_email || '',
           storeId: sale.store_id || undefined,
+          notes: sale.notes || undefined,
           createdAt: sale.created_at,
           items: itemsWithReferences,
           payments: sale.sale_payments?.map((payment: any) => ({
