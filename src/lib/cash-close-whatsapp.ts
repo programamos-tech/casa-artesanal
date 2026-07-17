@@ -30,9 +30,11 @@ export function paymentLabel(method: string): string {
 
 export function formatDateTimeCo(iso?: string | null): string {
   if (!iso) return '—'
+  // Siempre Colombia: en Vercel el runtime es UTC y sin timeZone la hora sale +5h
   return new Date(iso).toLocaleString('es-CO', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: 'America/Bogota',
   })
 }
 

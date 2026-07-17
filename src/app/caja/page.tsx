@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
+import { formatDateTimeCo } from '@/lib/cash-close-whatsapp'
 
 function money(n: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -40,13 +41,7 @@ function money(n: number) {
   }).format(n || 0)
 }
 
-function formatDateTime(iso?: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString('es-CO', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
+const formatDateTime = formatDateTimeCo
 
 export default function CajaPage() {
   const router = useRouter()
