@@ -14,8 +14,9 @@
 }
 
 /*
- * BackOffice (Bernabé): acento `brand` = azul oscuro (CTAs, focos, interruptores).
- * `emerald` queda para identidad Zonat (p. ej. ZonatBadge) y no se redefine aquí.
+ * BackOffice (Bernabé): acento `brand` = azul (legacy / badges suaves).
+ * CTAs de acción usan emerald (confirmar) y rose (cancelar) vía Button / app-button.
+ * `emerald` también aparece en identidad Zonat (p. ej. ZonatBadge).
  */
 @theme {
   --color-brand-50: #eff6ff;
@@ -44,13 +45,28 @@ html.light body {
 /*
  * Heredar fondo en light mode evita “parches” grises; pero no aplicarlo a controles
  * interactivos: si no, anulan bg-zinc-900 / bg-brand y el texto claro queda invisible.
+ * Tampoco a overlays/modales con backdrop-blur: inherit los vuelve blancos opacos y
+ * desaparece el contexto detrás del modal.
  */
 html.light
   body:not(:has(.tienda-storefront)):not(:has([data-auth-page]))
   *:not(button):not(input):not(select):not(textarea):not([role='button']):not(a):not(
     .casa-artesanal-card-surface
-  ):not(.casa-artesanal-preserve-surface):not(.casa-artesanal-preserve-surface *) {
+  ):not(.casa-artesanal-preserve-surface):not(.casa-artesanal-preserve-surface *):not(
+    .casa-artesanal-modal-backdrop
+  ):not(.fixed.inset-0):not([class*='backdrop-blur']) {
   background-color: inherit !important;
+}
+
+/*
+ * Velo de modales: tint + blur deben ganar a la herencia de body (#fff).
+ * Sin esto, el overlay tapa la vista de abajo con blanco/gris sólido.
+ */
+html.light .casa-artesanal-modal-backdrop {
+  background-color: rgb(24 24 27 / 0.22) !important;
+}
+html.dark .casa-artesanal-modal-backdrop {
+  background-color: rgb(0 0 0 / 0.4) !important;
 }
 
 /*

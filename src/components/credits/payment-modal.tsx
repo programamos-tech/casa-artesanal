@@ -3,7 +3,6 @@
 import { useState, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import {
   X,
   DollarSign,
@@ -20,6 +19,18 @@ import { Credit, PaymentRecord } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUser } from '@/lib/store-helper'
 import { cn } from '@/lib/utils'
+import {
+  appModalBodyClass,
+  appModalErrorClass,
+  appModalFooterClass,
+  appModalHeaderClass,
+  appModalHintClass,
+  appModalInputClass,
+  appModalLabelClass,
+  appModalOverlayClass,
+  appModalPanelClass,
+} from '@/lib/app-modal'
+import { cardShell } from '@/lib/card-shell'
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -28,8 +39,55 @@ interface PaymentModalProps {
   credit: Credit | null
 }
 
-const inputClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/25'
+const inputClass = cn(appModalInputClass, 'rounded-lg')
+
+const methodOptions = [
+  {
+    v: 'cash' as const,
+    label: 'Efectivo',
+    Icon: Banknote,
+    selected:
+      'border-emerald-300 bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 dark:border-emerald-700/60 dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-800/50',
+  },
+  {
+    v: 'nequi' as const,
+    label: 'Nequi',
+    Icon: Smartphone,
+    selected:
+      'border-violet-300 bg-violet-100 text-violet-900 ring-1 ring-violet-200/80 dark:border-violet-700/60 dark:bg-violet-900/50 dark:text-violet-100 dark:ring-violet-800/50',
+  },
+  {
+    v: 'bancolombia' as const,
+    label: 'Bancolombia',
+    Icon: Building2,
+    selected:
+      'border-amber-300 bg-amber-100 text-amber-900 ring-1 ring-amber-200/80 dark:border-amber-700/60 dark:bg-amber-900/45 dark:text-amber-100 dark:ring-amber-800/50',
+  },
+  {
+    v: 'transfer' as const,
+    label: 'Transferencia (otro)',
+    Icon: Landmark,
+    selected:
+      'border-sky-300 bg-sky-100 text-sky-900 ring-1 ring-sky-200/80 dark:border-sky-700/60 dark:bg-sky-900/45 dark:text-sky-100 dark:ring-sky-800/50',
+  },
+  {
+    v: 'card' as const,
+    label: 'Tarjeta',
+    Icon: Wallet,
+    selected:
+      'border-rose-300 bg-rose-100 text-rose-900 ring-1 ring-rose-200/80 dark:border-rose-700/60 dark:bg-rose-900/45 dark:text-rose-100 dark:ring-rose-800/50',
+  },
+  {
+    v: 'mixed' as const,
+    label: 'Mixto',
+    Icon: Shuffle,
+    selected:
+      'border-stone-300 bg-stone-100 text-stone-800 ring-1 ring-stone-200/80 dark:border-zinc-500/70 dark:bg-zinc-700/55 dark:text-zinc-100 dark:ring-zinc-600/50',
+  },
+]
+
+const methodIdleClass =
+  'border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-200/80 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-800'
 
 export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentModalProps) {
   const { user } = useAuth()
@@ -242,19 +300,20 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
   if (!isOpen || !credit) return null
 
   const modal = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm xl:left-56">
+    <div className={appModalOverlayClass} role="presentation" onClick={handleClose}>
       <div
-        className="max-h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] w-full max-w-md overflow-y-auto rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+        className={cn(appModalPanelClass, 'max-w-md')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="credit-payment-modal-title"
+        onClick={event => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/90 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-950/80">
+        <div className={appModalHeaderClass}>
           <div className="flex min-w-0 items-center gap-2.5">
-            <DollarSign className="h-5 w-5 shrink-0 text-zinc-500" strokeWidth={1.5} />
+            <DollarSign className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
             <h2
               id="credit-payment-modal-title"
-              className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50"
+              className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
             >
               Registrar abono
             </h2>
@@ -263,32 +322,36 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0"
+            className="h-8 w-8 shrink-0 rounded-md p-0"
             onClick={handleClose}
+            aria-label="Cerrar"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" strokeWidth={1.75} />
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 p-4">
-            <div className="space-y-1">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className={cn(appModalBodyClass, 'space-y-4')}>
+            <div className={cn(cardShell, 'space-y-1 p-3')}>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                 {credit.clientName} · Factura {credit.invoiceNumber}
               </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-500">
+              <p className={appModalHintClass}>
                 Total {formatCurrency(credit.totalAmount)}
                 {' · '}
                 Pendiente{' '}
-                <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                <span className="font-bold tabular-nums text-amber-700 dark:text-amber-300">
                   {formatCurrency(credit.pendingAmount)}
                 </span>
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-zinc-700 dark:text-zinc-300">Monto del abono</Label>
+            <div>
+              <label htmlFor="payment-amount" className={appModalLabelClass}>
+                Monto del abono
+              </label>
               <input
+                id="payment-amount"
                 type="text"
                 value={formData.amount}
                 onChange={e => handleNumberChange('amount', e.target.value)}
@@ -297,67 +360,59 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
                 autoComplete="off"
                 className={cn(
                   inputClass,
-                  'h-12 text-lg',
+                  'h-12 text-lg font-semibold tabular-nums',
                   errors.amount ||
                     (formData.amount && parseFormattedNumber(formData.amount) > credit.pendingAmount)
-                    ? 'border-red-500/80 bg-red-50/50 dark:bg-red-950/20'
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
                     : ''
                 )}
               />
               {errors.amount && (
-                <p className="flex items-start gap-1.5 text-sm text-red-600 dark:text-red-400">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className={cn(appModalErrorClass, 'flex items-start gap-1.5')}>
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   {errors.amount}
                 </p>
               )}
               {!errors.amount && (
-                <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                <p className={cn(appModalHintClass, 'mt-1')}>
                   Máximo: {formatCurrency(credit.pendingAmount)}
                 </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-zinc-700 dark:text-zinc-300">Método</Label>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(
-                  [
-                    { v: 'cash' as const, label: 'Efectivo', Icon: Banknote },
-                    { v: 'nequi' as const, label: 'Nequi', Icon: Smartphone },
-                    { v: 'bancolombia' as const, label: 'Bancolombia', Icon: Building2 },
-                    { v: 'transfer' as const, label: 'Transferencia (otro)', Icon: Landmark },
-                    { v: 'card' as const, label: 'Tarjeta', Icon: Wallet },
-                    { v: 'mixed' as const, label: 'Mixto', Icon: Shuffle },
-                  ] as const
-                ).map(({ v, label, Icon }) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => handlePaymentMethodChange(v)}
-                    className={cn(
-                      'flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-center text-[11px] font-medium leading-snug transition-colors sm:text-xs',
-                      formData.paymentMethod === v
-                        ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50'
-                        : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50'
-                    )}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" strokeWidth={1.5} />
-                    {label}
-                  </button>
-                ))}
+            <div>
+              <span className={appModalLabelClass}>Método</span>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Método de pago">
+                {methodOptions.map(({ v, label, Icon, selected }) => {
+                  const active = formData.paymentMethod === v
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => handlePaymentMethodChange(v)}
+                      aria-pressed={active}
+                      className={cn(
+                        'flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-center text-[11px] font-bold leading-snug transition-colors sm:text-xs',
+                        active ? selected : methodIdleClass
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
             {(formData.paymentMethod === 'cash' || formData.paymentMethod === 'mixed') && (
-              <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
-                <Label className="text-zinc-700 dark:text-zinc-300">
+              <div className={cn(cardShell, 'space-y-2 p-3')}>
+                <label htmlFor="payment-received" className={appModalLabelClass}>
                   {formData.paymentMethod === 'cash' ? 'Monto recibido' : 'Monto recibido en efectivo'}{' '}
-                  <span className="font-normal text-zinc-500">(opcional)</span>
-                </Label>
-                <p className="text-xs text-zinc-500 dark:text-zinc-500">
-                  Para calcular vuelto respecto al efectivo del abono
-                </p>
+                  <span className="font-normal text-zinc-400">(opcional)</span>
+                </label>
+                <p className={appModalHintClass}>Para calcular vuelto respecto al efectivo del abono</p>
                 <input
+                  id="payment-received"
                   type="text"
                   value={formData.receivedAmount}
                   onChange={e => handleNumberChange('receivedAmount', e.target.value)}
@@ -366,20 +421,20 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
                   autoComplete="off"
                   className={cn(
                     inputClass,
-                    'h-11 text-base',
-                    errors.receivedAmount ? 'border-red-500/80 bg-red-50/50 dark:bg-red-950/20' : ''
+                    'h-11 text-base tabular-nums',
+                    errors.receivedAmount && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
                   )}
                 />
                 {errors.receivedAmount && (
-                  <p className="text-sm text-red-600 dark:text-red-400">{errors.receivedAmount}</p>
+                  <p className={appModalErrorClass}>{errors.receivedAmount}</p>
                 )}
                 {formData.receivedAmount && formData.amount && (
-                  <div className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900/60">
+                  <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900/60">
                     <span className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400">
-                      <Coins className="h-4 w-4" strokeWidth={1.5} />
+                      <Coins className="h-4 w-4" strokeWidth={1.75} />
                       Vuelto
                     </span>
-                    <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                    <span className="font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
                       {formatCurrency(calculateChange())}
                     </span>
                   </div>
@@ -388,92 +443,120 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
             )}
 
             {formData.paymentMethod === 'mixed' && (
-              <div className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/40">
-                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Desglose del abono mixto</p>
-                <div className="space-y-2">
-                  <Label className="text-zinc-700 dark:text-zinc-300">Canal del monto digital</Label>
+              <div className={cn(cardShell, 'space-y-3 p-3')}>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Desglose del abono mixto</p>
+                <div>
+                  <span className={appModalLabelClass}>Canal del monto digital</span>
                   <div className="grid grid-cols-2 gap-2">
                     {(
                       [
-                        { v: 'nequi' as const, label: 'Nequi', Icon: Smartphone },
-                        { v: 'bancolombia' as const, label: 'Bancolombia', Icon: Building2 },
+                        {
+                          v: 'nequi' as const,
+                          label: 'Nequi',
+                          Icon: Smartphone,
+                          selected: methodOptions.find(o => o.v === 'nequi')!.selected,
+                        },
+                        {
+                          v: 'bancolombia' as const,
+                          label: 'Bancolombia',
+                          Icon: Building2,
+                          selected: methodOptions.find(o => o.v === 'bancolombia')!.selected,
+                        },
                       ] as const
-                    ).map(({ v, label, Icon }) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, digitalChannel: v }))}
-                        className={cn(
-                          'flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors',
-                          formData.digitalChannel === v
-                            ? 'border-zinc-500 bg-zinc-100 text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-50'
-                            : 'border-zinc-200 bg-transparent text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
-                        )}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                        {label}
-                      </button>
-                    ))}
+                    ).map(({ v, label, Icon, selected }) => {
+                      const active = formData.digitalChannel === v
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, digitalChannel: v }))}
+                          aria-pressed={active}
+                          className={cn(
+                            'flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-bold transition-colors',
+                            active ? selected : methodIdleClass
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                          {label}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
-                    <Banknote className="h-4 w-4" strokeWidth={1.5} />
+                <div>
+                  <label htmlFor="payment-cash-amount" className={cn(appModalLabelClass, 'flex items-center gap-2')}>
+                    <Banknote className="h-3.5 w-3.5" strokeWidth={1.75} />
                     Monto en efectivo
-                  </Label>
+                  </label>
                   <input
+                    id="payment-cash-amount"
                     type="text"
                     value={formData.cashAmount}
                     onChange={e => handleNumberChange('cashAmount', e.target.value)}
                     placeholder="0"
                     inputMode="numeric"
                     autoComplete="off"
-                    className={cn(inputClass, 'h-11 text-base', errors.cashAmount ? 'border-red-500/80' : '')}
+                    className={cn(
+                      inputClass,
+                      'h-11 text-base tabular-nums',
+                      errors.cashAmount && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
+                    )}
                   />
-                  {errors.cashAmount && <p className="text-sm text-red-600 dark:text-red-400">{errors.cashAmount}</p>}
+                  {errors.cashAmount && <p className={appModalErrorClass}>{errors.cashAmount}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <div>
+                  <label htmlFor="payment-transfer-amount" className={cn(appModalLabelClass, 'flex items-center gap-2')}>
                     {formData.digitalChannel === 'bancolombia' ? (
-                      <Building2 className="h-4 w-4" strokeWidth={1.5} />
+                      <Building2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                     ) : (
-                      <Smartphone className="h-4 w-4" strokeWidth={1.5} />
+                      <Smartphone className="h-3.5 w-3.5" strokeWidth={1.75} />
                     )}
                     Monto en {formData.digitalChannel === 'bancolombia' ? 'Bancolombia' : 'Nequi'}
-                  </Label>
+                  </label>
                   <input
+                    id="payment-transfer-amount"
                     type="text"
                     value={formData.transferAmount}
                     onChange={e => handleNumberChange('transferAmount', e.target.value)}
                     placeholder="0"
                     inputMode="numeric"
                     autoComplete="off"
-                    className={cn(inputClass, 'h-11 text-base', errors.transferAmount ? 'border-red-500/80' : '')}
+                    className={cn(
+                      inputClass,
+                      'h-11 text-base tabular-nums',
+                      errors.transferAmount && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
+                    )}
                   />
                   {errors.transferAmount && (
-                    <p className="text-sm text-red-600 dark:text-red-400">{errors.transferAmount}</p>
+                    <p className={appModalErrorClass}>{errors.transferAmount}</p>
                   )}
                 </div>
-                {errors.mixed && <p className="text-sm text-red-600 dark:text-red-400">{errors.mixed}</p>}
+                {errors.mixed && <p className={appModalErrorClass}>{errors.mixed}</p>}
                 {formData.amount && (
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                  <p className={appModalHintClass}>
                     Total abono:{' '}
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
                       {formatCurrency(parseFormattedNumber(formData.amount))}
                     </span>
                     {' · '}
                     Suma desglose:{' '}
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                      {formatCurrency(parseFormattedNumber(formData.cashAmount) + parseFormattedNumber(formData.transferAmount))}
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                      {formatCurrency(
+                        parseFormattedNumber(formData.cashAmount) +
+                          parseFormattedNumber(formData.transferAmount)
+                      )}
                     </span>
                   </p>
                 )}
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label className="text-zinc-700 dark:text-zinc-300">Notas (opcional)</Label>
+            <div>
+              <label htmlFor="payment-notes" className={appModalLabelClass}>
+                Notas (opcional)
+              </label>
               <textarea
+                id="payment-notes"
                 value={formData.description}
                 onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Observaciones sobre el abono…"
@@ -483,13 +566,11 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-            <Button type="button" variant="outline" size="sm" onClick={handleClose}>
+          <div className={appModalFooterClass}>
+            <Button type="button" variant="destructive" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit" size="sm">
-              Registrar abono
-            </Button>
+            <Button type="submit">Registrar abono</Button>
           </div>
         </form>
       </div>

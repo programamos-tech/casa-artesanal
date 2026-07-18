@@ -323,15 +323,13 @@ export function CSVImportModal({ isOpen, onClose, onImport }: CSVImportModalProp
         <div className="flex items-center justify-end gap-3 bg-white p-6 pt-8 dark:bg-neutral-950">
           <Button
             onClick={handleClose}
-            variant="outline"
-            className="text-gray-600 dark:text-gray-300 border-gray-300 dark:border-neutral-600"
+            variant="destructive"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleImport}
             disabled={parsedProducts.length === 0 || errors.length > 0 || isLoading}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
           >
             {isLoading ? (
               <>

@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 const overlayClass =
-  'fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm xl:left-56'
+  'casa-artesanal-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/25 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-[2px] dark:bg-black/40 xl:left-60'
 
 const shellClass =
   'flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] w-full max-w-[min(720px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900'
@@ -315,7 +315,7 @@ export function ReceiveTransferModal({ isOpen, onClose, onConfirm, transfer }: R
 
         {/* Footer */}
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-200 px-4 py-4 dark:border-zinc-800 sm:flex-row sm:justify-end sm:gap-3 md:px-6">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} className="w-full sm:w-auto">
+          <Button type="button" variant="destructive" onClick={onClose} disabled={isSaving} className="w-full sm:w-auto">
             Cancelar
           </Button>
           <Button

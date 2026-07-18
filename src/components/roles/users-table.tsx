@@ -117,7 +117,7 @@ export function UsersTable({ users, roles, onView, onEdit, onDelete, onCreate }:
             <Users className="h-5 w-5 mr-2 text-brand-600" />
             Gestión de Usuarios
           </CardTitle>
-          <Button onClick={onCreate} className="bg-brand-700 hover:bg-brand-800">
+          <Button onClick={onCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Usuario
           </Button>

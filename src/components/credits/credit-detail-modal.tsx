@@ -503,7 +503,8 @@ export function CreditDetailModal({ isOpen, onClose, credit, clientCredits = [],
             <Button
               onClick={onClose}
               disabled={isLoading}
-              className="bg-orange-600 hover:bg-orange-700 text-white font-medium px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="destructive"
+              className="font-medium px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cerrar
             </Button>

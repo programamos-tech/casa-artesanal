@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Truck, PackageCheck, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
-import { canAccessAllStores } from '@/lib/store-helper'
 import {
   getSeenTransferIds,
   loadTransferAlerts,
@@ -15,6 +14,13 @@ import {
   type TransferAlertKind,
 } from '@/lib/transfer-alerts'
 import { cn } from '@/lib/utils'
+import {
+  appModalBodyClass,
+  appModalFooterClass,
+  appModalHeaderClass,
+  appModalOverlayClass,
+  appModalPanelClass,
+} from '@/lib/app-modal'
 
 type AlertModalState = {
   kind: TransferAlertKind
@@ -35,7 +41,7 @@ export function TransferAlertModal() {
       markTransferIdsSeen(
         user.id,
         alert.kind,
-        alert.items.map((i) => i.id)
+        alert.items.map(i => i.id)
       )
     }
     setAlert(null)
@@ -48,27 +54,26 @@ export function TransferAlertModal() {
     const check = async () => {
       try {
         const storeId = resolveUserStoreId(user.storeId)
-        const { approvals, receptions, waiting } = await loadTransferAlerts(storeId, {
-          allStores: canAccessAllStores(user),
-        })
+        // El aviso debe aparecer únicamente en la tienda involucrada.
+        const { approvals, receptions, waiting } = await loadTransferAlerts(storeId)
         if (cancelled) return
 
-        setAlert((prev) => {
+        setAlert(prev => {
           if (prev) return prev
           const unseenApprovals = approvals.filter(
-            (a) => !getSeenTransferIds(user.id, 'approval').includes(a.id)
+            a => !getSeenTransferIds(user.id, 'approval').includes(a.id)
           )
           if (unseenApprovals.length > 0) {
             return { kind: 'approval', items: unseenApprovals }
           }
           const unseenReceptions = receptions.filter(
-            (r) => !getSeenTransferIds(user.id, 'receive').includes(r.id)
+            r => !getSeenTransferIds(user.id, 'receive').includes(r.id)
           )
           if (unseenReceptions.length > 0) {
             return { kind: 'receive', items: unseenReceptions }
           }
           const unseenWaiting = waiting.filter(
-            (w) => !getSeenTransferIds(user.id, 'waiting').includes(w.id)
+            w => !getSeenTransferIds(user.id, 'waiting').includes(w.id)
           )
           if (unseenWaiting.length > 0) {
             return { kind: 'waiting', items: unseenWaiting }
@@ -128,38 +133,28 @@ export function TransferAlertModal() {
         ? 'Ir a recibir'
         : 'Ver recepciones'
 
+  const Icon = isApproval || isWaiting ? Truck : PackageCheck
+  const iconClass = isApproval
+    ? 'text-violet-600 dark:text-violet-400'
+    : isWaiting
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-emerald-600 dark:text-emerald-400'
+
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm xl:left-60"
-      role="presentation"
-    >
+    <div className={cn(appModalOverlayClass, 'z-[60]')} role="presentation" onClick={dismiss}>
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+        className={cn(appModalPanelClass, 'max-w-xl')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="transfer-alert-title"
+        onClick={event => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/90 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-950/80">
+        <div className={appModalHeaderClass}>
           <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-                isApproval
-                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300'
-                  : isWaiting
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-              )}
-            >
-              {isApproval || isWaiting ? (
-                <Truck className="h-5 w-5" strokeWidth={1.75} />
-              ) : (
-                <PackageCheck className="h-5 w-5" strokeWidth={1.75} />
-              )}
-            </span>
+            <Icon className={cn('h-5 w-5 shrink-0', iconClass)} strokeWidth={1.75} aria-hidden />
             <h2
               id="transfer-alert-title"
-              className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50"
+              className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50"
             >
               {title}
             </h2>
@@ -168,22 +163,22 @@ export function TransferAlertModal() {
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0"
+            className="h-8 min-h-0 w-8 shrink-0 rounded-md p-0"
             onClick={dismiss}
             aria-label="Cerrar"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="space-y-3 p-4">
+        <div className={cn(appModalBodyClass, 'space-y-3')}>
           <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{message}</p>
           {alert.items.length > 1 && (
-            <ul className="max-h-36 space-y-1.5 overflow-y-auto text-sm">
-              {alert.items.slice(0, 6).map((item) => (
+            <ul className="max-h-40 space-y-1.5 overflow-y-auto text-sm">
+              {alert.items.slice(0, 6).map(item => (
                 <li
                   key={item.id}
-                  className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300"
+                  className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
                 >
                   <span className="font-medium">{item.transferNumber}</span>
                   <span className="text-zinc-400"> · </span>
@@ -194,14 +189,12 @@ export function TransferAlertModal() {
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-          <Button type="button" variant="outline" size="sm" onClick={dismiss}>
+        <div className={appModalFooterClass}>
+          <Button type="button" variant="outline" onClick={dismiss}>
             Después
           </Button>
           <Button
             type="button"
-            size="sm"
-            className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
             onClick={() => {
               dismiss()
               router.push(goHref)

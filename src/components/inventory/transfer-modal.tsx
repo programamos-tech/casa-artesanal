@@ -40,7 +40,7 @@ const itemCardClass =
   'rounded-xl border border-zinc-200 bg-white p-3 dark:border-0 dark:bg-zinc-800/50'
 
 const overlayClass =
-  'fixed inset-0 z-[100] flex items-center justify-center !bg-black/75 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] xl:left-56'
+  'casa-artesanal-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/25 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-[2px] dark:bg-black/40 xl:left-60'
 
 const shellClass =
   'flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] w-full max-w-[min(1200px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-zinc-200 !bg-white shadow-2xl dark:border dark:border-white/[0.08] dark:!bg-zinc-950 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.85)]'
@@ -964,7 +964,7 @@ export function TransferModal({
           )}
           
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSaving}>
+            <Button type="button" variant="destructive" size="sm" onClick={onClose} disabled={isSaving}>
               Cancelar
             </Button>
             <Button
@@ -972,11 +972,10 @@ export function TransferModal({
               size="sm"
               onClick={handleSave}
               disabled={isSaving}
-              className="dark:border-brand-600 dark:bg-brand-600 dark:text-white dark:hover:bg-brand-500"
             >
                   {isSaving ? (
                 <span className="flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-b-zinc-800 dark:border-zinc-600 dark:border-b-zinc-100" />
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
                   {isRequest ? 'Enviando…' : 'Creando...'}
                 </span>
               ) : (

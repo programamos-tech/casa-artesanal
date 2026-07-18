@@ -148,9 +148,8 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
       const storeId = resolveUserStoreId(user.storeId)
 
       try {
-        const { approvalTotal, receptionTotal } = await loadTransferAlerts(storeId, {
-          allStores: canAccessAllStores(user),
-        })
+        // Los contadores corresponden solo a la tienda activa.
+        const { approvalTotal, receptionTotal } = await loadTransferAlerts(storeId)
         if (!cancelled) {
           setPendingApprovalsCount(approvalTotal)
           setPendingReceptionsCount(receptionTotal)
@@ -220,13 +219,13 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
               href="/dashboard"
               className="relative flex w-full flex-col items-center gap-2 px-1 transition-opacity hover:opacity-90"
             >
-              <div className="flex w-full min-h-[4.75rem] items-center justify-center">
+              <div className="flex w-full min-h-[6.5rem] items-center justify-center">
                 <Image
                   src={APP_BRAND_LOGO}
                   alt={APP_NAME}
-                  width={240}
-                  height={88}
-                  className="h-[4.75rem] w-[92%] max-w-[12rem] object-contain object-center"
+                  width={280}
+                  height={120}
+                  className="h-[6.5rem] w-[96%] max-w-none object-contain object-center"
                   priority
                   unoptimized
                 />
@@ -388,7 +387,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                                 <span className="flex-1 truncate">{subitem.name}</span>
                                 {subitem.href === '/inventory/transfers' && pendingApprovalsCount > 0 && (
                                   <span
-                                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-violet-500/90 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+                                    className="casa-artesanal-preserve-surface ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
                                     title={`${pendingApprovalsCount} por aprobar`}
                                   >
                                     {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
@@ -396,7 +395,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
                                 )}
                                 {subitem.href === '/inventory/receptions' && pendingReceptionsCount > 0 && (
                                   <span
-                                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-white/12 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white/75"
+                                    className="casa-artesanal-preserve-surface ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
                                     title={`${pendingReceptionsCount} pendientes por gestionar`}
                                   >
                                     {pendingReceptionsCount > 99 ? '99+' : pendingReceptionsCount}
@@ -438,15 +437,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
             })}
           </nav>
 
-          <div className="flex flex-col items-center gap-2.5 border-t border-white/[0.065] px-2 pb-4 pt-3.5">
-            <Image
-              src="/berea.png"
-              alt="Berea — Software a medida"
-              width={220}
-              height={80}
-              className="h-[4.75rem] w-[88%] max-w-none object-contain object-center opacity-95 brightness-110 contrast-[1.02]"
-              unoptimized
-            />
+          <div className="flex flex-col items-center border-t border-white/[0.065] px-2 pb-4 pt-3.5">
             <p className="max-w-full text-center text-[10px] leading-snug tracking-wide text-white/30">
               <span className="font-medium text-white/45">{APP_NAME}</span>
               <span className="mx-1.5 text-white/15" aria-hidden>

@@ -3,27 +3,23 @@
 import { useState, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { X, Tag, Plus, Trash2, FileText } from 'lucide-react'
 import { Category } from '@/types'
-import { cardShell } from '@/lib/card-shell'
 import { cn } from '@/lib/utils'
-
-/** Acento de marca (iconos / foco) alineado con roles e inventario */
-const accentIconClass = 'h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400'
-/** Campos con un toque de color al enfocar */
-const formInputClass =
-  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-500/50 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-brand-500/45 dark:focus:ring-brand-400/20'
-const formLabelClass =
-  'mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400'
-const sectionHeaderClass =
-  'space-y-0 border-b border-zinc-200 p-4 dark:border-zinc-800'
-const sectionTitleClass =
-  'flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50'
-const sectionIconClass = accentIconClass
-const sectionContentClass = 'space-y-3 p-4 md:p-6 md:pt-4'
+import {
+  appModalBodyClass,
+  appModalErrorClass,
+  appModalFooterClass,
+  appModalHeaderClass,
+  appModalHintClass,
+  appModalInputClass,
+  appModalLabelClass,
+  appModalOverlayClass,
+  appModalPanelClass,
+  modalCardShellClass,
+} from '@/lib/app-modal'
 
 interface CategoryModalProps {
   isOpen: boolean
@@ -34,13 +30,13 @@ interface CategoryModalProps {
   categories: Category[]
 }
 
-export function CategoryModal({ 
-  isOpen, 
-  onClose, 
+export function CategoryModal({
+  isOpen,
+  onClose,
   onSave,
-  onToggleStatus, 
+  onToggleStatus,
   onDelete,
-  categories 
+  categories,
 }: CategoryModalProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -51,7 +47,7 @@ export function CategoryModal({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    status: 'active' as 'active' | 'inactive'
+    status: 'active' as 'active' | 'inactive',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -59,11 +55,11 @@ export function CategoryModal({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-brand-100 text-brand-800 dark:bg-brand-900/30 dark:text-brand-400'
+        return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300'
       case 'inactive':
-        return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400'
+        return 'border-stone-200 bg-stone-50 text-stone-700 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300'
       default:
-        return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400'
+        return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
     }
   }
 
@@ -80,7 +76,7 @@ export function CategoryModal({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
+
     if (!formData.name.trim()) {
       newErrors.name = 'El nombre es requerido'
     }
@@ -101,13 +97,12 @@ export function CategoryModal({
       onSave({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        status: formData.status
+        status: formData.status,
       })
-      // Limpiar el formulario después de crear una categoría
       setFormData({
         name: '',
         description: '',
-        status: 'active'
+        status: 'active',
       })
       setErrors({})
     }
@@ -117,7 +112,7 @@ export function CategoryModal({
     setFormData({
       name: '',
       description: '',
-      status: 'active'
+      status: 'active',
     })
     setErrors({})
     onClose()
@@ -125,28 +120,31 @@ export function CategoryModal({
 
   if (!isOpen || !mounted || typeof document === 'undefined') return null
 
+  const sortedCategories = [...categories].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/[0.18] p-3 backdrop-blur-[3px] dark:bg-black/45 sm:p-6 sm:py-10 xl:left-60"
-      style={{
-        paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-      }}
-    >
-      <div className="flex max-h-[min(92dvh,920px)] min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl ring-1 ring-brand-500/[0.07] dark:border-zinc-800 dark:bg-zinc-950 dark:ring-brand-400/10 sm:max-h-[min(94vh,920px)] sm:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-          <div className="flex min-w-0 items-center gap-3">
-            <Tag
-              className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-400"
-              strokeWidth={1.5}
-              aria-hidden
-            />
+    <div className={appModalOverlayClass} role="presentation" onClick={handleClose}>
+      <div
+        className={cn(appModalPanelClass, 'max-w-[min(94vw,72rem)]')}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="category-modal-title"
+        onClick={event => event.stopPropagation()}
+      >
+        <div className={appModalHeaderClass}>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Tag className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
             <div className="min-w-0">
-              <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
+              <h2
+                id="category-modal-title"
+                className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+              >
                 Gestión de categorías
               </h2>
-              <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                Crea nuevas categorías y gestiona las existentes.
+              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                Crea nuevas categorías y gestiona las existentes
               </p>
             </div>
           </div>
@@ -154,62 +152,61 @@ export function CategoryModal({
             type="button"
             onClick={handleClose}
             variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-500 hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+            size="sm"
+            className="h-8 w-8 shrink-0 rounded-md p-0"
             aria-label="Cerrar"
           >
-            <X className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+            <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Button>
         </div>
 
         <form
-          onSubmit={(e) => {
+          onSubmit={e => {
             e.preventDefault()
             handleSave()
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide bg-gradient-to-b from-brand-50/45 via-white to-white px-4 py-5 dark:from-brand-950/20 dark:via-zinc-950 dark:to-zinc-950 md:px-6">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
-              <Card className={cardShell}>
-                <CardHeader className={sectionHeaderClass}>
-                  <CardTitle className={sectionTitleClass}>
-                    <FileText className={sectionIconClass} strokeWidth={1.5} aria-hidden />
+          <div className={appModalBodyClass}>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <section className={modalCardShellClass}>
+                <div className="mb-1 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                     Información de la categoría
-                  </CardTitle>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    Datos visibles al clasificar productos.
-                  </p>
-                </CardHeader>
-                <CardContent className={sectionContentClass}>
+                  </h3>
+                </div>
+                <p className={cn(appModalHintClass, 'mb-3')}>Datos visibles al clasificar productos.</p>
+
+                <div className="space-y-3">
                   <div>
-                    <label className={formLabelClass} htmlFor="category-name">
+                    <label className={appModalLabelClass} htmlFor="category-name">
                       Nombre de la categoría *
                     </label>
                     <input
                       id="category-name"
                       type="text"
                       value={formData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      className={cn(formInputClass, errors.name && 'border-red-500 focus:border-red-500 focus:ring-red-500/25')}
+                      onChange={e => handleInputChange('name', e.target.value)}
+                      className={cn(
+                        appModalInputClass,
+                        errors.name && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
+                      )}
                       placeholder="Nombre de la categoría"
                     />
-                    {errors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
+                    {errors.name && <p className={appModalErrorClass}>{errors.name}</p>}
                   </div>
 
                   <div>
-                    <label className={cn(formLabelClass, 'flex flex-wrap items-baseline gap-x-1')} htmlFor="category-description">
-                      <span>Descripción</span>
-                      <span className="text-[11px] font-normal normal-case tracking-normal text-zinc-400 dark:text-zinc-500">
-                        (opcional)
-                      </span>
+                    <label className={appModalLabelClass} htmlFor="category-description">
+                      Descripción <span className="font-normal text-zinc-400">(opcional)</span>
                     </label>
                     <textarea
                       id="category-description"
                       value={formData.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
-                      className={cn(formInputClass, 'min-h-[5.5rem] resize-y')}
-                      placeholder="Breve texto para clasificar la categoría (opcional)"
+                      onChange={e => handleInputChange('description', e.target.value)}
+                      className={cn(appModalInputClass, 'min-h-20 resize-none')}
+                      placeholder="Breve texto para clasificar la categoría"
                       rows={3}
                     />
                   </div>
@@ -219,113 +216,104 @@ export function CategoryModal({
                     className={cn(
                       'flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-colors',
                       formData.status === 'active'
-                        ? 'border-brand-200/90 bg-brand-50/80 dark:border-brand-900/50 dark:bg-brand-950/30'
-                        : 'border-zinc-200/80 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/40'
+                        ? 'border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-800/40 dark:bg-emerald-950/25'
+                        : 'border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50'
                     )}
                   >
                     <div className="min-w-0">
                       <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
                         Categoría activa
                       </span>
-                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <span className={appModalHintClass}>
                         Si está desactivada, no estará disponible al crear productos.
                       </span>
                     </div>
                     <Switch
                       id="category-active"
                       checked={formData.status === 'active'}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({ ...prev, status: checked ? 'active' : 'inactive' }))
+                      onCheckedChange={checked =>
+                        setFormData(prev => ({ ...prev, status: checked ? 'active' : 'inactive' }))
                       }
                     />
                   </label>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
-              <Card className={cardShell}>
-                <CardHeader className={sectionHeaderClass}>
-                  <CardTitle className={sectionTitleClass}>
-                    <Tag className={sectionIconClass} strokeWidth={1.5} aria-hidden />
+              <section className={cn(modalCardShellClass, 'flex min-h-0 flex-col')}>
+                <div className="mb-1 flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                     Categorías existentes
-                  </CardTitle>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    Lista ordenada por fecha de creación.
-                  </p>
-                </CardHeader>
-                <CardContent className={cn(sectionContentClass, 'pt-4')}>
-                  <div className="max-h-96 space-y-2 overflow-y-auto pr-0.5">
-                    {categories
-                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                      .map((cat) => (
-                        <div
-                          key={cat.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200/90 bg-zinc-50/80 p-3 transition-colors hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/70"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="font-medium text-zinc-900 dark:text-zinc-50">{cat.name}</h4>
-                              <Badge className={getStatusColor(cat.status)}>{getStatusLabel(cat.status)}</Badge>
-                            </div>
-                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                              {cat.description?.trim()
-                                ? cat.description
-                                : <span className="italic text-zinc-400 dark:text-zinc-500">Sin descripción</span>}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <Switch
-                              checked={cat.status === 'active'}
-                              onCheckedChange={(on) =>
-                                onToggleStatus(cat.id, on ? 'active' : 'inactive')
-                              }
-                              aria-label={
-                                cat.status === 'active' ? 'Desactivar categoría' : 'Activar categoría'
-                              }
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => onDelete(cat.id)}
-                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                              title="Eliminar categoría"
-                            >
-                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                            </Button>
-                          </div>
+                  </h3>
+                </div>
+                <p className={cn(appModalHintClass, 'mb-3')}>Lista ordenada por fecha de creación.</p>
+
+                <div className="min-h-0 max-h-[min(28rem,50dvh)] flex-1 space-y-2 overflow-y-auto overscroll-contain">
+                  {sortedCategories.map(cat => (
+                    <div
+                      key={cat.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 transition-colors hover:bg-zinc-100/80 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{cat.name}</h4>
+                          <Badge
+                            variant="outline"
+                            className={cn('border px-2 py-0 text-[11px] font-medium', getStatusColor(cat.status))}
+                          >
+                            {getStatusLabel(cat.status)}
+                          </Badge>
                         </div>
-                      ))}
-                    {categories.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-brand-200/70 bg-brand-50/40 py-10 text-center dark:border-brand-900/40 dark:bg-brand-950/20">
-                        <Tag
-                          className="mx-auto mb-3 h-10 w-10 text-brand-400 dark:text-brand-600"
-                          strokeWidth={1.25}
-                          aria-hidden
-                        />
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">No hay categorías creadas</p>
+                        <p className={cn(appModalHintClass, 'mt-1')}>
+                          {cat.description?.trim() ? (
+                            cat.description
+                          ) : (
+                            <span className="italic text-zinc-400 dark:text-zinc-500">Sin descripción</span>
+                          )}
+                        </p>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Switch
+                          checked={cat.status === 'active'}
+                          onCheckedChange={on => onToggleStatus(cat.id, on ? 'active' : 'inactive')}
+                          aria-label={
+                            cat.status === 'active' ? 'Desactivar categoría' : 'Activar categoría'
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDelete(cat.id)}
+                          className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+                          title="Eliminar categoría"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {categories.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
+                      <Tag
+                        className="mx-auto mb-3 h-8 w-8 text-zinc-400 dark:text-zinc-500"
+                        strokeWidth={1.5}
+                        aria-hidden
+                      />
+                      <p className={appModalHintClass}>No hay categorías creadas</p>
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
           </div>
 
-          <div
-            className="flex flex-col-reverse justify-end gap-2 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-center"
-            style={{
-              paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-            }}
-          >
-            <Button type="button" variant="outline" size="sm" onClick={handleClose} className="h-10 w-full sm:w-auto">
+          <div className={appModalFooterClass}>
+            <Button type="button" variant="destructive" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              size="sm"
-              className="h-10 w-full gap-2 bg-brand-600 text-white shadow-none hover:bg-brand-700 focus-visible:ring-brand-500/50 dark:bg-brand-500 dark:hover:bg-brand-400 sm:w-auto [&_svg]:text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
+            <Button type="submit">
+              <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
               Crear categoría
             </Button>
           </div>

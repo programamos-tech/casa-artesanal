@@ -330,7 +330,7 @@ export function ProductTable({
                   <Button
                     onClick={onCreate}
                     size="sm"
-                    className="flex-1 border-transparent bg-brand-700 text-white hover:bg-brand-800 sm:flex-none dark:bg-brand-600 dark:hover:bg-brand-500 [&_svg]:text-white"
+                    className="flex-1 sm:flex-none"
                   >
                     <Plus className="h-3.5 w-3.5 shrink-0" />
                     <span className="hidden sm:inline">Nuevo producto</span>
@@ -511,7 +511,7 @@ export function ProductTable({
                   <Button
                     onClick={onCreate}
                     size="sm"
-                    className="mt-4 border-transparent bg-brand-900 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
+                    className="mt-4"
                   >
                     Nuevo producto
                   </Button>
@@ -553,7 +553,7 @@ export function ProductTable({
                           <div className="mt-3 grid grid-cols-2 gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
                             <div className="text-center">
                               <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Precio venta</div>
-                              <div className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                              <div className="mt-0.5 text-sm font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
                                 {formatSalePrice(product)}
                               </div>
                             </div>
@@ -624,7 +624,7 @@ export function ProductTable({
                                   <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
                                 </div>
                               </td>
-                              <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
+                              <td className="whitespace-nowrap px-3 py-3 font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
                                 {formatSalePrice(product)}
                               </td>
                               <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">

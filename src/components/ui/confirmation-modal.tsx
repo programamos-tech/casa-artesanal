@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ConfirmationModalProps {
   isOpen: boolean
@@ -25,58 +26,43 @@ export function ConfirmationModal({
   confirmText = 'Eliminar',
   cancelText = 'Cancelar',
   variant = 'destructive',
-  isLoading = false
+  isLoading = false,
 }: ConfirmationModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <div className="flex items-center space-x-3">
-            <div className={`p-3 rounded-full ${
-              variant === 'destructive' 
-                ? 'bg-red-100 dark:bg-red-900/20' 
-                : 'bg-yellow-100 dark:bg-yellow-900/20'
-            }`}>
-              {variant === 'destructive' ? (
-                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
-              ) : (
-                <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-              )}
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+      <DialogContent className="max-w-xl gap-0 overflow-hidden p-0">
+        <DialogHeader className="space-y-0 border-b border-zinc-200 px-5 py-3.5 text-left dark:border-zinc-700">
+          <div className="flex items-center gap-2.5 pr-8">
+            {variant === 'destructive' ? (
+              <Trash2 className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" strokeWidth={1.75} />
+            ) : (
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+            )}
+            <div className="min-w-0">
+              <DialogTitle className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                 {title}
               </DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-gray-400 mt-1">
+              <DialogDescription className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                 {description}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="flex justify-end space-x-3 mt-6">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-6"
-          >
+        <div className="flex justify-end gap-2 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-700 dark:bg-zinc-950">
+          <Button variant="destructive" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
           <Button
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-6"
-          >
-            {isLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Eliminando...</span>
-              </div>
-            ) : (
-              confirmText
+            className={cn(
+              variant === 'warning' &&
+                'border-amber-600/90 bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700'
             )}
+          >
+            {isLoading ? 'Eliminando…' : confirmText}
           </Button>
         </div>
       </DialogContent>

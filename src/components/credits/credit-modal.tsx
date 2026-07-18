@@ -23,7 +23,6 @@ import {
   Minus,
   Search,
   ShoppingCart,
-  ChevronDown,
   AlertTriangle
 } from 'lucide-react'
 import { Credit, Client, SaleItem, Product } from '@/types'
@@ -41,20 +40,29 @@ import {
 } from '@/lib/product-search'
 import { cn } from '@/lib/utils'
 import { cardShell as cardShellBase } from '@/lib/card-shell'
+import {
+  appModalBodyClass,
+  appModalFooterClass,
+  appModalHeaderClass,
+  appModalHintClass,
+  appModalInputClass,
+  appModalLabelClass,
+  appModalOverlayClass,
+  appModalPanelClass,
+} from '@/lib/app-modal'
 
 /** Altura cómoda en modal (tablet / dedo) — evita campos “apretados” verticalmente */
 const inputComfort = 'min-h-11 px-3 py-2.5 text-sm'
 
-const inputBase =
-  'rounded-lg border border-zinc-300 bg-white text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-500/25'
+const inputBase = cn(appModalInputClass, 'rounded-lg')
 
-const cardShell = cn(cardShellBase, 'shadow-none')
+const cardShell = cn(cardShellBase, 'shadow-sm')
 
 /** Títulos de sección — alineados a detalle de factura / marca */
 const sectionTitleClass =
   'flex items-center gap-1.5 text-sm font-semibold leading-none text-zinc-900 dark:text-zinc-50'
 
-const iconSection = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
+const iconSection = 'h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400'
 
 /** Cabecera: padding solo en bloque interno + regleta full-bleed (cierra con el borde del card) */
 const modalSectionHeaderClass = 'flex flex-col space-y-0 p-0'
@@ -582,18 +590,29 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
 
   if (!isOpen) return null
 
-  /* Portal + z-[100]: sobre el main; xl:left-56 = no tapar el sidebar fijo (solo ≥ xl, como main xl:ml-56). */
   const modal = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm sm:p-3 xl:left-56">
-      <div className="flex h-[min(92dvh,calc(100dvh-0.75rem))] w-full min-w-0 max-w-[min(1600px,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900/95">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200/90 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950 sm:px-4">
+    <div className={appModalOverlayClass} role="presentation" onClick={handleClose}>
+      <div
+        className={cn(
+          appModalPanelClass,
+          'h-[min(92dvh,calc(100dvh-0.75rem))] max-h-[min(96dvh,1120px)] max-w-[min(94vw,96rem)]'
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="credit-modal-title"
+        onClick={event => event.stopPropagation()}
+      >
+        <div className={appModalHeaderClass}>
           <div className="flex min-w-0 items-center gap-2.5">
-            <CreditCard className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
+            <CreditCard className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
             <div className="min-w-0">
-              <h2 className="text-base font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+              <h2
+                id="credit-modal-title"
+                className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+              >
                 Crear Venta a Crédito
               </h2>
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
                 Crea una nueva venta a crédito y registra el crédito correspondiente.
               </p>
             </div>
@@ -603,16 +622,17 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
             onClick={handleClose}
             variant="ghost"
             size="sm"
-            className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="h-8 w-8 shrink-0 rounded-md p-0"
+            aria-label="Cerrar"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" strokeWidth={1.75} />
           </Button>
         </div>
 
-        <div className="scrollbar-hide min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className={cn(appModalBodyClass, 'scrollbar-hide')}>
           {/* Sin overflow-x-hidden aquí: recorta el borde derecho de cards/select en la columna lateral. */}
           {/* Misma rejilla que /sales/new: 1 col en móvil; desde tablet productos 2/3 izq., cliente + crédito + resumen 1/3 der. */}
-          <div className="grid min-w-0 grid-cols-1 gap-4 p-2.5 pr-3 sm:p-3 sm:pr-4 md:grid-cols-3 md:gap-4 md:items-start md:pr-4">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3 md:items-start md:gap-4">
             {/* Columna izquierda — Productos (2/3) */}
             <div className="min-w-0 space-y-4 md:col-span-2 md:flex md:min-h-0 md:flex-col md:h-[min(calc(92dvh-7.5rem),900px)]">
               <Card className={cn(cardShell, 'min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden')}>
@@ -622,7 +642,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                     <Package className={iconSection} strokeWidth={1.5} />
                     Productos
                   </CardTitle>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className={appModalHintClass}>
                     Busca por nombre o referencia (búsqueda amplia desde 2 caracteres).
                   </p>
                 </div>
@@ -632,7 +652,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                 <div className="relative z-10 shrink-0">
                   <div className="relative">
                     <Search
-                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500 dark:text-violet-400"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
                       aria-hidden
                     />
                     <input
@@ -644,10 +664,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                         setShowProductDropdown(e.target.value.length > 0)
                       }}
                       onKeyDown={handleProductSearchKeyDown}
-                      className={cn(
-                        'min-h-11 w-full py-2.5 pl-12 pr-3 text-sm',
-                        inputBase
-                      )}
+                      className={cn(inputBase, 'min-h-11 py-2.5 pl-12 pr-3')}
                       aria-label="Buscar producto por nombre o referencia"
                     />
                     
@@ -675,7 +692,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                             'transition-colors duration-150 ease-in-out',
                             hasStock ? 'cursor-pointer' : 'cursor-not-allowed',
                             isHighlighted && hasStock
-                              ? 'border border-brand-400/35 bg-brand-500/[0.08] dark:border-brand-500/35 dark:bg-brand-500/[0.12]'
+                              ? 'border border-emerald-200/80 bg-emerald-50/90 dark:border-emerald-800/50 dark:bg-emerald-950/35'
                               : hasStock
                                 ? 'bg-white hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80'
                                 : 'border border-red-200/60 bg-red-50 dark:border-red-800/50 dark:bg-red-950/25'
@@ -684,7 +701,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                           const nameClasses = [
                             'font-medium',
                             isHighlighted && hasStock
-                              ? 'text-brand-900 dark:text-brand-100'
+                              ? 'text-emerald-900 dark:text-emerald-100'
                               : hasStock
                                 ? 'text-zinc-900 dark:text-zinc-100'
                                 : 'text-red-800 dark:text-red-200'
@@ -693,7 +710,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                           const detailsClasses = [
                             'mt-0.5 text-sm',
                             isHighlighted && hasStock
-                              ? 'text-brand-800/90 dark:text-brand-300/90'
+                              ? 'text-emerald-800/85 dark:text-emerald-300/85'
                               : hasStock
                                 ? 'text-zinc-600 dark:text-zinc-400'
                                 : 'text-red-600 dark:text-red-400'
@@ -756,7 +773,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                         {/* Controles de precio y cantidad */}
                         <div className="flex min-w-0 flex-wrap items-end gap-3">
                           <div className="min-w-0 flex-1">
-                            <label className="mb-2 block text-xs text-zinc-600 dark:text-zinc-400">
+                            <label className={appModalLabelClass}>
                               Precio de venta
                             </label>
                             <input
@@ -774,7 +791,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                           </div>
                           
                           <div>
-                            <label className="mb-2 block text-xs text-zinc-600 dark:text-zinc-400">
+                            <label className={appModalLabelClass}>
                               Cantidad
                             </label>
                             <div className="flex items-center gap-1.5">
@@ -825,7 +842,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                         {item.totalPrice > 0 && (
                           <div className="flex min-w-0 items-center justify-between gap-2 border-t border-zinc-200 pt-1 dark:border-zinc-700">
                             <span className="shrink-0 text-xs text-zinc-600 dark:text-zinc-400">Total:</span>
-                            <span className="min-w-0 break-all text-right font-semibold tabular-nums text-brand-700 dark:text-brand-400">
+                            <span className="min-w-0 break-all text-right font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
                               ${item.totalPrice.toLocaleString('es-CO')}
                             </span>
                           </div>
@@ -860,7 +877,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                     <User className={iconSection} strokeWidth={1.5} />
                     Cliente
                   </CardTitle>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Quién recibe la venta a crédito.</p>
+                  <p className={appModalHintClass}>Quién recibe la venta a crédito.</p>
                 </div>
                 <div className={modalSectionDividerClass} aria-hidden />
               </CardHeader>
@@ -921,7 +938,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    <label className={appModalLabelClass}>
                       Observaciones (opcional)
                     </label>
                     <textarea
@@ -929,7 +946,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                       onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                       placeholder="Notas sobre la venta…"
                       rows={3}
-                      className={cn('min-h-[5.5rem] w-full resize-y px-3 py-2.5 text-sm leading-relaxed', inputBase)}
+                      className={cn(inputBase, 'min-h-[5.5rem] resize-y leading-relaxed')}
                     />
                   </div>
                 </CardContent>
@@ -947,7 +964,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                 </CardHeader>
                 <CardContent className={cn(cardBodyCompact, 'min-w-0')}>
                   {selectedProducts.length === 0 ? (
-                    <p className="py-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className={cn(appModalHintClass, 'py-2 text-center')}>
                       Selecciona productos para ver el resumen
                     </p>
                   ) : (
@@ -999,7 +1016,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
                       <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">
                         <div className="flex min-w-0 items-center justify-between gap-2">
                           <span className="shrink-0 text-base font-bold text-zinc-900 dark:text-zinc-50">Total</span>
-                          <span className="min-w-0 break-all text-right text-base font-bold tabular-nums text-brand-700 dark:text-brand-400">
+                          <span className="min-w-0 break-all text-right text-base font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
                             ${calculateTotal().toLocaleString('es-CO')}
                           </span>
                         </div>
@@ -1012,17 +1029,16 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
           </div>
         </div>
 
-        <div
-          className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200/90 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950 sm:px-4"
-          style={{
-            paddingBottom: `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))`
-          }}
-        >
-          <Button type="button" onClick={handleClose} variant="outline" size="sm" disabled={loading}>
+        <div className={appModalFooterClass}>
+          <Button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            variant="destructive"
+          >
             Cancelar
           </Button>
           <Button
-            size="sm"
             type="button"
             onClick={(e) => void handleSubmit(e, false)}
             disabled={loading || selectedProducts.length === 0 || !formData.clientId || !formData.dueDate}
@@ -1030,12 +1046,12 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
           >
             {loading ? (
               <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-800 dark:border-zinc-600 dark:border-t-zinc-100" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
                 Creando...
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" strokeWidth={1.5} />
+                <ShoppingCart className="h-4 w-4" strokeWidth={1.75} />
                 Crear Venta a Crédito
               </div>
             )}

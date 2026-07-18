@@ -8,21 +8,18 @@ import { Label } from '@/components/ui/label'
 import { X, ArrowRightLeft, Package, Store, AlertTriangle } from 'lucide-react'
 import { Product, StockTransfer } from '@/types'
 import { cn } from '@/lib/utils'
+import {
+  appModalBodyClass,
+  appModalFooterClass,
+  appModalHeaderClass,
+  appModalInputClass,
+  appModalLabelClass,
+  appModalOverlayClass,
+  appModalPanelClass,
+} from '@/lib/app-modal'
 
 const panelInner =
-  'rounded-lg border border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-950/40'
-
-const inputClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-4 text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/25'
-
-/** Portal + z por encima del bottom nav (z-45); evita stacking atrapado en main (z-10). */
-const overlayClass =
-  'fixed inset-0 z-[100] overflow-hidden overscroll-none bg-black/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm xl:left-56'
-
-const overlayInnerClass = 'flex h-full min-h-0 w-full touch-none items-center justify-center py-4'
-
-const shellClass =
-  'isolate flex max-h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] w-full max-w-4xl touch-auto flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900'
+  'rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60'
 
 interface StockTransferModalProps {
   isOpen: boolean
@@ -166,15 +163,25 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
   }
 
   return createPortal(
-    <div className={overlayClass}>
-      <div className={overlayInnerClass}>
-        <div className={shellClass} role="dialog" aria-modal="true" aria-labelledby="stock-transfer-title">
-          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 bg-zinc-50/90 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-950/80">
+    <div className={appModalOverlayClass} role="presentation" onClick={handleClose}>
+      <div
+        className={cn(appModalPanelClass, 'max-w-6xl')}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="stock-transfer-title"
+        onClick={event => event.stopPropagation()}
+      >
+          <div className={appModalHeaderClass}>
             <div className="flex min-w-0 items-center gap-2.5">
-              <ArrowRightLeft className="h-5 w-5 shrink-0 text-zinc-500" strokeWidth={1.5} />
-              <h2 id="stock-transfer-title" className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                Transferir stock
-              </h2>
+              <ArrowRightLeft className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <h2 id="stock-transfer-title" className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  Transferir stock
+                </h2>
+                <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                  {product.name} · {product.reference}
+                </p>
+              </div>
             </div>
             <Button
               type="button"
@@ -183,7 +190,7 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
               size="sm"
               className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
 
@@ -194,14 +201,7 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
               handleTransfer()
             }}
           >
-            <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain">
-              <div className="space-y-4 p-4">
-            <div className="space-y-1">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {product.name} · {product.reference}
-              </p>
-            </div>
-
+            <div className={appModalBodyClass}>
           <div className="space-y-6">
             {/* Detalles de la Transferencia */}
             <div>
@@ -215,7 +215,7 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
-                      <Label className="mb-3 block text-zinc-700 dark:text-zinc-300">Desde *</Label>
+                      <Label className={appModalLabelClass}>Desde *</Label>
                       <div className="space-y-3">
                         {(['warehouse', 'store'] as const).map((location) => {
                           const Icon = getLocationIcon(location)
@@ -263,7 +263,7 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
                     </div>
 
                     <div>
-                      <Label className="mb-3 block text-zinc-700 dark:text-zinc-300">Hacia *</Label>
+                      <Label className={appModalLabelClass}>Hacia *</Label>
                       <div className="space-y-3">
                         {(['warehouse', 'store'] as const).map((location) => {
                           const Icon = getLocationIcon(location)
@@ -326,7 +326,7 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
 
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
-                      <Label className="text-zinc-700 dark:text-zinc-300">Cantidad a transferir *</Label>
+                      <Label className={appModalLabelClass}>Cantidad a transferir *</Label>
                       <input
                         type="number"
                         min="1"
@@ -334,8 +334,7 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
                         value={formData.quantity || ''}
                         onChange={(e) => handleInputChange('quantity', parseInt(e.target.value, 10) || 0)}
                         className={cn(
-                          inputClass,
-                          'mt-2 h-11 py-2 text-sm',
+                          appModalInputClass,
                           errors.quantity && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
                         )}
                         placeholder="Ingrese cantidad"
@@ -349,13 +348,13 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
                     </div>
 
                     <div>
-                      <Label className="text-zinc-700 dark:text-zinc-300">Motivo de la transferencia</Label>
+                      <Label className={appModalLabelClass}>Motivo de la transferencia</Label>
                       <textarea
                         value={formData.reason}
                         onChange={(e) => handleInputChange('reason', e.target.value)}
                         className={cn(
-                          inputClass,
-                          'mt-2 min-h-[4rem] resize-y py-2.5 text-sm',
+                          appModalInputClass,
+                          'min-h-20 resize-none',
                           errors.reason && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
                         )}
                         placeholder="Ej: Reposición de tienda, devolución a bodega, etc. (opcional)"
@@ -430,21 +429,19 @@ export function StockTransferModal({ isOpen, onClose, onTransfer, product }: Sto
               </Card>
             </div>
           </div>
-              </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-              <Button type="button" variant="outline" size="sm" onClick={handleClose}>
+            <div className={appModalFooterClass}>
+              <Button type="button" variant="destructive" onClick={handleClose}>
                 Cancelar
               </Button>
-              <Button type="submit" size="sm">
-                <ArrowRightLeft className="h-4 w-4" strokeWidth={1.5} />
+              <Button type="submit">
+                <ArrowRightLeft className="h-4 w-4" strokeWidth={1.75} />
                 Transferir stock
               </Button>
             </div>
           </form>
         </div>
-      </div>
     </div>,
     document.body
   )

@@ -273,11 +273,7 @@ export function StoreTable({
             </p>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-            <Button
-              onClick={onCreate}
-              size="sm"
-              className="h-9 flex-1 bg-zinc-900 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 sm:flex-none"
-            >
+            <Button onClick={onCreate} size="sm" className="h-9 flex-1 sm:flex-none">
               <Plus className="mr-1.5 h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Nueva Tienda</span>
               <span className="sm:hidden">Nueva</span>
@@ -292,11 +288,7 @@ export function StoreTable({
               <StoreIcon className="h-5 w-5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} />
             </div>
             <p className="text-zinc-500 dark:text-zinc-400">No hay tiendas registradas</p>
-            <Button
-              onClick={onCreate}
-              size="sm"
-              className="mt-4 bg-zinc-900 text-white shadow-none hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
-            >
+            <Button onClick={onCreate} size="sm" className="mt-4">
               Crear Primera Tienda
             </Button>
           </div>

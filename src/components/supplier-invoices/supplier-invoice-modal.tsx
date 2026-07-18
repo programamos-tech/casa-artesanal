@@ -3,9 +3,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { DatePicker } from '@/components/ui/date-picker'
 import { X, FileText, Upload, Plus, Trash2 } from 'lucide-react'
 import { Supplier, SupplierInvoice } from '@/types'
@@ -19,6 +16,17 @@ import {
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import {
+  appModalBodyClass,
+  appModalFooterClass,
+  appModalHeaderClass,
+  appModalHintClass,
+  appModalInputClass,
+  appModalLabelClass,
+  appModalOverlayClass,
+  appModalPanelClass,
+} from '@/lib/app-modal'
+import { cardShell } from '@/lib/card-shell'
 
 /** Valor guardado en BD: URL absoluta o ruta `invoices/...` dentro del bucket. */
 function supplierInvoiceStoredToPublicUrl(stored: string): string {
@@ -307,266 +315,252 @@ export function SupplierInvoiceModal({
   const blocked =
     invoice?.status === 'cancelled' || invoice?.status === 'paid'
 
-  /* Portal + z-[100]: el <main> tiene z-10; la bottom nav del body es z-40 y robaba los toques en iPad.
-     Overlay con overflow-y-auto + min-h-full para poder desplazar modales altos en tablet. */
+  const selectClass = cn(appModalInputClass, 'h-11 cursor-pointer appearance-auto')
+
   const modal = (
-    <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden bg-white/70 backdrop-blur-sm dark:bg-black/60 xl:left-56">
+    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
       <div
-        className="flex min-h-[100dvh] w-full items-center justify-center p-3 sm:p-6 sm:py-8 lg:px-12"
-        style={{
-          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-        }}
+        className={cn(appModalPanelClass, 'max-h-[min(92dvh,880px)] max-w-2xl')}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="supplier-invoice-modal-title"
+        onClick={event => event.stopPropagation()}
       >
-        <div className="my-auto flex w-full max-h-[min(92dvh,880px)] min-h-0 max-w-full flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900/95 sm:max-w-2xl lg:max-w-3xl">
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200/90 px-4 py-3.5 sm:px-5 dark:border-zinc-800">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <FileText className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-              <h2 className="line-clamp-2 text-base font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-lg">
+        <div className={appModalHeaderClass}>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <FileText className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
+            <div className="min-w-0">
+              <h2
+                id="supplier-invoice-modal-title"
+                className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+              >
                 {isEdit ? 'Editar factura' : 'Nueva factura de proveedor'}
               </h2>
+              {isEdit && invoiceNumber.trim() ? (
+                <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                  Folio:{' '}
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{invoiceNumber}</span>
+                </p>
+              ) : (
+                <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">Datos de la factura</p>
+              )}
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 w-9 shrink-0 touch-manipulation rounded-lg border-0 bg-transparent p-0 text-zinc-500 shadow-none hover:translate-y-0 hover:bg-zinc-100 hover:shadow-none hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              onClick={onClose}
-            >
-              <X className="h-5 w-5" />
-            </Button>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 rounded-md p-0"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </Button>
+        </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
-          <Card className="rounded-none border-0 shadow-none">
-            <CardHeader className="px-3 pb-2 pt-4 sm:px-6 sm:pt-5">
-              <CardTitle className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-                Datos de la factura
-              </CardTitle>
-              {isEdit && invoiceNumber.trim() && (
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  Folio:{' '}
-                  <span className="font-mono text-zinc-800 dark:text-zinc-200">
-                    {invoiceNumber}
-                  </span>
-                </p>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4 px-3 pb-4 pt-0 sm:px-6">
-              {blocked && (
-                <p className="rounded-lg border border-zinc-200/90 bg-zinc-50 p-3 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-300">
-                  Esta factura no se puede editar (pagada o anulada).
-                </p>
-              )}
+          <div className={cn(appModalBodyClass, 'space-y-4')}>
+            {blocked && (
+              <p className={cn(cardShell, 'p-3 text-sm text-zinc-700 dark:text-zinc-300')}>
+                Esta factura no se puede editar (pagada o anulada).
+              </p>
+            )}
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-zinc-700 dark:text-zinc-300">Proveedor</Label>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 text-xs font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
-                    onClick={() => setShowNewSupplier((v) => !v)}
-                  >
-                    <Plus className="h-3 w-3" />
-                    Nuevo proveedor
-                  </button>
-                </div>
-                {showNewSupplier && (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Nombre del proveedor"
-                      value={newSupplierName}
-                      onChange={(e) => setNewSupplierName(e.target.value)}
-                      className="h-10 border-zinc-200 bg-white text-base dark:border-zinc-700 dark:bg-zinc-950"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0 border-zinc-300 dark:border-zinc-600"
-                      onClick={handleCreateSupplier}
-                    >
-                      Crear
-                    </Button>
-                  </div>
-                )}
-                <select
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                  disabled={blocked || isEdit}
-                  className="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
+            <div>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label htmlFor="supplier-invoice-supplier" className={cn(appModalLabelClass, 'mb-0')}>
+                  Proveedor
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  onClick={() => setShowNewSupplier(v => !v)}
                 >
-                  <option value="">Seleccionar…</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                  Nuevo proveedor
+                </button>
               </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-zinc-700 dark:text-zinc-300">Emisión</Label>
-                  <DatePicker
-                    selectedDate={issueDate}
-                    onDateSelect={setIssueDate}
-                    placeholder="Fecha"
-                    className="w-full"
+              {showNewSupplier && (
+                <div className="mb-2 flex gap-2">
+                  <input
+                    placeholder="Nombre del proveedor"
+                    value={newSupplierName}
+                    onChange={e => setNewSupplierName(e.target.value)}
+                    className={cn(appModalInputClass, 'h-10')}
                   />
+                  <Button type="button" onClick={handleCreateSupplier} className="shrink-0">
+                    Crear
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-zinc-700 dark:text-zinc-300">Vencimiento (opcional)</Label>
-                  <DatePicker
-                    selectedDate={dueDate}
-                    onDateSelect={setDueDate}
-                    placeholder="Opcional"
-                    className="w-full"
-                  />
-                </div>
-              </div>
+              )}
+              <select
+                id="supplier-invoice-supplier"
+                value={supplierId}
+                onChange={e => setSupplierId(e.target.value)}
+                disabled={blocked || isEdit}
+                className={selectClass}
+              >
+                <option value="">Seleccionar…</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              <div className="space-y-2">
-                <Label className="text-zinc-700 dark:text-zinc-300">Total a pagar</Label>
-                <Input
-                  value={totalStr}
-                  onChange={(e) => setTotalStr(formatNumber(e.target.value))}
-                  disabled={blocked}
-                  placeholder="0"
-                  className="h-10 border-zinc-200 bg-white text-base tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <span className={appModalLabelClass}>Emisión</span>
+                <DatePicker
+                  selectedDate={issueDate}
+                  onDateSelect={setIssueDate}
+                  placeholder="Fecha"
+                  className="w-full"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label className="text-zinc-700 dark:text-zinc-300">Notas (opcional)</Label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  disabled={blocked}
-                  rows={2}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
-                  placeholder="Orden de compra, observaciones…"
+              <div>
+                <span className={appModalLabelClass}>Vencimiento (opcional)</span>
+                <DatePicker
+                  selectedDate={dueDate}
+                  onDateSelect={setDueDate}
+                  placeholder="Opcional"
+                  className="w-full"
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-end justify-between gap-2">
-                  <Label className="text-zinc-700 dark:text-zinc-300">Comprobantes (imagen o PDF)</Label>
-                  <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                    {attachmentRefs.length}/{SUPPLIER_INVOICE_MAX_ATTACHMENTS}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Hasta {SUPPLIER_INVOICE_MAX_ATTACHMENTS} archivos. Imágenes máx. 2 MB (se comprimen en el
-                  navegador). PDF máx. 5 MB.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <label
-                    className={cn(
-                      'inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/50',
-                      (blocked || uploading || attachmentRefs.length >= SUPPLIER_INVOICE_MAX_ATTACHMENTS) &&
-                        'pointer-events-none opacity-50'
-                    )}
-                  >
-                    <Upload className="h-4 w-4 text-zinc-500" />
-                    {uploading ? 'Subiendo…' : 'Añadir archivos'}
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      multiple
-                      className="hidden"
-                      onChange={handleFiles}
-                      disabled={uploading || blocked || attachmentRefs.length >= SUPPLIER_INVOICE_MAX_ATTACHMENTS}
-                    />
-                  </label>
-                </div>
-                {attachmentRefs.length > 0 && (
-                  <ul className="mt-2 space-y-2">
-                    {attachmentRefs.map((ref, index) => {
-                      const publicUrl = supplierInvoiceStoredToPublicUrl(ref)
-                      const pdf = isPdfStorageRef(ref)
-                      const label = ref.split('/').pop() || `Archivo ${index + 1}`
-                      return (
-                        <li
-                          key={`${ref}-${index}`}
-                          className="flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50/90 p-2 dark:border-zinc-700 dark:bg-zinc-950/50"
-                        >
-                          <div className="min-w-0 flex-1">
-                            {pdf ? (
-                              <a
-                                href={publicUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-sm font-medium text-zinc-800 hover:underline dark:text-zinc-200"
-                              >
-                                <FileText className="h-8 w-8 shrink-0 text-red-600/90 dark:text-red-400/90" />
-                                <span className="truncate">{label}</span>
-                              </a>
-                            ) : (
-                              <a
-                                href={publicUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block overflow-hidden rounded-md"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={publicUrl}
-                                  alt=""
-                                  className="h-20 w-full max-w-[200px] object-cover object-left"
-                                />
-                              </a>
-                            )}
-                            <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
-                          </div>
-                          {!blocked && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 shrink-0 p-0 text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
-                              onClick={() => removeAttachment(index)}
-                              aria-label="Quitar archivo"
+            <div>
+              <label htmlFor="supplier-invoice-total" className={appModalLabelClass}>
+                Total a pagar
+              </label>
+              <input
+                id="supplier-invoice-total"
+                value={totalStr}
+                onChange={e => setTotalStr(formatNumber(e.target.value))}
+                disabled={blocked}
+                placeholder="0"
+                inputMode="numeric"
+                className={cn(appModalInputClass, 'h-10 text-base font-semibold tabular-nums')}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="supplier-invoice-notes" className={appModalLabelClass}>
+                Notas (opcional)
+              </label>
+              <textarea
+                id="supplier-invoice-notes"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                disabled={blocked}
+                rows={2}
+                className={cn(appModalInputClass, 'min-h-[4.5rem] resize-y py-2.5')}
+                placeholder="Orden de compra, observaciones…"
+              />
+            </div>
+
+            <div className={cn(cardShell, 'space-y-2 p-3')}>
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <span className={cn(appModalLabelClass, 'mb-0')}>Comprobantes (imagen o PDF)</span>
+                <span className={cn(appModalHintClass, 'tabular-nums')}>
+                  {attachmentRefs.length}/{SUPPLIER_INVOICE_MAX_ATTACHMENTS}
+                </span>
+              </div>
+              <p className={appModalHintClass}>
+                Hasta {SUPPLIER_INVOICE_MAX_ATTACHMENTS} archivos. Imágenes máx. 2 MB (se comprimen en el
+                navegador). PDF máx. 5 MB.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className={cn(
+                    'inline-flex cursor-pointer items-center gap-2 rounded-lg border-transparent bg-emerald-500 px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-600',
+                    (blocked || uploading || attachmentRefs.length >= SUPPLIER_INVOICE_MAX_ATTACHMENTS) &&
+                      'pointer-events-none opacity-50'
+                  )}
+                >
+                  <Upload className="h-4 w-4" strokeWidth={1.75} />
+                  {uploading ? 'Subiendo…' : 'Añadir archivos'}
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple
+                    className="hidden"
+                    onChange={handleFiles}
+                    disabled={
+                      uploading || blocked || attachmentRefs.length >= SUPPLIER_INVOICE_MAX_ATTACHMENTS
+                    }
+                  />
+                </label>
+              </div>
+              {attachmentRefs.length > 0 && (
+                <ul className="mt-1 space-y-2">
+                  {attachmentRefs.map((ref, index) => {
+                    const publicUrl = supplierInvoiceStoredToPublicUrl(ref)
+                    const pdf = isPdfStorageRef(ref)
+                    const label = ref.split('/').pop() || `Archivo ${index + 1}`
+                    return (
+                      <li
+                        key={`${ref}-${index}`}
+                        className="flex items-start gap-3 rounded-lg border border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900/60"
+                      >
+                        <div className="min-w-0 flex-1">
+                          {pdf ? (
+                            <a
+                              href={publicUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm font-medium text-zinc-800 hover:underline dark:text-zinc-200"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <FileText className="h-8 w-8 shrink-0 text-rose-600/90 dark:text-rose-400/90" strokeWidth={1.75} />
+                              <span className="truncate">{label}</span>
+                            </a>
+                          ) : (
+                            <a
+                              href={publicUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block overflow-hidden rounded-md"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={publicUrl}
+                                alt=""
+                                className="h-20 w-full max-w-[200px] object-cover object-left"
+                              />
+                            </a>
                           )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                          <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
+                        </div>
+                        {!blocked && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 shrink-0 p-0 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400"
+                            onClick={() => removeAttachment(index)}
+                            aria-label="Quitar archivo"
+                          >
+                            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                          </Button>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
 
-          <div
-            className="flex shrink-0 justify-end gap-2 border-t border-zinc-200/90 bg-white px-3 pb-3 pt-4 dark:border-zinc-800 dark:bg-neutral-950 sm:gap-2.5 sm:px-6 sm:pb-4"
-            style={{
-              paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0px))'
-            }}
-          >
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              className="h-9 w-full flex-1 touch-manipulation border border-zinc-300 bg-white text-sm font-medium text-zinc-700 shadow-none hover:translate-y-0 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 sm:w-auto sm:flex-none"
-            >
+          <div className={appModalFooterClass}>
+            <Button type="button" variant="destructive" onClick={onClose}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={saving || blocked || uploading}
-              className="h-9 w-full flex-1 touch-manipulation bg-zinc-900 text-sm font-medium text-white shadow-none hover:translate-y-0 hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white sm:w-auto sm:flex-none"
-            >
+            <Button type="submit" disabled={saving || blocked || uploading}>
               {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar'}
             </Button>
           </div>
         </form>
-        </div>
       </div>
     </div>
   )

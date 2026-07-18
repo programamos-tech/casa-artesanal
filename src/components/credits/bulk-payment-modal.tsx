@@ -500,7 +500,7 @@ export function BulkPaymentModal({
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-            <Button type="button" variant="outline" size="sm" onClick={handleClose} disabled={submitting}>
+            <Button type="button" variant="destructive" size="sm" onClick={handleClose} disabled={submitting}>
               Cancelar
             </Button>
             <Button type="submit" size="sm" disabled={submitting}>

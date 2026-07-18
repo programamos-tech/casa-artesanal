@@ -4,7 +4,6 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { X, Package, DollarSign, BarChart3, AlertTriangle, Store, ImageIcon } from 'lucide-react'
 import { Product, Category } from '@/types'
 import { ProductsService } from '@/lib/products-service'
@@ -32,28 +31,39 @@ const emptyProductForm = {
 }
 
 const inputBase =
-  'casa-artesanal-preserve-surface w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-600/80 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/25'
+  'casa-artesanal-preserve-surface w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm leading-snug text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/25 dark:border-zinc-600/80 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/25'
+
+const labelClass = 'mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400'
+const errorClass = 'mt-1 text-xs text-red-500 dark:text-red-400'
+const hintClass = 'mt-1 text-xs leading-snug text-zinc-500 dark:text-zinc-400'
 
 function SectionCard({
   icon: Icon,
   title,
   children,
   description,
-  iconClassName = 'text-indigo-600 dark:text-indigo-400',
+  iconClassName = 'text-zinc-600 dark:text-zinc-400',
+  className,
 }: {
   icon: LucideIcon
   title: string
   children: React.ReactNode
   description?: string
   iconClassName?: string
+  className?: string
 }) {
   return (
-    <div className="rounded-xl border border-indigo-100/90 bg-white p-4 shadow-sm dark:border-indigo-900/40 dark:bg-indigo-950/20 md:p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <Icon className={cn('h-5 w-5 shrink-0', iconClassName)} strokeWidth={1.75} aria-hidden />
-        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+    <div
+      className={cn(
+        'rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60',
+        className
+      )}
+    >
+      <div className="mb-2.5 flex items-center gap-2">
+        <Icon className={cn('h-4 w-4 shrink-0', iconClassName)} strokeWidth={1.75} aria-hidden />
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
       </div>
-      {description ? <p className="mb-4 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{description}</p> : null}
+      {description ? <p className="mb-2.5 text-xs leading-snug text-zinc-500 dark:text-zinc-400">{description}</p> : null}
       {children}
     </div>
   )
@@ -148,35 +158,36 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
     }
   }, [isOpen, product])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'border-brand-200 bg-brand-50 text-brand-800 dark:border-zinc-500/45 dark:bg-zinc-700/40 dark:text-zinc-100'
-      case 'inactive':
-        return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300'
-      case 'discontinued':
-        return 'border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-500/50 dark:bg-zinc-800/90 dark:text-zinc-300'
-      case 'out_of_stock':
-        return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-200'
-      default:
-        return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Activo'
-      case 'inactive':
-        return 'Inactivo'
-      case 'discontinued':
-        return 'Descontinuado'
-      case 'out_of_stock':
-        return 'Sin Stock'
-      default:
-        return status
-    }
-  }
+  const statusOptions = [
+    {
+      value: 'active' as const,
+      label: 'Activo',
+      idle: 'border-emerald-200/70 bg-emerald-50/80 text-emerald-700/90 hover:border-emerald-300/80 hover:bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/25 dark:text-emerald-300/90 dark:hover:border-emerald-700/50',
+      selected:
+        'border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm ring-1 ring-emerald-200/80 dark:border-emerald-700/60 dark:bg-emerald-900/50 dark:text-emerald-200 dark:ring-emerald-800/50',
+    },
+    {
+      value: 'inactive' as const,
+      label: 'Inactivo',
+      idle: 'border-stone-200/80 bg-stone-50 text-stone-600 hover:border-stone-300 hover:bg-stone-100/80 dark:border-zinc-600/60 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:border-zinc-500',
+      selected:
+        'border-stone-300 bg-stone-100 text-stone-700 shadow-sm ring-1 ring-stone-200/80 dark:border-zinc-500/70 dark:bg-zinc-700/60 dark:text-zinc-100 dark:ring-zinc-600/50',
+    },
+    {
+      value: 'discontinued' as const,
+      label: 'Descontinuado',
+      idle: 'border-orange-200/70 bg-orange-50/80 text-orange-700/90 hover:border-orange-300/80 hover:bg-orange-50 dark:border-orange-800/40 dark:bg-orange-950/25 dark:text-orange-300/90 dark:hover:border-orange-700/50',
+      selected:
+        'border-orange-300 bg-orange-100 text-orange-800 shadow-sm ring-1 ring-orange-200/80 dark:border-orange-700/60 dark:bg-orange-900/45 dark:text-orange-200 dark:ring-orange-800/50',
+    },
+    {
+      value: 'out_of_stock' as const,
+      label: 'Sin Stock',
+      idle: 'border-amber-200/70 bg-amber-50/80 text-amber-700/90 hover:border-amber-300/80 hover:bg-amber-50 dark:border-amber-800/40 dark:bg-amber-950/25 dark:text-amber-300/90 dark:hover:border-amber-700/50',
+      selected:
+        'border-amber-300 bg-amber-100 text-amber-800 shadow-sm ring-1 ring-amber-200/80 dark:border-amber-700/60 dark:bg-amber-900/45 dark:text-amber-200 dark:ring-amber-800/50',
+    },
+  ]
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -307,23 +318,26 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
   const isEdit = !!product
 
   const modal = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-3 py-5 backdrop-blur-md dark:bg-black/75 sm:py-8 xl:left-56">
+    <div
+      className="casa-artesanal-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/25 p-3 backdrop-blur-[2px] dark:bg-black/40 sm:p-5 xl:left-60"
+      role="presentation"
+      onClick={handleClose}
+    >
       <div
-        className="casa-artesanal-preserve-surface flex max-h-[calc(100dvh-2.5rem)] w-full max-w-[min(72rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-indigo-100/90 bg-gradient-to-b from-indigo-50/40 via-zinc-50 to-zinc-50 shadow-2xl dark:border-indigo-900/35 dark:from-indigo-950/25 dark:via-zinc-950 dark:to-zinc-950 sm:max-h-[calc(100dvh-4rem)]"
+        className="casa-artesanal-preserve-surface relative flex max-h-[min(96dvh,1120px)] w-full max-w-[min(94vw,83rem)] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-modal-title"
+        onClick={e => e.stopPropagation()}
       >
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/90 via-white to-violet-50/70 px-4 py-4 md:px-6 md:py-5 dark:border-indigo-900/40 dark:from-indigo-950/50 dark:via-zinc-950 dark:to-violet-950/30">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200/90 bg-indigo-50 dark:border-indigo-700/50 dark:bg-indigo-950/50">
-              <Package className="h-5 w-5 text-indigo-600 dark:text-indigo-400" strokeWidth={1.75} aria-hidden />
-            </div>
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-5 py-3.5 dark:border-zinc-700 dark:bg-zinc-950">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Package className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
             <div className="min-w-0">
-              <h2 id="product-modal-title" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white md:text-xl">
+              <h2 id="product-modal-title" className="text-base font-semibold tracking-tight text-zinc-900 dark:text-white">
                 {isEdit ? 'Editar producto' : 'Nuevo producto'}
               </h2>
-              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
                 {isEdit ? `Editando ${product.name}` : 'Crea un producto en tu inventario'}
               </p>
             </div>
@@ -331,29 +345,30 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
           <button
             type="button"
             onClick={handleClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
             aria-label="Cerrar"
           >
-            <X className="h-5 w-5" strokeWidth={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.75} />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-50/90 px-4 py-4 md:px-6 md:py-5 dark:bg-zinc-950">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white px-5 py-4 dark:bg-zinc-950 sm:overflow-hidden sm:px-6 sm:py-5">
           <form
             id={formId}
             onSubmit={e => {
               e.preventDefault()
               handleSave()
             }}
+            className="h-full"
           >
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
-              <div className="space-y-4 lg:space-y-5">
+            <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="flex flex-col gap-4">
                 <SectionCard icon={Package} title="Información básica">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2.5">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       <div>
-                        <label htmlFor="product-name" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Nombre del producto <span className="text-zinc-400 dark:text-zinc-500">*</span>
+                        <label htmlFor="product-name" className={labelClass}>
+                          Nombre <span className="text-zinc-400">*</span>
                         </label>
                         <input
                           id="product-name"
@@ -363,11 +378,11 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           className={cn(inputBase, errors.name && 'border-red-500/70 ring-1 ring-red-500/30')}
                           placeholder="Nombre del producto"
                         />
-                        {errors.name && <p className="mt-1.5 text-sm text-red-400">{errors.name}</p>}
+                        {errors.name && <p className={errorClass}>{errors.name}</p>}
                       </div>
                       <div>
-                        <label htmlFor="product-ref" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Referencia <span className="text-zinc-400 dark:text-zinc-500">*</span>
+                        <label htmlFor="product-ref" className={labelClass}>
+                          Referencia <span className="text-zinc-400">*</span>
                         </label>
                         <input
                           id="product-ref"
@@ -378,8 +393,8 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           placeholder={suggestedReference?.next || '439'}
                         />
                         {!product && suggestedReference && (
-                          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                            Siguiente sugerida:{' '}
+                          <p className={hintClass}>
+                            Sugerida:{' '}
                             <button
                               type="button"
                               className="font-semibold text-violet-700 underline-offset-2 hover:underline dark:text-violet-300"
@@ -387,33 +402,32 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                             >
                               {suggestedReference.next}
                             </button>
-                            {' '}
-                            (última: {suggestedReference.last}). Puedes cambiarla.
+                            <span className="text-zinc-400"> · última {suggestedReference.last}</span>
                           </p>
                         )}
-                        {errors.reference && <p className="mt-1.5 text-sm text-red-400">{errors.reference}</p>}
+                        {errors.reference && <p className={errorClass}>{errors.reference}</p>}
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="product-desc" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Descripción <span className="font-normal text-zinc-500">(opcional)</span>
+                      <label htmlFor="product-desc" className={labelClass}>
+                        Descripción <span className="font-normal text-zinc-400">(opcional)</span>
                       </label>
                       <textarea
                         id="product-desc"
                         value={formData.description}
                         onChange={e => handleInputChange('description', e.target.value)}
-                        className={cn(inputBase, 'min-h-[5.5rem] resize-none', errors.description && 'border-red-500/70')}
-                        placeholder="Descripción detallada del producto"
-                        rows={3}
+                        className={cn(inputBase, 'min-h-[2.75rem] resize-none', errors.description && 'border-red-500/70')}
+                        placeholder="Descripción breve"
+                        rows={2}
                       />
-                      {errors.description && <p className="mt-1.5 text-sm text-red-400">{errors.description}</p>}
+                      {errors.description && <p className={errorClass}>{errors.description}</p>}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       <div>
-                        <label htmlFor="product-brand" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Marca <span className="font-normal text-zinc-500">(opcional)</span>
+                        <label htmlFor="product-brand" className={labelClass}>
+                          Marca <span className="font-normal text-zinc-400">(opcional)</span>
                         </label>
                         <input
                           id="product-brand"
@@ -423,11 +437,11 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           className={cn(inputBase, errors.brand && 'border-red-500/70')}
                           placeholder="Marca"
                         />
-                        {errors.brand && <p className="mt-1.5 text-sm text-red-400">{errors.brand}</p>}
+                        {errors.brand && <p className={errorClass}>{errors.brand}</p>}
                       </div>
                       <div>
-                        <label htmlFor="product-cat" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Categoría <span className="font-normal text-zinc-500">(opcional)</span>
+                        <label htmlFor="product-cat" className={labelClass}>
+                          Categoría <span className="font-normal text-zinc-400">(opcional)</span>
                         </label>
                         <select
                           id="product-cat"
@@ -442,7 +456,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                             </option>
                           ))}
                         </select>
-                        {errors.categoryId && <p className="mt-1.5 text-sm text-red-400">{errors.categoryId}</p>}
+                        {errors.categoryId && <p className={errorClass}>{errors.categoryId}</p>}
                       </div>
                     </div>
                   </div>
@@ -453,22 +467,23 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                   title="Imagen del catálogo"
                   description="Foto para ficha y listados (máx. 5MB)."
                   iconClassName="text-sky-600 dark:text-sky-400"
+                  className="flex min-h-0 flex-1 flex-col"
                 >
-                  <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700/80 dark:bg-zinc-900/60">
+                  <div className="overflow-hidden rounded-md border border-zinc-200 bg-white dark:border-zinc-700/80 dark:bg-zinc-900/60">
                     {uploadPreview || catalogImageUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={uploadPreview || catalogImageUrl || ''}
                         alt="Vista previa catálogo"
-                        className="mx-auto block max-h-56 w-full object-contain"
+                        className="mx-auto block h-32 w-full object-contain sm:h-36"
                       />
                     ) : (
-                      <div className="flex min-h-[140px] items-center justify-center px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                      <div className="flex h-32 items-center justify-center px-3 text-center text-xs text-zinc-500 dark:text-zinc-400 sm:h-36">
                         Sin imagen · sube una foto del producto
                       </div>
                     )}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <input
                       ref={catalogFileInputRef}
                       type="file"
@@ -483,7 +498,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                       size="sm"
                       disabled={uploadingImage}
                       onClick={() => catalogFileInputRef.current?.click()}
-                      className="border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      className="h-7 border-zinc-300 bg-white px-2.5 text-xs text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-900/50 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     >
                       {uploadingImage ? 'Subiendo…' : 'Subir imagen'}
                     </Button>
@@ -492,67 +507,59 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                        className="h-7 px-2 text-xs text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
                         disabled={uploadingImage}
                         onClick={() => setCatalogImageUrl(null)}
                       >
-                        Quitar imagen
+                        Quitar
                       </Button>
                     )}
                   </div>
                 </SectionCard>
               </div>
 
-              <div className="space-y-4 lg:space-y-5">
+              <div className="flex flex-col gap-4">
                 <SectionCard icon={BarChart3} title="Control de stock" iconClassName="text-teal-600 dark:text-teal-400">
-                  {product && (
-                    <div className="-mt-2 mb-4 flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700/60 dark:bg-zinc-900/50">
-                      <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
-                      <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                        El stock se muestra solo como referencia. Para ajustar o transferir, usa la tabla de productos.
-                      </p>
-                    </div>
-                  )}
-
-                  {!product && (
-                    <p className="-mt-2 mb-4 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  {product ? (
+                    <p className="mb-2 text-xs leading-snug text-zinc-500 dark:text-zinc-400">
+                      Solo lectura. Para ajustar o transferir, usa la tabla de productos.
+                    </p>
+                  ) : (
+                    <p className="mb-2 text-xs leading-snug text-zinc-500 dark:text-zinc-400">
                       El stock inicial queda en Local.
                     </p>
                   )}
 
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
-                        <Store className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
-                        <h4 className="text-sm font-semibold">Local</h4>
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Stock actual</label>
-                        {product ? (
-                            <div className="w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 dark:border-zinc-600/80 dark:bg-zinc-900/60 dark:text-zinc-400">
-                            {formatIntegerInput(formData.stock.store)} unidades
-                          </div>
-                        ) : (
-                          <input
-                            type="text"
-                            value={formatIntegerInput(formData.stock.store)}
-                            onChange={e => handleInputChange('stock.store', parseIntegerInput(e.target.value))}
-                            className={cn(inputBase, errors.stockStore && 'border-red-500/70')}
-                            placeholder="0"
-                          />
-                        )}
-                        {errors.stockStore && <p className="mt-1.5 text-sm text-red-400">{errors.stockStore}</p>}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-xl border border-teal-100/90 bg-teal-50/40 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/25">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Stock total</span>
-                      <span className="text-lg font-semibold tabular-nums text-zinc-900 dark:text-white">
-                        {formatIntegerInput(formData.stock.store)}{' '}
-                        <span className="text-sm font-normal text-zinc-500 dark:text-zinc-500">unidades</span>
-                      </span>
+                      <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200">
+                        <Store className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
+                        <span className="text-xs font-semibold">Local</span>
+                      </div>
+                      <p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+                        Total{' '}
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                          {formatIntegerInput(formData.stock.store)}
+                        </span>{' '}
+                        und.
+                      </p>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Stock actual</label>
+                      {product ? (
+                        <div className="w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-sm text-zinc-500 dark:border-zinc-600/80 dark:bg-zinc-900/60 dark:text-zinc-400">
+                          {formatIntegerInput(formData.stock.store)} und.
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={formatIntegerInput(formData.stock.store)}
+                          onChange={e => handleInputChange('stock.store', parseIntegerInput(e.target.value))}
+                          className={cn(inputBase, errors.stockStore && 'border-red-500/70')}
+                          placeholder="0"
+                        />
+                      )}
+                      {errors.stockStore && <p className={errorClass}>{errors.stockStore}</p>}
                     </div>
                   </div>
                 </SectionCard>
@@ -560,16 +567,16 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                 <SectionCard
                   icon={DollarSign}
                   title="Información financiera"
-                  description="Precio de compra y dos precios de venta según tipo de cliente."
+                  description="Compra y dos precios de venta."
                   iconClassName="text-violet-600 dark:text-violet-400"
                 >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                     <div>
-                      <label htmlFor="product-cost" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Precio de adquisición
+                      <label htmlFor="product-cost" className={labelClass}>
+                        Adquisición
                       </label>
                       <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-zinc-400 dark:text-zinc-500">
                           $
                         </span>
                         <input
@@ -577,18 +584,18 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           type="text"
                           value={formatMoneyInput(formData.cost)}
                           onChange={e => handleInputChange('cost', parseMoneyInput(e.target.value))}
-                          className={cn(inputBase, 'pl-8', errors.cost && 'border-red-500/70')}
+                          className={cn(inputBase, 'pl-6', errors.cost && 'border-red-500/70')}
                           placeholder="0"
                         />
                       </div>
-                      {errors.cost && <p className="mt-1.5 text-sm text-red-400">{errors.cost}</p>}
+                      {errors.cost && <p className={errorClass}>{errors.cost}</p>}
                     </div>
                     <div>
-                      <label htmlFor="product-retail-price" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Venta cliente final <span className="text-zinc-400 dark:text-zinc-500">*</span>
+                      <label htmlFor="product-retail-price" className={labelClass}>
+                        Cliente final <span className="text-zinc-400">*</span>
                       </label>
                       <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-zinc-400 dark:text-zinc-500">
                           $
                         </span>
                         <input
@@ -596,18 +603,18 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           type="text"
                           value={formatMoneyInput(formData.retailPrice)}
                           onChange={e => handleInputChange('retailPrice', parseMoneyInput(e.target.value))}
-                          className={cn(inputBase, 'pl-8', errors.retailPrice && 'border-red-500/70')}
+                          className={cn(inputBase, 'pl-6', errors.retailPrice && 'border-red-500/70')}
                           placeholder="0"
                         />
                       </div>
-                      {errors.retailPrice && <p className="mt-1.5 text-sm text-red-400">{errors.retailPrice}</p>}
+                      {errors.retailPrice && <p className={errorClass}>{errors.retailPrice}</p>}
                     </div>
                     <div>
-                      <label htmlFor="product-wholesale-price" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Venta mayorista <span className="text-zinc-400 dark:text-zinc-500">*</span>
+                      <label htmlFor="product-wholesale-price" className={labelClass}>
+                        Mayorista <span className="text-zinc-400">*</span>
                       </label>
                       <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-zinc-400 dark:text-zinc-500">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-zinc-400 dark:text-zinc-500">
                           $
                         </span>
                         <input
@@ -615,37 +622,34 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
                           type="text"
                           value={formatMoneyInput(formData.wholesalePrice)}
                           onChange={e => handleInputChange('wholesalePrice', parseMoneyInput(e.target.value))}
-                          className={cn(inputBase, 'pl-8', errors.wholesalePrice && 'border-red-500/70')}
+                          className={cn(inputBase, 'pl-6', errors.wholesalePrice && 'border-red-500/70')}
                           placeholder="0"
                         />
                       </div>
-                      {errors.wholesalePrice && <p className="mt-1.5 text-sm text-red-400">{errors.wholesalePrice}</p>}
+                      {errors.wholesalePrice && <p className={errorClass}>{errors.wholesalePrice}</p>}
                     </div>
                   </div>
                 </SectionCard>
 
                 <SectionCard icon={AlertTriangle} title="Estado del producto" iconClassName="text-amber-600 dark:text-amber-400">
-                  <div className="flex flex-wrap gap-2">
-                    {(['active', 'inactive', 'discontinued', 'out_of_stock'] as const).map(status => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => handleInputChange('status', status)}
-                        className={cn(
-                          'rounded-lg border px-3 py-2 text-sm font-medium transition-all',
-                          formData.status === status
-                            ? 'border-zinc-300 bg-white text-zinc-950 shadow-sm'
-                            : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-600/80 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-800'
-                        )}
-                      >
-                        {getStatusLabel(status)}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3">
-                    <Badge variant="outline" className={cn('border px-2 py-0.5 text-xs font-normal', getStatusColor(formData.status))}>
-                      {getStatusLabel(formData.status)}
-                    </Badge>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {statusOptions.map(option => {
+                      const selected = formData.status === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handleInputChange('status', option.value)}
+                          aria-pressed={selected}
+                          className={cn(
+                            'inline-flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs font-semibold transition-all',
+                            selected ? option.selected : option.idle
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 </SectionCard>
               </div>
@@ -654,24 +658,16 @@ export function ProductModal({ isOpen, onClose, onSave, product, categories }: P
         </div>
 
         <footer
-          className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-indigo-100/80 bg-white/95 px-4 py-4 backdrop-blur-sm md:px-6 dark:border-indigo-900/40 dark:bg-zinc-950/95"
-          style={{ paddingBottom: `max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))` }}
+          className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-700 dark:bg-zinc-950"
+          style={{ paddingBottom: `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))` }}
         >
-          <button
-            type="button"
-            onClick={handleClose}
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-transparent px-5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-500/80 dark:text-white dark:hover:bg-zinc-800/80"
-          >
+          <Button type="button" variant="destructive" onClick={handleClose} className="h-9 px-4">
             Cancelar
-          </button>
-          <button
-            type="submit"
-            form={formId}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
-          >
+          </Button>
+          <Button type="submit" form={formId} className="h-9 px-5">
             <Package className="h-4 w-4 shrink-0" strokeWidth={1.75} />
             {isEdit ? 'Guardar cambios' : 'Crear producto'}
-          </button>
+          </Button>
         </footer>
       </div>
     </div>

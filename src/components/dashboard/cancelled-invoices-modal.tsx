@@ -435,7 +435,7 @@ export function CancelledInvoicesModal({ isOpen, onClose, sales, allSales }: Can
             paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
           }}
         >
-          <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-10 min-w-[7rem]">
+          <Button type="button" variant="destructive" size="sm" onClick={onClose} className="h-10 min-w-[7rem]">
             Cerrar
           </Button>
         </div>

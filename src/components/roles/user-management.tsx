@@ -141,11 +141,9 @@ const sectionTitleClass =
 const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
 const sectionContentClass = 'space-y-3 p-4 md:p-6 md:pt-4'
 
-/** Sin glow azul de marca: mismo criterio que ventas / créditos */
-const headerPrimaryButtonClass =
-  'h-9 shrink-0 gap-2 rounded-lg border-0 bg-zinc-900 px-4 text-sm font-medium text-white shadow-none hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/35 dark:border-0 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:focus-visible:ring-zinc-500/35 [&_svg]:text-inherit'
-const primarySubmitButtonClass =
-  'border-0 bg-zinc-900 text-white hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-zinc-400/35 dark:border-0 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:focus-visible:ring-zinc-500/35'
+/** CTAs de acción: emerald sólido (mismo patrón ERP) */
+const headerPrimaryButtonClass = 'h-9 shrink-0 gap-2 px-4'
+const primarySubmitButtonClass = ''
 const activeUserBadgeClass =
   'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/[0.12] dark:text-emerald-300'
 const inactiveUserBadgeClass =
@@ -818,7 +816,7 @@ export function UserManagement() {
                 >
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
                     onClick={() => {
                       setIsCreateModalOpen(false)
@@ -1393,7 +1391,7 @@ export function UserManagement() {
                 >
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
                     onClick={() => setIsEditModalOpen(false)}
                     className="h-10 w-full sm:w-auto"

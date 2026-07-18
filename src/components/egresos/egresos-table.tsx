@@ -18,7 +18,6 @@ import {
   Edit,
   Ban,
   Wallet,
-  CircleDollarSign,
 } from 'lucide-react'
 import { Egreso } from '@/types'
 import {
@@ -92,11 +91,6 @@ export function EgresosTable({
     })
   }, [egresos, search])
 
-  const totalActive = useMemo(
-    () => filtered.filter((e) => e.status === 'active').reduce((s, e) => s + e.amount, 0),
-    [filtered]
-  )
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -117,33 +111,11 @@ export function EgresosTable({
             </Button>
           )}
           {canCreate && onCreate && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onCreate}
-              className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
-            >
+            <Button type="button" size="sm" onClick={onCreate}>
               <Plus className="mr-1.5 h-4 w-4" />
               Nuevo egreso
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className={cn(cardShell, 'p-4')}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300">
-            <CircleDollarSign className="h-5 w-5" strokeWidth={1.5} />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              Total (vista actual)
-            </p>
-            <p className="text-xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-              {formatCOP(totalActive)}
-            </p>
-          </div>
-          <p className="ml-auto text-sm text-zinc-500">{filtered.length} registro(s)</p>
         </div>
       </div>
 

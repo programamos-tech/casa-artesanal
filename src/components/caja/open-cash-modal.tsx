@@ -104,12 +104,11 @@ export function OpenCashModal({ isOpen, onClose, onOpened }: OpenCashModalProps)
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+          <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
           <Button
             type="button"
-            className="bg-emerald-700 text-white hover:bg-emerald-800"
             onClick={() => void handleSubmit()}
             disabled={saving}
           >

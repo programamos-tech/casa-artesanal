@@ -21,10 +21,10 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { cardShell } from '@/lib/card-shell'
 import { Sale, StoreStockTransfer } from '@/types'
 
-const panel =
-  'rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50'
+const panel = cn(cardShell, 'overflow-hidden shadow-sm')
 
 const iconMuted = 'shrink-0 text-zinc-500 dark:text-zinc-300'
 
@@ -162,7 +162,7 @@ export function TransferDetailPageView({
     })
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
       <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
         <div className="flex w-full min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-5 md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">

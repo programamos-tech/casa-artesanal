@@ -119,7 +119,7 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
                 Administra los roles y permisos del sistema
               </p>
             </div>
-            <Button onClick={onCreate} className="bg-brand-600 hover:bg-brand-700 text-white">
+            <Button onClick={onCreate}>
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Rol
             </Button>
@@ -166,10 +166,7 @@ export function RolesTable({ roles, onView, onEdit, onDelete, onCreate }: RolesT
               <p className="text-gray-500 dark:text-gray-400 mb-4">
                 Comienza creando un nuevo rol
               </p>
-              <Button 
-                onClick={onCreate}
-                className="bg-brand-600 hover:bg-brand-700 text-white"
-              >
+              <Button onClick={onCreate}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Rol
               </Button>

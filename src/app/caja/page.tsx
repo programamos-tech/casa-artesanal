@@ -106,23 +106,13 @@ export default function CajaPage() {
                 Actualizar
               </Button>
               {!openSession && canOpen && (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="bg-emerald-700 text-white hover:bg-emerald-800"
-                  onClick={() => setOpenModal(true)}
-                >
+                <Button type="button" size="sm" onClick={() => setOpenModal(true)}>
                   <LockOpen className="h-3.5 w-3.5" />
                   Abrir caja
                 </Button>
               )}
               {openSession && canClose && (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
-                  onClick={() => setCloseModal(true)}
-                >
+                <Button type="button" size="sm" onClick={() => setCloseModal(true)}>
                   <Lock className="h-3.5 w-3.5" />
                   Cerrar caja
                 </Button>
@@ -170,26 +160,93 @@ export default function CajaPage() {
                 />
               </div>
               {live && (
-                <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/40 md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Desglose ingresos</p>
-                    <Line label="Ventas efectivo" value={money(live.salesCash)} />
-                    <Line label="Nequi" value={money(live.salesNequi)} />
-                    <Line label="Bancolombia" value={money(live.salesBancolombia)} />
-                    <Line label="Transferencia" value={money(live.salesTransfer)} />
-                    <Line label="Tarjeta" value={money(live.salesCard)} />
-                    <Line label="Crédito (facturado)" value={money(live.salesCredit)} />
-                    <Line label="Abonos crédito (efectivo)" value={money(live.creditAbonosCash)} />
-                    <Line label="Abonos crédito (otros)" value={money(live.creditAbonosOther)} />
-                    <Line label="Ventas" value={`${live.salesCount}`} muted />
+                <div className="space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {/* Ingresos */}
+                    <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+                          Entra dinero
+                        </p>
+                        <p className="text-sm font-bold tabular-nums text-emerald-900 dark:text-emerald-200">
+                          {money(live.totalIngresos)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 text-sm">
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            Efectivo
+                          </p>
+                          <Line label="Ventas en efectivo" value={money(live.salesCash)} />
+                          <Line label="Abonos de crédito" value={money(live.creditAbonosCash)} />
+                        </div>
+
+                        <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
+                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            Digital / tarjeta
+                          </p>
+                          <div className="space-y-1.5">
+                            <Line label="Nequi" value={money(live.salesNequi)} />
+                            <Line label="Bancolombia" value={money(live.salesBancolombia)} />
+                            <Line label="Transferencia" value={money(live.salesTransfer)} />
+                            <Line label="Tarjeta" value={money(live.salesCard)} />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
+                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            Crédito
+                          </p>
+                          <div className="space-y-1.5">
+                            <Line label="Facturado a crédito" value={money(live.salesCredit)} />
+                            <Line label="Abonos (otros medios)" value={money(live.creditAbonosOther)} />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
+                          <Line label="Cantidad de ventas" value={`${live.salesCount}`} muted />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Egresos */}
+                    <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 p-4 dark:border-rose-900/40 dark:bg-rose-950/20">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-rose-800 dark:text-rose-300">
+                          Sale dinero
+                        </p>
+                        <p className="text-sm font-bold tabular-nums text-rose-900 dark:text-rose-200">
+                          {money(live.totalEgresos)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 text-sm">
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            Por medio
+                          </p>
+                          <Line label="En efectivo" value={money(live.egresosCash)} />
+                          <Line label="Otros medios" value={money(live.egresosOther)} />
+                        </div>
+
+                        <div className="border-t border-rose-200/70 pt-3 dark:border-rose-900/40">
+                          <Line label="Cantidad de egresos" value={`${live.egresosCount}`} muted />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Desglose egresos</p>
-                    <Line label="Egresos en efectivo" value={money(live.egresosCash)} />
-                    <Line label="Egresos otros medios" value={money(live.egresosOther)} />
-                    <Line label="Cantidad de egresos" value={`${live.egresosCount}`} muted />
-                    <p className="pt-3 text-xs text-zinc-500">
-                      Efectivo esperado = fondo + ventas/abonos en efectivo − egresos en efectivo.
+
+                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/25">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                      Cómo se calcula el efectivo esperado
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">
+                      <span className="font-semibold">Fondo inicial</span>
+                      {' + '}
+                      <span className="font-semibold">ventas/abonos en efectivo</span>
+                      {' − '}
+                      <span className="font-semibold">egresos en efectivo</span>
                     </p>
                   </div>
                 </div>

@@ -29,7 +29,6 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { GlobalSearchService, type GlobalSearchHit } from '@/lib/global-search-service'
 import { GlobalSearchDropdown } from '@/components/layout/global-search-dropdown'
 import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
-import { canAccessAllStores } from '@/lib/store-helper'
 import {
   loadTransferAlerts,
   resolveUserStoreId,
@@ -112,9 +111,8 @@ export function AppTopNav() {
       }
       try {
         const storeId = resolveUserStoreId(user.storeId)
-        const data = await loadTransferAlerts(storeId, {
-          allStores: canAccessAllStores(user),
-        })
+        // Las notificaciones siempre pertenecen a la tienda activa, incluso para superadmin.
+        const data = await loadTransferAlerts(storeId)
         if (!cancelled) {
           setApprovals(data.approvals)
           setReceptions(data.receptions)
@@ -344,7 +342,7 @@ export function AppTopNav() {
               className={cn(
                 iconBtn,
                 'relative overflow-visible',
-                alertCount > 0 && 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
+                alertCount > 0 && 'text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300'
               )}
               title={
                 alertCount > 0
@@ -360,12 +358,12 @@ export function AppTopNav() {
                 strokeWidth={alertCount > 0 ? 2.25 : 1.75}
               />
               {alertCount > 0 && (
-                <>
-                  <span className="absolute -right-0.5 -top-0.5 h-[18px] w-[18px] animate-ping rounded-full bg-red-400/70" aria-hidden />
-                  <span className="absolute -right-0.5 -top-0.5 z-10 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950">
-                    {alertCount > 99 ? '99+' : alertCount}
-                  </span>
-                </>
+                <span
+                  className="casa-artesanal-preserve-surface absolute -right-1 -top-1 z-20 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950"
+                  aria-hidden
+                >
+                  {alertCount > 99 ? '99+' : alertCount}
+                </span>
               )}
             </button>
             {bellOpen && (

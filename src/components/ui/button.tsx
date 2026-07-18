@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { appBtnCancelClass, appBtnPrimaryClass } from '@/lib/app-button'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
@@ -6,8 +7,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Estilo de marca: primario = superficie clara + texto oscuro; secundario = borde fino + fondo transparente.
- * Sin sombra ni “lift” — transiciones suaves.
+ * Estilo ERP: primario = confirmar/crear (emerald); destructive = cancelar/eliminar (rose).
+ * Color por función, sólido, texto blanco en bold.
  */
 export function Button({
   className,
@@ -18,19 +19,17 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-1.5 font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-zinc-500/40 dark:focus-visible:ring-offset-zinc-950',
-        variant === 'default' &&
-          'rounded-lg border border-zinc-300 bg-zinc-100 text-zinc-900 shadow-none hover:border-zinc-400 hover:bg-white dark:border-brand-600/85 dark:bg-brand-500 dark:text-white dark:hover:border-brand-500 dark:hover:bg-brand-400',
-        variant === 'destructive' &&
-          'rounded-lg border border-red-600/90 bg-red-600 text-white shadow-none hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700',
+        'inline-flex items-center justify-center gap-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-zinc-500/40 dark:focus-visible:ring-offset-zinc-950',
+        variant === 'default' && cn('rounded-lg', appBtnPrimaryClass),
+        variant === 'destructive' && cn('rounded-lg', appBtnCancelClass),
         variant === 'outline' &&
-          'rounded-lg border border-zinc-300 bg-white text-zinc-800 shadow-none hover:bg-zinc-50 dark:border-brand-700/70 dark:bg-zinc-900/65 dark:text-brand-200 dark:hover:border-brand-600/80 dark:hover:bg-zinc-800',
+          'rounded-lg border border-zinc-300 bg-white font-semibold text-zinc-800 shadow-none hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
         variant === 'secondary' &&
-          'rounded-lg border border-transparent bg-zinc-200/90 text-zinc-900 shadow-none hover:bg-zinc-300/80 dark:bg-brand-900/30 dark:text-brand-200 dark:hover:bg-brand-900/45',
+          'rounded-lg border border-transparent bg-zinc-200/90 font-semibold text-zinc-900 shadow-none hover:bg-zinc-300/80 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
         variant === 'ghost' &&
-          'rounded-lg border border-transparent text-zinc-700 shadow-none hover:bg-zinc-100 dark:text-brand-200 dark:hover:bg-brand-900/30',
+          'rounded-lg border border-transparent font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800',
         variant === 'link' &&
-          'rounded-md text-zinc-600 shadow-none underline-offset-4 hover:underline dark:text-brand-300',
+          'rounded-md font-medium text-zinc-600 shadow-none underline-offset-4 hover:underline dark:text-zinc-300',
         {
           'min-h-10 px-5 text-sm': size === 'default',
           'h-9 px-3.5 text-sm': size === 'sm',

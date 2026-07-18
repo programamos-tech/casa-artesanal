@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   type LucideIcon,
 } from 'lucide-react'
-import { usePermissions } from '@/hooks/usePermissions'
+import { useAuth } from '@/contexts/auth-context'
 import {
   OwnerAssistantService,
   formatAssistantMoney,
@@ -167,7 +167,7 @@ function BotMessageContent({ payload }: { payload: BotPayload }) {
 
 export function OwnerAssistantBubble() {
   const pathname = usePathname()
-  const { canView } = usePermissions()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
@@ -181,7 +181,7 @@ export function OwnerAssistantBubble() {
     pathname === '/login' ||
     pathname === '/select-store' ||
     pathname.startsWith('/tienda')
-  const showAssistant = canView('dashboard') && !hideOnRoute
+  const showAssistant = user?.role === 'superadmin' && !hideOnRoute
 
   const hasUserMessage = messages.some(m => m.role === 'user')
   const showQuickOptions = !hasUserMessage && !loading && !awaitingProductSearch

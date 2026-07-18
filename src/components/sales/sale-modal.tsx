@@ -1775,8 +1775,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
             <Button
               onClick={handleClose}
               disabled={isSaving}
-              variant="outline"
-              className="border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white font-medium px-6 py-2.5"
+              variant="destructive"
             >
               Cancelar
             </Button>
@@ -1806,7 +1805,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                     !paymentMethod ||
                     hasAcquisitionCostIssues
                   }
-                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-700 hover:bg-emerald-800 text-white"
+                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? 'Creando venta…' : 'Crear Venta'}
                 </Button>
@@ -1838,7 +1837,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                     paymentMethod === 'pending' ||
                     hasAcquisitionCostIssues
                   }
-                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-700 hover:bg-emerald-800 text-white"
+                  className="font-medium px-6 py-2.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? 'Facturando…' : 'Finalizar factura'}
                 </Button>

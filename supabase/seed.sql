@@ -15,6 +15,16 @@ INSERT INTO users (name, email, password, role, permissions, is_active) VALUES
 ('Admin Casa Artesanal', 'tech@programamos.com', 'admin123', 'superadmin', '["all"]'::jsonb, true)
 ON CONFLICT (email) DO NOTHING;
 
+-- 2b) Super admin Efraín (pedido local)
+INSERT INTO users (name, email, password, role, permissions, is_active) VALUES
+('Efraín Super Admin', 'efrain@casa-artesnal.com', 'admin123', 'superadmin', '["all"]'::jsonb, true)
+ON CONFLICT (email) DO UPDATE SET
+  name = EXCLUDED.name,
+  password = EXCLUDED.password,
+  role = EXCLUDED.role,
+  permissions = EXCLUDED.permissions,
+  is_active = true;
+
 -- 3) Confirmacion
 SELECT 'Seed local de Casa Artesanal aplicado' as message,
        (SELECT COUNT(*) FROM users) as usuarios_creados;

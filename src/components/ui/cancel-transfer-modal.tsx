@@ -110,7 +110,7 @@ export function CancelTransferModal({
           </Button>
           <Button
             onClick={handleConfirm}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            variant="destructive"
             disabled={!reason.trim() || isLoading}
           >
             {isLoading ? 'Cancelando...' : 'Cancelar Traslado'}

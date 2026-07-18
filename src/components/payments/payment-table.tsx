@@ -206,7 +206,7 @@ export function CreditTable({
               <Button
                 onClick={onCreate}
                 size="sm"
-                className="flex-1 border-transparent bg-brand-700 text-white hover:bg-brand-800 sm:flex-none dark:bg-brand-600 dark:hover:bg-brand-500 [&_svg]:text-white"
+                className="flex-1 sm:flex-none"
               >
                 <Plus className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline">Nuevo crédito</span>
