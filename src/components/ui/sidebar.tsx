@@ -219,13 +219,13 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
               href="/dashboard"
               className="relative flex w-full flex-col items-center gap-2 px-1 transition-opacity hover:opacity-90"
             >
-              <div className="flex w-full min-h-[6.5rem] items-center justify-center">
+              <div className="flex h-[5.5rem] w-full items-center justify-center overflow-hidden">
                 <Image
                   src={APP_BRAND_LOGO}
                   alt={APP_NAME}
-                  width={280}
-                  height={120}
-                  className="h-[6.5rem] w-[96%] max-w-none object-contain object-center"
+                  width={840}
+                  height={840}
+                  className="h-[10rem] w-full translate-y-3 object-contain object-[center_42%]"
                   priority
                   unoptimized
                 />
