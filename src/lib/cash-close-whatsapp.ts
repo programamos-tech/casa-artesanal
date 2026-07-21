@@ -99,15 +99,22 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
   const diffLabel =
     input.difference === 0 ? 'Cuadra' : input.difference > 0 ? 'Sobra' : 'Falta'
 
+  const abonosCash = input.creditAbonosCash || 0
+  const abonosOther = input.creditAbonosOther || 0
+  const abonosTotal = abonosCash + abonosOther
+
   const lines: string[] = [
     '*CIERRE DE CAJA*',
     input.storeName,
     `Apertura: ${formatDateTimeCo(input.openedAt)}`,
     `Cierre: ${formatDateTimeCo(input.closedAt)}`,
     '',
-    `Vendido: ${moneyCop(input.totalIngresos)} (${input.salesCount} facturas)`,
-    `Efectivo: ${moneyCop(input.salesCash)}`,
-    `Transferencias: ${moneyCop(transfers)}`,
+    `Ingresos: ${moneyCop(input.totalIngresos)} (${input.salesCount} facturas)`,
+    `Ventas efectivo: ${moneyCop(input.salesCash)}`,
+    `Ventas transferencias: ${moneyCop(transfers)}`,
+    `Abonos créditos: ${moneyCop(abonosTotal)}`,
+    `  · Efectivo: ${moneyCop(abonosCash)}`,
+    `  · Otros medios: ${moneyCop(abonosOther)}`,
     `Egresos: ${moneyCop(input.totalEgresos)} (${input.egresosCount})`,
     `Caja contada: ${moneyCop(input.countedCash)}`,
     `Diferencia: ${moneyCop(input.difference)} (${diffLabel})`,

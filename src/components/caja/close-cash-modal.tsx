@@ -200,6 +200,34 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
             </div>
           </div>
 
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              Abonos de créditos (turno)
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-xs text-zinc-500">En efectivo</p>
+                <p className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  {money(summary?.creditAbonosCash || 0)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-zinc-500">Suma al efectivo esperado</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">Otros medios</p>
+                <p className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  {money(summary?.creditAbonosOther || 0)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-zinc-500">Nequi, transferencia, etc.</p>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-zinc-200 pt-2 dark:border-zinc-700">
+              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Total abonos</span>
+              <span className="font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
+                {money((summary?.creditAbonosCash || 0) + (summary?.creditAbonosOther || 0))}
+              </span>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Efectivo contado en caja</Label>
             <input
