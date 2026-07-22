@@ -258,11 +258,11 @@ export class CashSessionsService {
         }
       }
 
-      // Abonos a créditos en la ventana (mismo filtro created_at que ventas;
-      // no usar .or() con ISO sin comillas: PostgREST lo rompe y los abonos salen en 0)
+      // Abonos a créditos en la ventana (mismo filtro created_at que ventas).
+      // Nota: payment_records NO tiene cash_amount/transfer_amount; en mixto se crean 2 filas.
       let abonosQuery = supabaseAdmin
         .from('payment_records')
-        .select('amount, payment_method, cash_amount, transfer_amount, status, created_at, store_id')
+        .select('amount, payment_method, status, created_at, store_id')
         .gte('created_at', from)
         .lte('created_at', to)
         .neq('status', 'cancelled')
@@ -276,11 +276,8 @@ export class CashSessionsService {
       for (const a of abonos || []) {
         const method = String(a.payment_method || '')
         const amount = Number(a.amount) || 0
-        if (method === 'cash') {
+        if (method === 'cash' || method === 'efectivo') {
           summary.creditAbonosCash += amount
-        } else if (method === 'mixed') {
-          summary.creditAbonosCash += Number(a.cash_amount) || 0
-          summary.creditAbonosOther += Number(a.transfer_amount) || Math.max(0, amount - (Number(a.cash_amount) || 0))
         } else {
           summary.creditAbonosOther += amount
         }
