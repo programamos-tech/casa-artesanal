@@ -258,19 +258,22 @@ export class CashSessionsService {
         }
       }
 
-      // Abonos a créditos en la ventana
+      // Abonos a créditos en la ventana (mismo filtro created_at que ventas;
+      // no usar .or() con ISO sin comillas: PostgREST lo rompe y los abonos salen en 0)
       let abonosQuery = supabaseAdmin
         .from('payment_records')
-        .select('amount, payment_method, cash_amount, transfer_amount, status, created_at, store_id, payment_date')
-        .or(`and(created_at.gte.${from},created_at.lte.${to}),and(payment_date.gte.${from.slice(0, 10)},payment_date.lte.${to.slice(0, 10)})`)
+        .select('amount, payment_method, cash_amount, transfer_amount, status, created_at, store_id')
+        .gte('created_at', from)
+        .lte('created_at', to)
+        .neq('status', 'cancelled')
 
       abonosQuery = applySalesStoreFilter(abonosQuery, storeId)
-      const { data: abonos } = await abonosQuery
+      const { data: abonos, error: abonosError } = await abonosQuery
+      if (abonosError) {
+        console.error('cash summary abonos:', abonosError)
+      }
 
       for (const a of abonos || []) {
-        if (a.status === 'cancelled') continue
-        const created = a.created_at || `${a.payment_date}T12:00:00.000Z`
-        if (created < from || created > to) continue
         const method = String(a.payment_method || '')
         const amount = Number(a.amount) || 0
         if (method === 'cash') {
