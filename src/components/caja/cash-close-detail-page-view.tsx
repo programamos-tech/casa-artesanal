@@ -138,17 +138,22 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Ingresos por medio
+                Ingresos por medio (dinero que entró)
               </p>
-              <Line label="Efectivo" value={money(report.salesCash)} />
+              <Line label="Efectivo (ventas)" value={money(report.salesCash)} />
               <Line label="Nequi" value={money(report.salesNequi)} />
               <Line label="Bancolombia" value={money(report.salesBancolombia)} />
               <Line label="Transferencia" value={money(report.salesTransfer)} />
               <Line label="Tarjeta" value={money(report.salesCard)} />
-              <Line label="Crédito facturado" value={money(report.salesCredit)} />
               <Line label="Otros" value={money(report.salesOther)} />
               <Line label="Abonos crédito (efectivo)" value={money(report.creditAbonosCash)} />
               <Line label="Abonos crédito (otros)" value={money(report.creditAbonosOther)} />
+              <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                  Aparte (no suma a ingresos)
+                </p>
+                <Line label="Facturado a crédito" value={money(report.salesCredit)} />
+              </div>
             </div>
             <div className="space-y-1.5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">

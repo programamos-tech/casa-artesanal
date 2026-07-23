@@ -200,7 +200,6 @@ export class CashSessionsService {
       }
 
       const saleRows = sales || []
-      summary.salesCount = saleRows.length
       const mixedIds = saleRows.filter((s) => s.payment_method === 'mixed').map((s) => s.id)
 
       const mixedCashBySale = new Map<string, number>()
@@ -229,6 +228,14 @@ export class CashSessionsService {
         const total = Number(sale.total) || 0
         const method = String(sale.payment_method || '')
 
+        // Crédito: no entra dinero; se registra aparte (no suma a ventas cobradas ni a ingresos)
+        if (method === 'credit') {
+          summary.salesCredit += total
+          continue
+        }
+
+        summary.salesCount += 1
+
         if (method === 'cash') {
           summary.salesCash += total
         } else if (method === 'nequi') {
@@ -239,8 +246,6 @@ export class CashSessionsService {
           summary.salesTransfer += total
         } else if (method === 'card') {
           summary.salesCard += total
-        } else if (method === 'credit') {
-          summary.salesCredit += total
         } else if (method === 'mixed') {
           summary.salesCash += mixedCashBySale.get(sale.id) || 0
           const bag = mixedOtherBySale.get(sale.id) || {}
@@ -304,6 +309,7 @@ export class CashSessionsService {
         }
       }
 
+      // Solo dinero que realmente entró (ventas cobradas + abonos). El crédito facturado va aparte.
       summary.totalIngresos =
         summary.salesCash +
         summary.salesNequi +
@@ -311,7 +317,6 @@ export class CashSessionsService {
         summary.salesTransfer +
         summary.salesCard +
         summary.salesOther +
-        summary.salesCredit +
         summary.creditAbonosCash +
         summary.creditAbonosOther
 
@@ -424,7 +429,9 @@ export class CashSessionsService {
     salesQuery = applySalesStoreFilter(salesQuery, storeId)
     const { data: salesRows } = await salesQuery
 
-    const sales: CashCloseSaleLine[] = (salesRows || []).map((s: any) => ({
+    const sales: CashCloseSaleLine[] = (salesRows || [])
+      .filter((s: any) => String(s.payment_method || '') !== 'credit')
+      .map((s: any) => ({
       invoiceNumber: s.invoice_number || 'S/N',
       clientName: s.client_name || 'Cliente',
       paymentMethod: s.payment_method || '',

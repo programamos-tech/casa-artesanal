@@ -192,21 +192,12 @@ export default function CajaPage() {
                             <Line label="Bancolombia" value={money(live.salesBancolombia)} />
                             <Line label="Transferencia" value={money(live.salesTransfer)} />
                             <Line label="Tarjeta" value={money(live.salesCard)} />
+                            <Line label="Abonos crédito (otros medios)" value={money(live.creditAbonosOther)} />
                           </div>
                         </div>
 
                         <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                            Crédito
-                          </p>
-                          <div className="space-y-1.5">
-                            <Line label="Facturado a crédito" value={money(live.salesCredit)} />
-                            <Line label="Abonos (otros medios)" value={money(live.creditAbonosOther)} />
-                          </div>
-                        </div>
-
-                        <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
-                          <Line label="Cantidad de ventas" value={`${live.salesCount}`} muted />
+                          <Line label="Ventas cobradas" value={`${live.salesCount}`} muted />
                         </div>
                       </div>
                     </div>
@@ -238,16 +229,31 @@ export default function CajaPage() {
                     </div>
                   </div>
 
+                  {(live.salesCredit || 0) > 0 && (
+                    <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-sky-800 dark:text-sky-300">
+                          Facturado a crédito (aparte)
+                        </p>
+                        <p className="text-sm font-bold tabular-nums text-sky-900 dark:text-sky-200">
+                          {money(live.salesCredit)}
+                        </p>
+                      </div>
+                      <p className="text-xs text-sky-900/80 dark:text-sky-200/80">
+                        No suma a ingresos ni al efectivo esperado. Solo se cuentan los abonos cuando el cliente paga.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/25">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
                       Cómo se calcula el efectivo esperado
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">
-                      <span className="font-semibold">Fondo inicial</span>
-                      {' + '}
-                      <span className="font-semibold">ventas/abonos en efectivo</span>
+                      <span className="font-semibold">Ventas/abonos en efectivo</span>
                       {' − '}
                       <span className="font-semibold">egresos en efectivo</span>
+                      {' (sin fondo inicial ni ventas a crédito)'}
                     </p>
                   </div>
                 </div>
