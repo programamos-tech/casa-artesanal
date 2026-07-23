@@ -46,7 +46,7 @@ const formatDateTime = formatDateTimeCo
 export default function CajaPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { canCreate, canCancel } = usePermissions()
+  const { canCreate, canCancel, canEdit } = usePermissions()
   const [openSession, setOpenSession] = useState<CashSession | null>(null)
   const [history, setHistory] = useState<CashSession[]>([])
   const [live, setLive] = useState<CashSessionLiveSummary | null>(null)
@@ -56,7 +56,8 @@ export default function CajaPage() {
   const storeId = getCashRegisterStoreId()
 
   const canOpen = canCreate('cash_register')
-  const canClose = canCancel('cash_register') || canCreate('cash_register')
+  const canClose =
+    canCreate('cash_register') || canCancel('cash_register') || canEdit('cash_register')
   const closedSessions = history.filter((s) => s.status === 'closed')
 
   const load = useCallback(async () => {

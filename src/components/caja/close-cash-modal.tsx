@@ -128,34 +128,43 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
 
   const handleSubmit = async () => {
     if (!user?.id) {
-      toast.error('Sesión no válida')
+      toast.error('Sesión no válida. Cierra sesión e inicia de nuevo.')
       return
     }
-    // Abrir ya las pestañas (gesto del usuario) para Efrain y copia de prueba
-    const previewWindows = [
-      window.open('about:blank', '_blank'),
-      window.open('about:blank', '_blank'),
-    ].filter((w): w is Window => Boolean(w))
     setSaving(true)
     try {
-      const result = await CashSessionsService.closeSession({
-        sessionId: session.id,
-        countedCash: counted,
-        notes,
-        userId: user.id,
-        userName: user.name,
+      const res = await fetch('/api/caja/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: session.id,
+          countedCash: counted,
+          notes,
+          userId: user.id,
+          userName: user.name,
+        }),
       })
-      if (!result.success) {
-        for (const w of previewWindows) w.close()
-        toast.error(result.error || 'No se pudo cerrar')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.session?.id) {
+        toast.error(
+          typeof data?.error === 'string' ? data.error : 'No se pudo cerrar la caja'
+        )
         return
       }
-      if (result.session?.id) {
-        await notifyWhatsApp(result.session.id, previewWindows)
-      } else {
-        for (const w of previewWindows) w.close()
-      }
+
+      // Abrir WhatsApp después del cierre (gesto ya ocurrió; si el navegador bloquea, la caja ya quedó cerrada)
+      const previewWindows = [
+        window.open('about:blank', '_blank'),
+        window.open('about:blank', '_blank'),
+      ].filter((w): w is Window => Boolean(w))
+
+      await notifyWhatsApp(data.session.id, previewWindows)
       await onClosed()
+    } catch (error) {
+      console.error('close cash:', error)
+      toast.error(
+        error instanceof Error ? error.message : 'Error inesperado al cerrar la caja'
+      )
     } finally {
       setSaving(false)
     }
