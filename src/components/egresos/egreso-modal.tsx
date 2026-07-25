@@ -327,7 +327,7 @@ export function EgresoModal({
     }
     if (exceedsChannel && channelAvail) {
       toast.error(
-        `En ${channelAvail.label} del mes solo hay ${channelAvail.available.toLocaleString('es-CO')} disponibles`
+        `No hay suficiente dinero en ${channelAvail.label} este mes para ese monto`
       )
       return
     }
@@ -510,38 +510,24 @@ export function EgresoModal({
                     'mt-2 rounded-lg border px-3 py-2 text-xs',
                     exceedsChannel
                       ? 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200'
-                      : 'border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
+                      : channelAvail && !channelAvail.loading && amountValue > 0
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100'
+                        : 'border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
                   )}
                 >
                   {channelAvail?.loading ? (
-                    <p>Consultando disponible del mes…</p>
-                  ) : channelAvail ? (
-                    <>
-                      <p className="font-semibold">
-                        {channelAvail.label}: disponible{' '}
-                        {channelAvail.available.toLocaleString('es-CO', {
-                          style: 'currency',
-                          currency: 'COP',
-                          maximumFractionDigits: 0,
-                        })}
-                      </p>
-                      <p className="mt-0.5 opacity-90">
-                        En el mes entró{' '}
-                        {channelAvail.inAmount.toLocaleString('es-CO', {
-                          style: 'currency',
-                          currency: 'COP',
-                          maximumFractionDigits: 0,
-                        })}
-                        . No puedes egresar más de lo recaudado en este canal.
-                      </p>
-                      {exceedsChannel ? (
-                        <p className="mt-1 font-bold">
-                          El monto supera lo disponible en {channelAvail.label}.
-                        </p>
-                      ) : null}
-                    </>
+                    <p>Verificando si hay dinero en este canal…</p>
+                  ) : exceedsChannel && channelAvail ? (
+                    <p className="font-semibold">
+                      No hay suficiente dinero en {channelAvail.label} este mes para ese monto.
+                      Elige otro canal o baja el valor.
+                    </p>
+                  ) : channelAvail && amountValue > 0 ? (
+                    <p className="font-semibold">
+                      Sí hay dinero en {channelAvail.label} para este egreso.
+                    </p>
                   ) : (
-                    <p>No se pudo consultar el saldo del canal.</p>
+                    <p>Elige el canal; el sistema valida si alcanza con lo recaudado del mes.</p>
                   )}
                   <p className="mt-1 opacity-80">
                     Este egreso no baja el efectivo esperado del cierre diario de caja.

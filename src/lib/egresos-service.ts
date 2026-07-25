@@ -196,7 +196,7 @@ export class EgresosService {
           const label = getEgresoPaymentLabel(paymentMethod)
           return {
             success: false,
-            error: `En ${label} del mes solo hay disponible ${avail.available.toLocaleString('es-CO')} (entró ${avail.inAmount.toLocaleString('es-CO')}). No puedes egresar ${amount.toLocaleString('es-CO')}.`,
+            error: `No hay suficiente dinero en ${label} este mes para ese monto. Elige otro canal o baja el valor.`,
           }
         }
       }
@@ -299,7 +299,7 @@ export class EgresosService {
           const label = getEgresoPaymentLabel(nextMethod)
           return {
             success: false,
-            error: `En ${label} del mes solo hay disponible ${avail.available.toLocaleString('es-CO')} (entró ${avail.inAmount.toLocaleString('es-CO')}). No puedes egresar ${nextAmount.toLocaleString('es-CO')}.`,
+            error: `No hay suficiente dinero en ${label} este mes para ese monto. Elige otro canal o baja el valor.`,
           }
         }
       }
