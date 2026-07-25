@@ -19,10 +19,12 @@ import {
   Ban,
   Wallet,
 } from 'lucide-react'
-import { Egreso } from '@/types'
+import { Egreso, EgresoKind } from '@/types'
 import {
   EGRESO_CONCEPTS,
+  formatPeriodMonth,
   getEgresoConceptLabel,
+  getEgresoKindLabel,
   getEgresoPaymentLabel,
 } from '@/lib/egreso-concepts'
 import { cardShell } from '@/lib/card-shell'
@@ -42,6 +44,8 @@ interface EgresosTableProps {
   onStatusFilterChange: (v: 'active' | 'cancelled' | 'all') => void
   conceptFilter: string
   onConceptFilterChange: (v: string) => void
+  kindFilter: EgresoKind | 'all'
+  onKindFilterChange: (v: EgresoKind | 'all') => void
 }
 
 function formatCOP(value: number) {
@@ -77,6 +81,8 @@ export function EgresosTable({
   onStatusFilterChange,
   conceptFilter,
   onConceptFilterChange,
+  kindFilter,
+  onKindFilterChange,
 }: EgresosTableProps) {
   const [search, setSearch] = useState('')
 
@@ -87,9 +93,20 @@ export function EgresosTable({
       const label = getEgresoConceptLabel(e.concept, e.conceptOther).toLowerCase()
       const notes = (e.description || '').toLowerCase()
       const by = (e.createdByName || '').toLowerCase()
-      return label.includes(q) || notes.includes(q) || by.includes(q)
+      const kind = getEgresoKindLabel(e.expenseKind || 'caja').toLowerCase()
+      return label.includes(q) || notes.includes(q) || by.includes(q) || kind.includes(q)
     })
   }, [egresos, search])
+
+  const totals = useMemo(() => {
+    const caja = filtered
+      .filter((e) => e.status === 'active' && (e.expenseKind || 'caja') === 'caja')
+      .reduce((s, e) => s + e.amount, 0)
+    const cuenta = filtered
+      .filter((e) => e.status === 'active' && e.expenseKind === 'cuenta')
+      .reduce((s, e) => s + e.amount, 0)
+    return { caja, cuenta }
+  }, [filtered])
 
   return (
     <div className="space-y-4">
@@ -100,7 +117,7 @@ export function EgresosTable({
             Egresos
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Organiza arriendo, servicios, nómina, deudas y demás gastos del negocio
+            Caja del turno o cuenta (arriendo, nómina, servicios…). Los de cuenta no tocan el cierre.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -119,6 +136,25 @@ export function EgresosTable({
         </div>
       </div>
 
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className={cn(cardShell, 'px-4 py-3')}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            Vista · Caja del turno
+          </p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
+            {formatCOP(totals.caja)}
+          </p>
+        </div>
+        <div className={cn(cardShell, 'px-4 py-3')}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            Vista · Cuenta (mensual / alto)
+          </p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-sky-800 dark:text-sky-300">
+            {formatCOP(totals.cuenta)}
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
@@ -129,6 +165,19 @@ export function EgresosTable({
             className="h-10 pl-9"
           />
         </div>
+        <Select
+          value={kindFilter}
+          onValueChange={(v) => onKindFilterChange(v as EgresoKind | 'all')}
+        >
+          <SelectTrigger className="h-10 w-full md:w-48">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los tipos</SelectItem>
+            <SelectItem value="caja">Caja del turno</SelectItem>
+            <SelectItem value="cuenta">Cuenta (mensual)</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={conceptFilter} onValueChange={onConceptFilterChange}>
           <SelectTrigger className="h-10 w-full md:w-56">
             <SelectValue placeholder="Concepto" />
@@ -171,22 +220,47 @@ export function EgresosTable({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-zinc-200 bg-zinc-50/80 text-[11px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Fecha</th>
+                  <th className="px-4 py-3 font-semibold">Tipo</th>
                   <th className="px-4 py-3 font-semibold">Concepto</th>
-                  <th className="px-4 py-3 font-semibold">Pago</th>
+                  <th className="px-4 py-3 font-semibold">Cuenta / pago</th>
                   <th className="px-4 py-3 font-semibold text-right">Monto</th>
                   <th className="px-4 py-3 font-semibold">Estado</th>
                   <th className="px-4 py-3 font-semibold text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                {filtered.map((e) => (
+                {filtered.map((e) => {
+                  const kind = e.expenseKind || 'caja'
+                  return (
                   <tr key={e.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40">
                     <td className="whitespace-nowrap px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                      {formatDate(e.expenseDate)}
+                      <p>{formatDate(e.expenseDate)}</p>
+                      {kind === 'cuenta' && e.periodMonth ? (
+                        <p className="mt-0.5 text-[11px] capitalize text-sky-700 dark:text-sky-300">
+                          Mes: {formatPeriodMonth(e.periodMonth)}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3">
+                      {kind === 'cuenta' ? (
+                        <Badge
+                          variant="secondary"
+                          className="bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
+                        >
+                          Cuenta
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        >
+                          Caja
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -245,7 +319,8 @@ export function EgresosTable({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

@@ -411,6 +411,7 @@ export interface PaymentRecord {
 export interface Payment extends Credit {}
 
 export type EgresoStatus = 'active' | 'cancelled'
+export type EgresoKind = 'caja' | 'cuenta'
 
 export interface Egreso {
   id: string
@@ -421,6 +422,10 @@ export interface Egreso {
   amount: number
   expenseDate: string
   paymentMethod: 'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'other'
+  /** caja = turno; cuenta = mensual/alto desde Nequi/Bancolombia/etc. */
+  expenseKind: EgresoKind
+  /** Primer día del mes al que aplica (egresos de cuenta). */
+  periodMonth?: string | null
   status: EgresoStatus
   createdBy?: string | null
   createdByName?: string

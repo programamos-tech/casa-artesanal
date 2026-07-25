@@ -7,7 +7,7 @@ import { EgresoModal } from '@/components/egresos/egreso-modal'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
-import { Egreso } from '@/types'
+import { Egreso, EgresoKind } from '@/types'
 import {
   EgresosService,
   getEgresosStoreIdForCurrentUser,
@@ -25,6 +25,7 @@ export default function EgresosPage() {
   const [cancelling, setCancelling] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'active' | 'cancelled' | 'all'>('active')
   const [conceptFilter, setConceptFilter] = useState('all')
+  const [kindFilter, setKindFilter] = useState<EgresoKind | 'all'>('all')
 
   const storeId = getEgresosStoreIdForCurrentUser()
 
@@ -35,6 +36,7 @@ export default function EgresosPage() {
         storeId,
         status: statusFilter,
         concept: conceptFilter,
+        expenseKind: kindFilter,
       })
       setEgresos(data)
     } catch {
@@ -43,7 +45,7 @@ export default function EgresosPage() {
     } finally {
       setLoading(false)
     }
-  }, [storeId, statusFilter, conceptFilter])
+  }, [storeId, statusFilter, conceptFilter, kindFilter])
 
   useEffect(() => {
     void load()
@@ -94,6 +96,8 @@ export default function EgresosPage() {
           onStatusFilterChange={setStatusFilter}
           conceptFilter={conceptFilter}
           onConceptFilterChange={setConceptFilter}
+          kindFilter={kindFilter}
+          onKindFilterChange={setKindFilter}
         />
 
         {user?.id && (

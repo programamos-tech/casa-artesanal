@@ -1,7 +1,8 @@
 import { supabaseAdmin } from './supabase'
-import { Egreso } from '@/types'
+import { Egreso, EgresoKind } from '@/types'
 import { getCurrentUserStoreId, isMainStoreUser, getCurrentUser } from './store-helper'
 import type { EgresoPaymentMethod } from './egreso-concepts'
+import { firstDayOfMonthISO } from './egreso-concepts'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -12,17 +13,33 @@ export type CreateEgresoInput = {
   amount: number
   expenseDate: string
   paymentMethod: EgresoPaymentMethod
+  expenseKind?: EgresoKind
+  periodMonth?: string | null
   storeId?: string
 }
 
 export type UpdateEgresoInput = Partial<
-  Pick<CreateEgresoInput, 'concept' | 'conceptOther' | 'description' | 'amount' | 'expenseDate' | 'paymentMethod'>
+  Pick<
+    CreateEgresoInput,
+    | 'concept'
+    | 'conceptOther'
+    | 'description'
+    | 'amount'
+    | 'expenseDate'
+    | 'paymentMethod'
+    | 'expenseKind'
+    | 'periodMonth'
+  >
 >
 
 function resolveStoreId(explicit?: string | null): string {
   if (explicit) return explicit
   const fromUser = getCurrentUserStoreId()
   return fromUser || MAIN_STORE_ID
+}
+
+function normalizeKind(kind?: string | null): EgresoKind {
+  return kind === 'cuenta' ? 'cuenta' : 'caja'
 }
 
 function mapRow(row: any): Egreso {
@@ -35,6 +52,8 @@ function mapRow(row: any): Egreso {
     amount: Number(row.amount) || 0,
     expenseDate: row.expense_date,
     paymentMethod: row.payment_method,
+    expenseKind: normalizeKind(row.expense_kind),
+    periodMonth: row.period_month ?? null,
     status: row.status,
     createdBy: row.created_by ?? null,
     createdByName: row.created_by_name || '',
@@ -54,6 +73,16 @@ function applyStoreFilter<T extends { or: Function; eq: Function }>(query: T, st
   return query.eq('store_id', storeId) as T
 }
 
+function validateKindAndMethod(
+  kind: EgresoKind,
+  paymentMethod: EgresoPaymentMethod
+): string | null {
+  if (kind === 'cuenta' && paymentMethod === 'cash') {
+    return 'Un egreso de cuenta debe salir de Nequi, Bancolombia, transferencia u otro medio (no efectivo de caja).'
+  }
+  return null
+}
+
 export class EgresosService {
   static async getEgresos(options?: {
     storeId?: string | null
@@ -61,6 +90,7 @@ export class EgresosService {
     fromDate?: string
     toDate?: string
     concept?: string
+    expenseKind?: EgresoKind | 'all'
   }): Promise<Egreso[]> {
     try {
       const storeId = resolveStoreId(options?.storeId)
@@ -84,6 +114,9 @@ export class EgresosService {
       }
       if (options?.concept && options.concept !== 'all') {
         query = query.eq('concept', options.concept)
+      }
+      if (options?.expenseKind && options.expenseKind !== 'all') {
+        query = query.eq('expense_kind', options.expenseKind)
       }
 
       const { data, error } = await query
@@ -130,6 +163,20 @@ export class EgresosService {
         return { success: false, error: 'Describe en qué se gastó (Otro)' }
       }
 
+      const expenseKind = normalizeKind(input.expenseKind)
+      const paymentMethod = (input.paymentMethod ||
+        (expenseKind === 'cuenta' ? 'bancolombia' : 'cash')) as EgresoPaymentMethod
+      const kindError = validateKindAndMethod(expenseKind, paymentMethod)
+      if (kindError) return { success: false, error: kindError }
+
+      const periodMonth =
+        expenseKind === 'cuenta'
+          ? (input.periodMonth?.slice(0, 10) || firstDayOfMonthISO()).replace(
+              /^(\d{4}-\d{2})-\d{2}$/,
+              '$1-01'
+            )
+          : null
+
       const storeId = resolveStoreId(input.storeId)
       const { data, error } = await supabaseAdmin
         .from('egresos')
@@ -140,7 +187,9 @@ export class EgresosService {
           description: input.description?.trim() || null,
           amount,
           expense_date: input.expenseDate || new Date().toISOString().slice(0, 10),
-          payment_method: input.paymentMethod || 'cash',
+          payment_method: paymentMethod,
+          expense_kind: expenseKind,
+          period_month: periodMonth,
           status: 'active',
           created_by: userId,
           created_by_name: userName || 'Usuario',
@@ -167,7 +216,8 @@ export class EgresosService {
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
       if (input.concept !== undefined) patch.concept = input.concept
       if (input.conceptOther !== undefined) {
-        patch.concept_other = input.concept === 'otro' || input.conceptOther ? input.conceptOther.trim() : null
+        patch.concept_other =
+          input.concept === 'otro' || input.conceptOther ? input.conceptOther.trim() : null
       }
       if (input.description !== undefined) patch.description = input.description?.trim() || null
       if (input.amount !== undefined) {
@@ -177,6 +227,30 @@ export class EgresosService {
       }
       if (input.expenseDate !== undefined) patch.expense_date = input.expenseDate
       if (input.paymentMethod !== undefined) patch.payment_method = input.paymentMethod
+      if (input.expenseKind !== undefined) patch.expense_kind = normalizeKind(input.expenseKind)
+
+      const nextKind = normalizeKind(
+        (patch.expense_kind as string) ||
+          (input.expenseKind as string) ||
+          'caja'
+      )
+      const nextMethod = (patch.payment_method || input.paymentMethod) as
+        | EgresoPaymentMethod
+        | undefined
+
+      if (input.periodMonth !== undefined || input.expenseKind !== undefined) {
+        if (nextKind === 'cuenta') {
+          const raw = input.periodMonth ?? firstDayOfMonthISO()
+          patch.period_month = String(raw).slice(0, 10).replace(/^(\d{4}-\d{2})-\d{2}$/, '$1-01')
+        } else {
+          patch.period_month = null
+        }
+      }
+
+      if (nextMethod) {
+        const kindError = validateKindAndMethod(nextKind, nextMethod)
+        if (kindError) return { success: false, error: kindError }
+      }
 
       if (patch.concept === 'otro' && !(patch.concept_other as string)?.trim()) {
         return { success: false, error: 'Describe en qué se gastó (Otro)' }

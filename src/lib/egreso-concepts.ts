@@ -32,6 +32,37 @@ export const EGRESO_CONCEPTS = [
 
 export type EgresoConcept = (typeof EGRESO_CONCEPTS)[number]['value']
 
+/** Origen del dinero: caja del turno vs cuenta bancaria/billetera. */
+export const EGRESO_KINDS = [
+  {
+    value: 'caja',
+    label: 'Caja del turno',
+    hint: 'Gasto operativo del día. Si es en efectivo, baja el efectivo esperado.',
+  },
+  {
+    value: 'cuenta',
+    label: 'Cuenta (mensual / alto)',
+    hint: 'Arriendo, nómina, servicios… Sale de Nequi/Bancolombia/transferencia. No toca la caja.',
+  },
+] as const
+
+export type EgresoKind = (typeof EGRESO_KINDS)[number]['value']
+
+/** Conceptos que suelen pagarse desde cuenta (no desde caja chica). */
+export const EGRESO_CUENTA_DEFAULT_CONCEPTS = new Set<string>([
+  'arriendo',
+  'servicios_publicos',
+  'internet_telefonia',
+  'nomina',
+  'prestaciones',
+  'seguridad_social',
+  'impuestos',
+  'camara_comercio',
+  'seguros',
+  'comisiones_bancarias',
+  'intereses_credito',
+])
+
 export const EGRESO_PAYMENT_METHODS = [
   { value: 'cash', label: 'Efectivo' },
   { value: 'transfer', label: 'Transferencia' },
@@ -43,6 +74,11 @@ export const EGRESO_PAYMENT_METHODS = [
 
 export type EgresoPaymentMethod = (typeof EGRESO_PAYMENT_METHODS)[number]['value']
 
+/** Medios válidos cuando el egreso sale de una cuenta (sin efectivo). */
+export const EGRESO_ACCOUNT_PAYMENT_METHODS = EGRESO_PAYMENT_METHODS.filter(
+  (m) => m.value !== 'cash'
+)
+
 export function getEgresoConceptLabel(concept: string, conceptOther?: string | null): string {
   if (concept === 'otro') {
     return conceptOther?.trim() || 'Otro'
@@ -52,4 +88,26 @@ export function getEgresoConceptLabel(concept: string, conceptOther?: string | n
 
 export function getEgresoPaymentLabel(method: string): string {
   return EGRESO_PAYMENT_METHODS.find((m) => m.value === method)?.label || method
+}
+
+export function getEgresoKindLabel(kind: string): string {
+  return EGRESO_KINDS.find((k) => k.value === kind)?.label || kind
+}
+
+export function suggestedEgresoKind(concept: string): EgresoKind {
+  return EGRESO_CUENTA_DEFAULT_CONCEPTS.has(concept) ? 'cuenta' : 'caja'
+}
+
+/** Primer día del mes en YYYY-MM-DD (zona local). */
+export function firstDayOfMonthISO(date = new Date()): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}-01`
+}
+
+export function formatPeriodMonth(iso?: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
 }

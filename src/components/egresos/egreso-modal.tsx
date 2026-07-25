@@ -22,8 +22,14 @@ import {
   MoreHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Egreso } from '@/types'
-import { EGRESO_CONCEPTS, type EgresoPaymentMethod } from '@/lib/egreso-concepts'
+import { Egreso, EgresoKind } from '@/types'
+import {
+  EGRESO_CONCEPTS,
+  EGRESO_KINDS,
+  firstDayOfMonthISO,
+  suggestedEgresoKind,
+  type EgresoPaymentMethod,
+} from '@/lib/egreso-concepts'
 import { EgresosService, type CreateEgresoInput } from '@/lib/egresos-service'
 import {
   appModalBodyClass,
@@ -138,9 +144,12 @@ export function EgresoModal({
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState<Date | null>(todayDate())
-  const [paymentMethod, setPaymentMethod] = useState<EgresoPaymentMethod>('cash')
+  const [expenseKind, setExpenseKind] = useState<EgresoKind>('cuenta')
+  const [periodMonth, setPeriodMonth] = useState<Date | null>(todayDate())
+  const [paymentMethod, setPaymentMethod] = useState<EgresoPaymentMethod>('bancolombia')
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [kindTouched, setKindTouched] = useState(false)
 
   useLayoutEffect(() => {
     setMounted(true)
@@ -158,19 +167,54 @@ export function EgresoModal({
           ? new Date(`${egreso.expenseDate.slice(0, 10)}T12:00:00`)
           : todayDate()
       )
+      setExpenseKind(egreso.expenseKind || 'caja')
+      setPeriodMonth(
+        egreso.periodMonth
+          ? new Date(`${egreso.periodMonth.slice(0, 10)}T12:00:00`)
+          : todayDate()
+      )
       setPaymentMethod(egreso.paymentMethod || 'cash')
+      setKindTouched(true)
     } else {
-      setConcept('arriendo')
+      const initialConcept = 'arriendo'
+      const kind = suggestedEgresoKind(initialConcept)
+      setConcept(initialConcept)
       setConceptOther('')
       setDescription('')
       setAmount('')
       setExpenseDate(todayDate())
-      setPaymentMethod('cash')
+      setExpenseKind(kind)
+      setPeriodMonth(todayDate())
+      setPaymentMethod(kind === 'cuenta' ? 'bancolombia' : 'cash')
+      setKindTouched(false)
     }
   }, [isOpen, egreso])
 
   const showOther = concept === 'otro'
   const amountValue = parseAmountInput(amount)
+  const isCuenta = expenseKind === 'cuenta'
+  const visiblePaymentOptions = isCuenta
+    ? paymentOptions.filter((o) => o.value !== 'cash')
+    : paymentOptions
+
+  const handleConceptChange = (next: string) => {
+    setConcept(next)
+    if (!kindTouched && !isEdit) {
+      const kind = suggestedEgresoKind(next)
+      setExpenseKind(kind)
+      if (kind === 'cuenta' && paymentMethod === 'cash') {
+        setPaymentMethod('bancolombia')
+      }
+    }
+  }
+
+  const handleKindChange = (kind: EgresoKind) => {
+    setKindTouched(true)
+    setExpenseKind(kind)
+    if (kind === 'cuenta' && paymentMethod === 'cash') {
+      setPaymentMethod('bancolombia')
+    }
+  }
 
   const payload = useMemo((): CreateEgresoInput => {
     return {
@@ -180,9 +224,25 @@ export function EgresoModal({
       amount: amountValue,
       expenseDate: toISODate(expenseDate) || toISODate(todayDate()),
       paymentMethod,
+      expenseKind,
+      periodMonth: isCuenta
+        ? firstDayOfMonthISO(periodMonth || todayDate())
+        : null,
       storeId,
     }
-  }, [concept, conceptOther, showOther, description, amountValue, expenseDate, paymentMethod, storeId])
+  }, [
+    concept,
+    conceptOther,
+    showOther,
+    description,
+    amountValue,
+    expenseDate,
+    paymentMethod,
+    expenseKind,
+    isCuenta,
+    periodMonth,
+    storeId,
+  ])
 
   if (!isOpen) return null
 
@@ -200,6 +260,10 @@ export function EgresoModal({
       toast.error('Describe en qué se gastó')
       return
     }
+    if (isCuenta && paymentMethod === 'cash') {
+      toast.error('Elige la cuenta de origen (Nequi, Bancolombia, etc.)')
+      return
+    }
     setSaving(true)
     try {
       if (isEdit && egreso) {
@@ -215,7 +279,9 @@ export function EgresoModal({
           toast.error(result.error || 'No se pudo registrar')
           return
         }
-        toast.success('Egreso registrado')
+        toast.success(
+          isCuenta ? 'Egreso de cuenta registrado (no afecta caja)' : 'Egreso de caja registrado'
+        )
       }
       onSaved()
       onClose()
@@ -231,7 +297,7 @@ export function EgresoModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="egreso-modal-title"
-        onClick={event => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className={appModalHeaderClass}>
           <div className="flex min-w-0 items-center gap-2.5">
@@ -244,7 +310,7 @@ export function EgresoModal({
                 {isEdit ? 'Editar egreso' : 'Nuevo egreso'}
               </h2>
               <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                Registra el gasto en pocos pasos
+                Caja del turno o cuenta (arriendo, nómina…)
               </p>
             </div>
           </div>
@@ -263,6 +329,34 @@ export function EgresoModal({
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className={cn(appModalBodyClass, 'space-y-4')}>
             <div>
+              <span className={appModalLabelClass}>Tipo</span>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de egreso">
+                {EGRESO_KINDS.map((k) => {
+                  const active = expenseKind === k.value
+                  return (
+                    <button
+                      key={k.value}
+                      type="button"
+                      onClick={() => handleKindChange(k.value)}
+                      aria-pressed={active}
+                      className={cn(
+                        'rounded-lg border px-3 py-2.5 text-left transition-colors',
+                        active
+                          ? k.value === 'cuenta'
+                            ? 'border-sky-300 bg-sky-50 text-sky-950 ring-1 ring-sky-200 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-100'
+                            : 'border-emerald-300 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-100'
+                          : paymentIdleClass
+                      )}
+                    >
+                      <p className="text-xs font-bold">{k.label}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug opacity-80">{k.hint}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="egreso-amount" className={appModalLabelClass}>
                 Monto
               </label>
@@ -270,7 +364,7 @@ export function EgresoModal({
                 id="egreso-amount"
                 inputMode="numeric"
                 value={amount}
-                onChange={e => setAmount(formatAmountInput(e.target.value))}
+                onChange={(e) => setAmount(formatAmountInput(e.target.value))}
                 placeholder="Ej. 150.000"
                 autoFocus={!isEdit}
                 className={cn(
@@ -286,7 +380,7 @@ export function EgresoModal({
               <label htmlFor="egreso-concept" className={appModalLabelClass}>
                 Concepto
               </label>
-              <Select value={concept} onValueChange={setConcept}>
+              <Select value={concept} onValueChange={handleConceptChange}>
                 <SelectTrigger
                   id="egreso-concept"
                   className={cn(appModalInputClass, 'h-11 justify-between font-medium')}
@@ -294,7 +388,7 @@ export function EgresoModal({
                   <SelectValue placeholder="¿En qué se gastó?" />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
-                  {EGRESO_CONCEPTS.map(c => (
+                  {EGRESO_CONCEPTS.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.label}
                     </SelectItem>
@@ -311,7 +405,7 @@ export function EgresoModal({
                 <input
                   id="egreso-other"
                   value={conceptOther}
-                  onChange={e => setConceptOther(e.target.value)}
+                  onChange={(e) => setConceptOther(e.target.value)}
                   placeholder="Ej. reparación urgente de vitrina"
                   className={cn(appModalInputClass, 'h-11')}
                   required
@@ -320,9 +414,11 @@ export function EgresoModal({
             )}
 
             <div>
-              <span className={appModalLabelClass}>Medio de pago</span>
+              <span className={appModalLabelClass}>
+                {isCuenta ? 'Cuenta de origen' : 'Medio de pago'}
+              </span>
               <div className="grid grid-cols-3 gap-2" role="group" aria-label="Medio de pago">
-                {paymentOptions.map(({ value, label, Icon, selected }) => {
+                {visiblePaymentOptions.map(({ value, label, Icon, selected }) => {
                   const active = paymentMethod === value
                   return (
                     <button
@@ -341,10 +437,28 @@ export function EgresoModal({
                   )
                 })}
               </div>
+              {isCuenta ? (
+                <p className={cn(appModalHintClass, 'mt-1.5')}>
+                  Este egreso no baja el efectivo esperado del cierre de caja.
+                </p>
+              ) : null}
             </div>
 
+            {isCuenta && (
+              <div>
+                <span className={appModalLabelClass}>Mes al que aplica</span>
+                <DatePicker
+                  selectedDate={periodMonth}
+                  onDateSelect={setPeriodMonth}
+                  placeholder="Mes del egreso"
+                  ariaLabel="Mes del egreso de cuenta"
+                  className="w-full"
+                />
+              </div>
+            )}
+
             <div>
-              <span className={appModalLabelClass}>Fecha</span>
+              <span className={appModalLabelClass}>Fecha de registro</span>
               <DatePicker
                 selectedDate={expenseDate}
                 onDateSelect={setExpenseDate}
@@ -361,7 +475,7 @@ export function EgresoModal({
               <textarea
                 id="egreso-notes"
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Detalle adicional…"
                 rows={2}
                 className={cn(appModalInputClass, 'min-h-[4rem] resize-y py-2.5')}

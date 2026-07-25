@@ -288,11 +288,12 @@ export class CashSessionsService {
         }
       }
 
-      // Egresos activos en la ventana (por created_at o expense_date)
+      // Solo egresos de caja del turno (los de cuenta/mensuales no afectan cierre)
       let egresosQuery = supabaseAdmin
         .from('egresos')
-        .select('amount, payment_method, status, created_at, expense_date, store_id')
+        .select('amount, payment_method, status, created_at, expense_date, store_id, expense_kind')
         .eq('status', 'active')
+        .eq('expense_kind', 'caja')
         .gte('created_at', from)
         .lte('created_at', to)
 
@@ -448,9 +449,10 @@ export class CashSessionsService {
     let egresosQuery = supabaseAdmin
       .from('egresos')
       .select(
-        'concept, concept_other, description, payment_method, amount, expense_date, created_at, store_id, status'
+        'concept, concept_other, description, payment_method, amount, expense_date, created_at, store_id, status, expense_kind'
       )
       .eq('status', 'active')
+      .eq('expense_kind', 'caja')
       .gte('created_at', from)
       .lte('created_at', to)
       .order('created_at', { ascending: true })
