@@ -48,6 +48,8 @@ interface EgresoModalProps {
   onClose: () => void
   onSaved: () => void
   egreso?: Egreso | null
+  /** Prefiere este tipo al abrir un egreso nuevo (p. ej. desde Caja → Egreso de cuenta). */
+  defaultKind?: EgresoKind
   currentUserId: string
   currentUserName?: string
   storeId: string
@@ -134,6 +136,7 @@ export function EgresoModal({
   onClose,
   onSaved,
   egreso,
+  defaultKind,
   currentUserId,
   currentUserName,
   storeId,
@@ -176,8 +179,8 @@ export function EgresoModal({
       setPaymentMethod(egreso.paymentMethod || 'cash')
       setKindTouched(true)
     } else {
-      const initialConcept = 'arriendo'
-      const kind = suggestedEgresoKind(initialConcept)
+      const initialConcept = defaultKind === 'caja' ? 'papeleria' : 'arriendo'
+      const kind = defaultKind || suggestedEgresoKind(initialConcept)
       setConcept(initialConcept)
       setConceptOther('')
       setDescription('')
@@ -186,9 +189,9 @@ export function EgresoModal({
       setExpenseKind(kind)
       setPeriodMonth(todayDate())
       setPaymentMethod(kind === 'cuenta' ? 'bancolombia' : 'cash')
-      setKindTouched(false)
+      setKindTouched(!!defaultKind)
     }
-  }, [isOpen, egreso])
+  }, [isOpen, egreso, defaultKind])
 
   const showOther = concept === 'otro'
   const amountValue = parseAmountInput(amount)

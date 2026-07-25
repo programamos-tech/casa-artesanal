@@ -47,6 +47,7 @@ export default function CajaPage() {
   const router = useRouter()
   const { user } = useAuth()
   const { canCreate, canCancel, canEdit } = usePermissions()
+  const canEgresos = canCreate('egresos') || canEdit('egresos')
   const [openSession, setOpenSession] = useState<CashSession | null>(null)
   const [history, setHistory] = useState<CashSession[]>([])
   const [live, setLive] = useState<CashSessionLiveSummary | null>(null)
@@ -106,6 +107,15 @@ export default function CajaPage() {
                 <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
                 Actualizar
               </Button>
+              {canEgresos && (
+                <Link
+                  href="/egresos?tipo=cuenta&nuevo=1"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-semibold text-zinc-800 shadow-none hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  <Wallet className="h-3.5 w-3.5" />
+                  Egreso de cuenta
+                </Link>
+              )}
               {!openSession && canOpen && (
                 <Button type="button" size="sm" onClick={() => setOpenModal(true)}>
                   <LockOpen className="h-3.5 w-3.5" />
@@ -221,10 +231,6 @@ export default function CajaPage() {
                           <Line label="En efectivo" value={money(live.egresosCash)} />
                           <Line label="Otros medios" value={money(live.egresosOther)} />
                         </div>
-
-                        <div className="border-t border-rose-200/70 pt-3 dark:border-rose-900/40">
-                          <Line label="Cantidad de egresos" value={`${live.egresosCount}`} muted />
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -244,18 +250,6 @@ export default function CajaPage() {
                       </p>
                     </div>
                   )}
-
-                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/25">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-                      Cómo se calcula el efectivo esperado
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">
-                      <span className="font-semibold">Ventas/abonos en efectivo</span>
-                      {' − '}
-                      <span className="font-semibold">egresos en efectivo</span>
-                      {' (sin fondo inicial ni ventas a crédito)'}
-                    </p>
-                  </div>
                 </div>
               )}
             </CardContent>

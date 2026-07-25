@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { EgresosTable } from '@/components/egresos/egresos-table'
 import { EgresoModal } from '@/components/egresos/egreso-modal'
@@ -14,20 +15,43 @@ import {
 } from '@/lib/egresos-service'
 import { toast } from 'sonner'
 
+function parseKindParam(raw: string | null): EgresoKind | 'all' {
+  if (raw === 'caja' || raw === 'cuenta') return raw
+  return 'all'
+}
+
 export default function EgresosPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { canCreate, canEdit, canCancel } = usePermissions()
   const [egresos, setEgresos] = useState<Egreso[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Egreso | null>(null)
+  const [defaultKind, setDefaultKind] = useState<EgresoKind | undefined>(undefined)
   const [cancelTarget, setCancelTarget] = useState<Egreso | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'active' | 'cancelled' | 'all'>('active')
   const [conceptFilter, setConceptFilter] = useState('all')
-  const [kindFilter, setKindFilter] = useState<EgresoKind | 'all'>('all')
+  const [kindFilter, setKindFilter] = useState<EgresoKind | 'all'>(() =>
+    parseKindParam(searchParams.get('tipo'))
+  )
 
   const storeId = getEgresosStoreIdForCurrentUser()
+
+  useEffect(() => {
+    const tipo = parseKindParam(searchParams.get('tipo'))
+    if (tipo !== 'all') setKindFilter(tipo)
+    if (searchParams.get('nuevo') === '1' && canCreate('egresos')) {
+      setSelected(null)
+      setDefaultKind(tipo === 'cuenta' || tipo === 'caja' ? tipo : 'cuenta')
+      setModalOpen(true)
+      router.replace('/egresos' + (tipo !== 'all' ? `?tipo=${tipo}` : ''), { scroll: false })
+    }
+    // Solo reaccionar a la query
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,10 +108,12 @@ export default function EgresosPage() {
           canCancel={canCancel('egresos')}
           onCreate={() => {
             setSelected(null)
+            setDefaultKind(kindFilter === 'cuenta' || kindFilter === 'caja' ? kindFilter : undefined)
             setModalOpen(true)
           }}
           onEdit={(e) => {
             setSelected(e)
+            setDefaultKind(undefined)
             setModalOpen(true)
           }}
           onCancel={(e) => setCancelTarget(e)}
@@ -106,9 +132,11 @@ export default function EgresosPage() {
             onClose={() => {
               setModalOpen(false)
               setSelected(null)
+              setDefaultKind(undefined)
             }}
             onSaved={load}
             egreso={selected}
+            defaultKind={defaultKind}
             currentUserId={user.id}
             currentUserName={user.name}
             storeId={storeId}
