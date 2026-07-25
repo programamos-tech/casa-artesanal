@@ -19,6 +19,7 @@ const items = [
   { href: '/clients', label: 'Clientes', icon: Users, module: 'clients' },
   { href: '/sales', label: 'Ventas', icon: Receipt, module: 'sales' },
   { href: '/egresos', label: 'Egresos', icon: Wallet, module: 'egresos' },
+  { href: '/resultado-mensual', label: 'Resultado', icon: BarChart3, module: 'egresos' },
   { href: '/caja', label: 'Caja', icon: Banknote, module: 'cash_register' },
   { href: '/payments', label: 'Créditos', icon: CreditCard, module: 'payments' },
   { href: '/purchases/invoices', label: 'Facturador', icon: FileText, module: 'supplier_invoices' },

@@ -56,6 +56,7 @@ const navigation = [
       { name: 'Créditos', href: '/payments', icon: CreditCard, module: 'payments' },
       { name: 'Facturador', href: '/purchases/invoices', icon: FileText, module: 'supplier_invoices' },
       { name: 'Egresos', href: '/egresos', icon: Wallet, module: 'egresos' },
+      { name: 'Resultado mensual', href: '/resultado-mensual', icon: BarChart3, module: 'egresos' },
       { name: 'Caja', href: '/caja', icon: Banknote, module: 'cash_register' },
     ]
   },

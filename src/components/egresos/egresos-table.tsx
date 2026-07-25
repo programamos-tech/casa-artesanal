@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -118,6 +119,10 @@ export function EgresosTable({
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Caja del turno o cuenta (arriendo, nómina, servicios…). Los de cuenta no tocan el cierre.
+            {' '}
+            <Link href="/resultado-mensual" className="font-semibold text-teal-700 underline-offset-2 hover:underline dark:text-teal-400">
+              Ver resultado del mes
+            </Link>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
