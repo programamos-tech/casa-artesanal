@@ -2,7 +2,8 @@ import { supabaseAdmin } from './supabase'
 import { Egreso, EgresoKind } from '@/types'
 import { getCurrentUserStoreId, isMainStoreUser, getCurrentUser } from './store-helper'
 import type { EgresoPaymentMethod } from './egreso-concepts'
-import { firstDayOfMonthISO } from './egreso-concepts'
+import { firstDayOfMonthISO, getEgresoPaymentLabel } from './egreso-concepts'
+import { MonthlyResultService } from './monthly-result-service'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -73,14 +74,19 @@ function applyStoreFilter<T extends { or: Function; eq: Function }>(query: T, st
   return query.eq('store_id', storeId) as T
 }
 
-function validateKindAndMethod(
-  kind: EgresoKind,
-  paymentMethod: EgresoPaymentMethod
-): string | null {
-  if (kind === 'cuenta' && paymentMethod === 'cash') {
-    return 'Un egreso de cuenta debe salir de Nequi, Bancolombia, transferencia u otro medio (no efectivo de caja).'
-  }
-  return null
+function periodParts(periodMonth: string): { year: number; month: number } {
+  const [y, m] = periodMonth.slice(0, 10).split('-').map(Number)
+  return { year: y || new Date().getFullYear(), month: m || 1 }
+}
+
+function methodToChannel(method: string): import('./monthly-result-service').MoneyChannel {
+  const m = String(method || '').toLowerCase()
+  if (m === 'cash' || m === 'efectivo') return 'cash'
+  if (m === 'nequi') return 'nequi'
+  if (m === 'bancolombia') return 'bancolombia'
+  if (m === 'transfer') return 'transfer'
+  if (m === 'card') return 'card'
+  return 'other'
 }
 
 export class EgresosService {
@@ -166,8 +172,6 @@ export class EgresosService {
       const expenseKind = normalizeKind(input.expenseKind)
       const paymentMethod = (input.paymentMethod ||
         (expenseKind === 'cuenta' ? 'bancolombia' : 'cash')) as EgresoPaymentMethod
-      const kindError = validateKindAndMethod(expenseKind, paymentMethod)
-      if (kindError) return { success: false, error: kindError }
 
       const periodMonth =
         expenseKind === 'cuenta'
@@ -178,6 +182,25 @@ export class EgresosService {
           : null
 
       const storeId = resolveStoreId(input.storeId)
+
+      if (expenseKind === 'cuenta' && periodMonth) {
+        const { year, month } = periodParts(periodMonth)
+        const channel = methodToChannel(paymentMethod)
+        const avail = await MonthlyResultService.getChannelAvailability({
+          year,
+          month,
+          channel,
+          storeId,
+        })
+        if (amount > avail.available + 0.5) {
+          const label = getEgresoPaymentLabel(paymentMethod)
+          return {
+            success: false,
+            error: `En ${label} del mes solo hay disponible ${avail.available.toLocaleString('es-CO')} (entró ${avail.inAmount.toLocaleString('es-CO')}). No puedes egresar ${amount.toLocaleString('es-CO')}.`,
+          }
+        }
+      }
+
       const { data, error } = await supabaseAdmin
         .from('egresos')
         .insert({
@@ -213,6 +236,17 @@ export class EgresosService {
     input: UpdateEgresoInput
   ): Promise<{ success: boolean; egreso?: Egreso; error?: string }> {
     try {
+      const { data: current, error: fetchError } = await supabaseAdmin
+        .from('egresos')
+        .select('*')
+        .eq('id', id)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (fetchError || !current) {
+        return { success: false, error: 'Egreso no encontrado' }
+      }
+
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
       if (input.concept !== undefined) patch.concept = input.concept
       if (input.conceptOther !== undefined) {
@@ -230,26 +264,44 @@ export class EgresosService {
       if (input.expenseKind !== undefined) patch.expense_kind = normalizeKind(input.expenseKind)
 
       const nextKind = normalizeKind(
-        (patch.expense_kind as string) ||
-          (input.expenseKind as string) ||
-          'caja'
+        (patch.expense_kind as string) || current.expense_kind || 'caja'
       )
-      const nextMethod = (patch.payment_method || input.paymentMethod) as
-        | EgresoPaymentMethod
-        | undefined
+      const nextMethod = String(
+        patch.payment_method || current.payment_method || 'cash'
+      ) as EgresoPaymentMethod
+      const nextAmount = Number(patch.amount ?? current.amount) || 0
 
       if (input.periodMonth !== undefined || input.expenseKind !== undefined) {
         if (nextKind === 'cuenta') {
-          const raw = input.periodMonth ?? firstDayOfMonthISO()
+          const raw = input.periodMonth ?? current.period_month ?? firstDayOfMonthISO()
           patch.period_month = String(raw).slice(0, 10).replace(/^(\d{4}-\d{2})-\d{2}$/, '$1-01')
         } else {
           patch.period_month = null
         }
       }
 
-      if (nextMethod) {
-        const kindError = validateKindAndMethod(nextKind, nextMethod)
-        if (kindError) return { success: false, error: kindError }
+      const nextPeriod =
+        nextKind === 'cuenta'
+          ? String(patch.period_month || current.period_month || firstDayOfMonthISO()).slice(0, 10)
+          : null
+
+      if (nextKind === 'cuenta' && nextPeriod) {
+        const { year, month } = periodParts(nextPeriod)
+        const channel = methodToChannel(nextMethod)
+        const avail = await MonthlyResultService.getChannelAvailability({
+          year,
+          month,
+          channel,
+          storeId: current.store_id,
+          excludeEgresoId: id,
+        })
+        if (nextAmount > avail.available + 0.5) {
+          const label = getEgresoPaymentLabel(nextMethod)
+          return {
+            success: false,
+            error: `En ${label} del mes solo hay disponible ${avail.available.toLocaleString('es-CO')} (entró ${avail.inAmount.toLocaleString('es-CO')}). No puedes egresar ${nextAmount.toLocaleString('es-CO')}.`,
+          }
+        }
       }
 
       if (patch.concept === 'otro' && !(patch.concept_other as string)?.trim()) {

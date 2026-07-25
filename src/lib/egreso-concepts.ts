@@ -42,7 +42,7 @@ export const EGRESO_KINDS = [
   {
     value: 'cuenta',
     label: 'Cuenta (mensual / alto)',
-    hint: 'Arriendo, nómina, servicios… Sale de Nequi/Bancolombia/transferencia. No toca la caja.',
+    hint: 'Arriendo, nómina… Sale de Nequi/Bancolombia/transferencia o del efectivo recaudado del mes. No toca el cierre diario de caja.',
   },
 ] as const
 

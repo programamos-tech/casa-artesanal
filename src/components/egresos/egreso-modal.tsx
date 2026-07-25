@@ -27,10 +27,16 @@ import {
   EGRESO_CONCEPTS,
   EGRESO_KINDS,
   firstDayOfMonthISO,
+  getEgresoPaymentLabel,
   suggestedEgresoKind,
   type EgresoPaymentMethod,
 } from '@/lib/egreso-concepts'
 import { EgresosService, type CreateEgresoInput } from '@/lib/egresos-service'
+import {
+  MONEY_CHANNEL_LABELS,
+  MonthlyResultService,
+  type MoneyChannel,
+} from '@/lib/monthly-result-service'
 import {
   appModalBodyClass,
   appModalFooterClass,
@@ -153,6 +159,12 @@ export function EgresoModal({
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [kindTouched, setKindTouched] = useState(false)
+  const [channelAvail, setChannelAvail] = useState<{
+    available: number
+    inAmount: number
+    label: string
+    loading: boolean
+  } | null>(null)
 
   useLayoutEffect(() => {
     setMounted(true)
@@ -196,28 +208,78 @@ export function EgresoModal({
   const showOther = concept === 'otro'
   const amountValue = parseAmountInput(amount)
   const isCuenta = expenseKind === 'cuenta'
-  const visiblePaymentOptions = isCuenta
-    ? paymentOptions.filter((o) => o.value !== 'cash')
-    : paymentOptions
+  const visiblePaymentOptions = paymentOptions
+
+  useEffect(() => {
+    if (!isOpen || !isCuenta || !periodMonth) {
+      setChannelAvail(null)
+      return
+    }
+    let cancelled = false
+    const run = async () => {
+      setChannelAvail((prev) => ({
+        available: prev?.available ?? 0,
+        inAmount: prev?.inAmount ?? 0,
+        label: getEgresoPaymentLabel(paymentMethod),
+        loading: true,
+      }))
+      try {
+        const y = periodMonth.getFullYear()
+        const m = periodMonth.getMonth() + 1
+        const channel = (paymentMethod === 'cash'
+          ? 'cash'
+          : paymentMethod === 'nequi'
+            ? 'nequi'
+            : paymentMethod === 'bancolombia'
+              ? 'bancolombia'
+              : paymentMethod === 'transfer'
+                ? 'transfer'
+                : paymentMethod === 'card'
+                  ? 'card'
+                  : 'other') as MoneyChannel
+        const avail = await MonthlyResultService.getChannelAvailability({
+          year: y,
+          month: m,
+          channel,
+          storeId,
+          excludeEgresoId: egreso?.id,
+        })
+        if (!cancelled) {
+          setChannelAvail({
+            available: avail.available,
+            inAmount: avail.inAmount,
+            label: MONEY_CHANNEL_LABELS[channel] || avail.label,
+            loading: false,
+          })
+        }
+      } catch {
+        if (!cancelled) setChannelAvail(null)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, isCuenta, periodMonth, paymentMethod, storeId, egreso?.id])
 
   const handleConceptChange = (next: string) => {
     setConcept(next)
     if (!kindTouched && !isEdit) {
       const kind = suggestedEgresoKind(next)
       setExpenseKind(kind)
-      if (kind === 'cuenta' && paymentMethod === 'cash') {
-        setPaymentMethod('bancolombia')
-      }
     }
   }
 
   const handleKindChange = (kind: EgresoKind) => {
     setKindTouched(true)
     setExpenseKind(kind)
-    if (kind === 'cuenta' && paymentMethod === 'cash') {
-      setPaymentMethod('bancolombia')
-    }
   }
+
+  const exceedsChannel =
+    isCuenta &&
+    channelAvail &&
+    !channelAvail.loading &&
+    amountValue > channelAvail.available
 
   const payload = useMemo((): CreateEgresoInput => {
     return {
@@ -263,8 +325,10 @@ export function EgresoModal({
       toast.error('Describe en qué se gastó')
       return
     }
-    if (isCuenta && paymentMethod === 'cash') {
-      toast.error('Elige la cuenta de origen (Nequi, Bancolombia, etc.)')
+    if (exceedsChannel && channelAvail) {
+      toast.error(
+        `En ${channelAvail.label} del mes solo hay ${channelAvail.available.toLocaleString('es-CO')} disponibles`
+      )
       return
     }
     setSaving(true)
@@ -283,7 +347,7 @@ export function EgresoModal({
           return
         }
         toast.success(
-          isCuenta ? 'Egreso de cuenta registrado (no afecta caja)' : 'Egreso de caja registrado'
+          isCuenta ? 'Egreso de cuenta registrado (no afecta caja diaria)' : 'Egreso de caja registrado'
         )
       }
       onSaved()
@@ -418,7 +482,7 @@ export function EgresoModal({
 
             <div>
               <span className={appModalLabelClass}>
-                {isCuenta ? 'Cuenta de origen' : 'Medio de pago'}
+                {isCuenta ? 'De dónde sale el dinero' : 'Medio de pago'}
               </span>
               <div className="grid grid-cols-3 gap-2" role="group" aria-label="Medio de pago">
                 {visiblePaymentOptions.map(({ value, label, Icon, selected }) => {
@@ -441,9 +505,48 @@ export function EgresoModal({
                 })}
               </div>
               {isCuenta ? (
-                <p className={cn(appModalHintClass, 'mt-1.5')}>
-                  Este egreso no baja el efectivo esperado del cierre de caja.
-                </p>
+                <div
+                  className={cn(
+                    'mt-2 rounded-lg border px-3 py-2 text-xs',
+                    exceedsChannel
+                      ? 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200'
+                      : 'border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
+                  )}
+                >
+                  {channelAvail?.loading ? (
+                    <p>Consultando disponible del mes…</p>
+                  ) : channelAvail ? (
+                    <>
+                      <p className="font-semibold">
+                        {channelAvail.label}: disponible{' '}
+                        {channelAvail.available.toLocaleString('es-CO', {
+                          style: 'currency',
+                          currency: 'COP',
+                          maximumFractionDigits: 0,
+                        })}
+                      </p>
+                      <p className="mt-0.5 opacity-90">
+                        En el mes entró{' '}
+                        {channelAvail.inAmount.toLocaleString('es-CO', {
+                          style: 'currency',
+                          currency: 'COP',
+                          maximumFractionDigits: 0,
+                        })}
+                        . No puedes egresar más de lo recaudado en este canal.
+                      </p>
+                      {exceedsChannel ? (
+                        <p className="mt-1 font-bold">
+                          El monto supera lo disponible en {channelAvail.label}.
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p>No se pudo consultar el saldo del canal.</p>
+                  )}
+                  <p className="mt-1 opacity-80">
+                    Este egreso no baja el efectivo esperado del cierre diario de caja.
+                  </p>
+                </div>
               ) : null}
             </div>
 
@@ -490,7 +593,7 @@ export function EgresoModal({
             <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving || amountValue <= 0}>
+            <Button type="submit" disabled={saving || amountValue <= 0 || !!exceedsChannel}>
               {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar egreso'}
             </Button>
           </div>

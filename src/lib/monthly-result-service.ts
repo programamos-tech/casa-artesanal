@@ -320,4 +320,81 @@ export class MonthlyResultService {
       channels: channelList,
     }
   }
+
+  /** Saldo disponible de un canal en el mes (entró − salió), para validar egresos de cuenta. */
+  static async getChannelAvailability(input: {
+    year: number
+    month: number
+    channel: MoneyChannel
+    storeId?: string | null
+    /** Al editar, no contar este egreso como ya salido. */
+    excludeEgresoId?: string | null
+  }): Promise<{
+    channel: MoneyChannel
+    label: string
+    inAmount: number
+    outAmount: number
+    available: number
+    periodKey: string
+  }> {
+    const result = await this.getMonthlyResult({
+      year: input.year,
+      month: input.month,
+      storeId: input.storeId,
+    })
+    const row = result.channels.find((c) => c.channel === input.channel) || {
+      channel: input.channel,
+      label: MONEY_CHANNEL_LABELS[input.channel],
+      inAmount: 0,
+      outAmount: 0,
+      netAmount: 0,
+    }
+
+    let available = row.netAmount
+    if (input.excludeEgresoId) {
+      const { data } = await supabaseAdmin
+        .from('egresos')
+        .select('id, amount, payment_method, expense_kind, period_month, expense_date, status')
+        .eq('id', input.excludeEgresoId)
+        .maybeSingle()
+
+      if (data && data.status === 'active') {
+        const method = String(data.payment_method || '')
+        const ch =
+          method === 'cash' || method === 'efectivo'
+            ? 'cash'
+            : method === 'nequi'
+              ? 'nequi'
+              : method === 'bancolombia'
+                ? 'bancolombia'
+                : method === 'transfer'
+                  ? 'transfer'
+                  : method === 'card'
+                    ? 'card'
+                    : 'other'
+        const periodKey = `${input.year}-${pad2(input.month)}`
+        const periodMonth = `${periodKey}-01`
+        const appliesToMonth =
+          (data.expense_kind === 'cuenta' &&
+            (data.period_month === periodMonth ||
+              (!data.period_month &&
+                String(data.expense_date || '').slice(0, 7) === periodKey))) ||
+          (data.expense_kind !== 'cuenta' &&
+            String(data.expense_date || '').slice(0, 7) === periodKey)
+
+        if (ch === input.channel && appliesToMonth) {
+          available += Number(data.amount) || 0
+        }
+      }
+    }
+
+    return {
+      channel: input.channel,
+      label: row.label,
+      inAmount: row.inAmount,
+      outAmount: Math.max(0, row.inAmount - available),
+      available: Math.max(0, Math.round(available)),
+      periodKey: result.periodKey,
+    }
+  }
 }
