@@ -22,7 +22,7 @@ const items = [
   { href: '/resultado-mensual', label: 'Resultado', icon: BarChart3, module: 'egresos' },
   { href: '/caja', label: 'Caja', icon: Banknote, module: 'cash_register' },
   { href: '/payments', label: 'Créditos', icon: CreditCard, module: 'payments' },
-  { href: '/purchases/invoices', label: 'Facturador', icon: FileText, module: 'supplier_invoices' },
+  { href: '/purchases/invoices', label: 'Proveedores', icon: FileText, module: 'supplier_invoices' },
   { href: '/stores', label: 'Tiendas', icon: Store, module: 'roles' },
   { href: '/roles', label: 'Roles', icon: UserCog, module: 'roles' },
   { href: '/logs', label: 'Actividades', icon: Activity, module: 'logs' },
