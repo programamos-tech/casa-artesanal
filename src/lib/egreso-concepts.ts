@@ -21,6 +21,7 @@ export const EGRESO_CONCEPTS = [
   { value: 'comisiones_bancarias', label: 'Comisiones bancarias' },
   { value: 'intereses_credito', label: 'Intereses / cuotas de crédito' },
   { value: 'deudas', label: 'Deudas / abonos varios' },
+  { value: 'pago_proveedor', label: 'Pago a proveedor' },
   { value: 'equipamiento', label: 'Equipamiento / herramientas' },
   { value: 'software', label: 'Software / suscripciones' },
   { value: 'capacitacion', label: 'Capacitación' },
@@ -61,6 +62,7 @@ export const EGRESO_CUENTA_DEFAULT_CONCEPTS = new Set<string>([
   'seguros',
   'comisiones_bancarias',
   'intereses_credito',
+  'pago_proveedor',
 ])
 
 export const EGRESO_PAYMENT_METHODS = [

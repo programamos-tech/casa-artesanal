@@ -364,6 +364,25 @@ export interface SupplierInvoice {
   updatedAt: string
 }
 
+export type SupplierPaymentSourceChannel =
+  | 'cash'
+  | 'transfer'
+  | 'nequi'
+  | 'bancolombia'
+  | 'card'
+
+/** Cobro de una venta disponible para destinar a un abono de proveedor. */
+export interface SaleCollectionOption {
+  saleId: string
+  invoiceNumber: string
+  clientName: string
+  createdAt: string
+  channel: SupplierPaymentSourceChannel
+  collectedAmount: number
+  usedAmount: number
+  availableAmount: number
+}
+
 export interface SupplierPaymentRecord {
   id: string
   invoiceId: string
@@ -377,6 +396,13 @@ export interface SupplierPaymentRecord {
   notes?: string
   /** Comprobante del abono (mismo bucket que facturas: ruta `payments/…` o URL). */
   imageUrl?: string
+  /** Venta cuyo cobro financió este abono. */
+  sourceSaleId?: string
+  /** Canal del cobro de la venta (nequi, bancolombia, etc.). */
+  sourceChannel?: SupplierPaymentSourceChannel
+  sourceSaleInvoiceNumber?: string
+  sourceSaleClientName?: string
+  linkedEgresoId?: string
   userId: string
   userName: string
   storeId?: string

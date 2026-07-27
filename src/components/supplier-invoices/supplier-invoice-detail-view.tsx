@@ -143,6 +143,14 @@ export function SupplierInvoiceDetailView({
     return 'Transferencia'
   }
 
+  const channelLabelEs = (ch: string) => {
+    if (ch === 'cash') return 'Efectivo'
+    if (ch === 'nequi') return 'Nequi'
+    if (ch === 'bancolombia') return 'Bancolombia'
+    if (ch === 'card') return 'Tarjeta'
+    return 'Transferencia'
+  }
+
   if (invoiceLoading) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
@@ -430,6 +438,17 @@ export function SupplierInvoiceDetailView({
                         ) : null}
                       </div>
                     </div>
+                    {p.sourceSaleId && (
+                      <p className="mt-2 text-sm text-amber-800 dark:text-amber-200/90">
+                        Origen: cobro venta{' '}
+                        <span className="font-semibold">
+                          {p.sourceSaleInvoiceNumber || p.sourceSaleId.slice(0, 8)}
+                        </span>
+                        {p.sourceChannel ? ` · ${channelLabelEs(p.sourceChannel)}` : ''}
+                        {p.sourceSaleClientName ? ` · ${p.sourceSaleClientName}` : ''}
+                        {p.linkedEgresoId ? ' · egreso de cuenta registrado' : ''}
+                      </p>
+                    )}
                     {p.notes && <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{p.notes}</p>}
                   </div>
                 ))}

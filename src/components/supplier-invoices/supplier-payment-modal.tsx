@@ -1,10 +1,19 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import { X, DollarSign, CreditCard, Banknote, Shuffle, Upload } from 'lucide-react'
-import { SupplierInvoice } from '@/types'
+import {
+  X,
+  DollarSign,
+  CreditCard,
+  Banknote,
+  Shuffle,
+  Upload,
+  Receipt,
+  Search,
+} from 'lucide-react'
+import { SaleCollectionOption, SupplierInvoice } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUser } from '@/lib/store-helper'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
@@ -34,6 +43,21 @@ function paymentReceiptStoredToPublicUrl(stored: string): string {
   return supabase.storage.from('supplier-invoices').getPublicUrl(path).data.publicUrl
 }
 
+function channelLabel(channel: SaleCollectionOption['channel']): string {
+  switch (channel) {
+    case 'cash':
+      return 'Efectivo'
+    case 'nequi':
+      return 'Nequi'
+    case 'bancolombia':
+      return 'Bancolombia'
+    case 'card':
+      return 'Tarjeta'
+    default:
+      return 'Transferencia'
+  }
+}
+
 interface SupplierPaymentModalProps {
   isOpen: boolean
   onClose: () => void
@@ -59,6 +83,12 @@ export function SupplierPaymentModal({
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [moneyOrigin, setMoneyOrigin] = useState<'manual' | 'sale'>('manual')
+  const [saleSearch, setSaleSearch] = useState('')
+  const [saleOptions, setSaleOptions] = useState<SaleCollectionOption[]>([])
+  const [saleLoading, setSaleLoading] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<SaleCollectionOption | null>(null)
+  const searchSeq = useRef(0)
 
   useLayoutEffect(() => {
     setMounted(true)
@@ -84,8 +114,36 @@ export function SupplierPaymentModal({
       setUploading(false)
       setError('')
       setSubmitting(false)
+      setMoneyOrigin('manual')
+      setSaleSearch('')
+      setSaleOptions([])
+      setSelectedSale(null)
     }
   }, [isOpen, invoice?.id])
+
+  useEffect(() => {
+    if (!isOpen || moneyOrigin !== 'sale') return
+    const seq = ++searchSeq.current
+    const t = window.setTimeout(async () => {
+      setSaleLoading(true)
+      try {
+        const rows = await SupplierInvoicesService.listAvailableSaleCollections({
+          search: saleSearch,
+          limit: 25,
+        })
+        if (seq !== searchSeq.current) return
+        setSaleOptions(rows)
+      } catch (err) {
+        if (seq !== searchSeq.current) return
+        console.error(err)
+        setSaleOptions([])
+        toast.error('No se pudieron cargar cobros de venta')
+      } finally {
+        if (seq === searchSeq.current) setSaleLoading(false)
+      }
+    }, 280)
+    return () => window.clearTimeout(t)
+  }, [isOpen, moneyOrigin, saleSearch])
 
   const receiptPublicUrl = imageUrl ? paymentReceiptStoredToPublicUrl(imageUrl) : ''
 
@@ -136,6 +194,16 @@ export function SupplierPaymentModal({
 
   const pending = Math.max(0, invoice.totalAmount - invoice.paidAmount)
 
+  const selectSaleCollection = (opt: SaleCollectionOption) => {
+    setSelectedSale(opt)
+    const suggested = Math.min(pending, opt.availableAmount)
+    setAmountStr(suggested > 0 ? formatNumber(String(Math.round(suggested))) : '')
+    setPaymentMethod(opt.channel === 'cash' ? 'cash' : 'transfer')
+    setCashStr('')
+    setTransferStr('')
+    setError('')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -148,9 +216,23 @@ export function SupplierPaymentModal({
       setError(`El monto no puede superar ${pending.toLocaleString('es-CO')} COP pendientes`)
       return
     }
+
+    if (moneyOrigin === 'sale') {
+      if (!selectedSale) {
+        setError('Elige el cobro de venta que vas a destinar')
+        return
+      }
+      if (amount > selectedSale.availableAmount + 0.01) {
+        setError(
+          `Ese cobro solo tiene ${selectedSale.availableAmount.toLocaleString('es-CO')} COP disponibles`
+        )
+        return
+      }
+    }
+
     let cashAmount: number | undefined
     let transferAmount: number | undefined
-    if (paymentMethod === 'mixed') {
+    if (moneyOrigin === 'manual' && paymentMethod === 'mixed') {
       const c = parseAmount(cashStr)
       const t = parseAmount(transferStr)
       if (c <= 0 || t <= 0) {
@@ -180,16 +262,26 @@ export function SupplierPaymentModal({
       await SupplierInvoicesService.addPayment({
         invoiceId: invoice.id,
         amount,
-        paymentMethod,
+        paymentMethod:
+          moneyOrigin === 'sale'
+            ? selectedSale!.channel === 'cash'
+              ? 'cash'
+              : 'transfer'
+            : paymentMethod,
         cashAmount,
         transferAmount,
         notes: notes.trim() || undefined,
         imageUrl: imageUrl?.trim() || undefined,
         userId,
         userName: userName || 'Usuario',
+        sourceSaleId: moneyOrigin === 'sale' ? selectedSale!.saleId : undefined,
+        sourceChannel: moneyOrigin === 'sale' ? selectedSale!.channel : undefined,
       })
       onAddPayment()
       onClose()
+      if (moneyOrigin === 'sale') {
+        toast.success('Abono registrado y egreso de cuenta creado')
+      }
     } catch (err) {
       const msg =
         err instanceof Error
@@ -242,6 +334,11 @@ export function SupplierPaymentModal({
   const methodIdleClass =
     'border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-200/80 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-800'
 
+  const originIdle =
+    'border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-200/80 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300'
+  const originActive =
+    'border-amber-300 bg-amber-50 text-amber-950 ring-1 ring-amber-200/80 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-800/50'
+
   const modal = (
     <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
       <div
@@ -288,6 +385,126 @@ export function SupplierPaymentModal({
             </div>
 
             <div>
+              <span className={appModalLabelClass}>Origen del dinero</span>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Origen del dinero">
+                <button
+                  type="button"
+                  aria-pressed={moneyOrigin === 'manual'}
+                  onClick={() => {
+                    setMoneyOrigin('manual')
+                    setSelectedSale(null)
+                    setError('')
+                  }}
+                  className={cn(
+                    'flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-bold transition-colors',
+                    moneyOrigin === 'manual' ? originActive : originIdle
+                  )}
+                >
+                  <CreditCard className="h-4 w-4" strokeWidth={1.75} />
+                  Canal / método
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={moneyOrigin === 'sale'}
+                  onClick={() => {
+                    setMoneyOrigin('sale')
+                    setPaymentMethod('transfer')
+                    setCashStr('')
+                    setTransferStr('')
+                    setError('')
+                  }}
+                  className={cn(
+                    'flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-bold transition-colors',
+                    moneyOrigin === 'sale' ? originActive : originIdle
+                  )}
+                >
+                  <Receipt className="h-4 w-4" strokeWidth={1.75} />
+                  Cobro de venta
+                </button>
+              </div>
+              <p className={cn(appModalHintClass, 'mt-1.5')}>
+                {moneyOrigin === 'sale'
+                  ? 'El cobro de la venta se destina a este proveedor y se registra un egreso de cuenta del mismo canal.'
+                  : 'Pagas desde el canal (efectivo, transferencia o mixto) sin vincular una factura de venta.'}
+              </p>
+            </div>
+
+            {moneyOrigin === 'sale' && (
+              <div className={cn(cardShell, 'space-y-3 p-3')}>
+                <div>
+                  <label htmlFor="supplier-payment-sale-search" className={appModalLabelClass}>
+                    Buscar venta
+                  </label>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      id="supplier-payment-sale-search"
+                      value={saleSearch}
+                      onChange={e => setSaleSearch(e.target.value)}
+                      className={cn(inputClass, 'h-11 pl-9 text-sm')}
+                      placeholder="Nº factura o cliente…"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
+                {selectedSale && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-sm dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                    <p className="font-semibold text-emerald-900 dark:text-emerald-100">
+                      {selectedSale.invoiceNumber} · {channelLabel(selectedSale.channel)}
+                    </p>
+                    <p className="text-xs text-emerald-800/90 dark:text-emerald-200/80">
+                      {selectedSale.clientName} · disponible{' '}
+                      <span className="font-bold tabular-nums">
+                        {formatCurrency(selectedSale.availableAmount)}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-1 text-xs font-bold text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-200"
+                      onClick={() => setSelectedSale(null)}
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                )}
+
+                {!selectedSale && (
+                  <div className="max-h-44 space-y-1.5 overflow-y-auto">
+                    {saleLoading ? (
+                      <p className={appModalHintClass}>Buscando cobros…</p>
+                    ) : saleOptions.length === 0 ? (
+                      <p className={appModalHintClass}>
+                        No hay cobros disponibles en los últimos 90 días
+                        {saleSearch ? ' con ese filtro' : ''}.
+                      </p>
+                    ) : (
+                      saleOptions.map(opt => (
+                        <button
+                          key={`${opt.saleId}:${opt.channel}`}
+                          type="button"
+                          onClick={() => selectSaleCollection(opt)}
+                          className="flex w-full flex-col gap-0.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left transition-colors hover:border-amber-300 hover:bg-amber-50/50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-amber-700 dark:hover:bg-amber-950/20"
+                        >
+                          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                            {opt.invoiceNumber}{' '}
+                            <span className="font-medium text-zinc-500">· {channelLabel(opt.channel)}</span>
+                          </span>
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                            {opt.clientName} · disp.{' '}
+                            <span className="font-bold tabular-nums text-zinc-800 dark:text-zinc-200">
+                              {formatCurrency(opt.availableAmount)}
+                            </span>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
               <label htmlFor="supplier-payment-amount" className={appModalLabelClass}>
                 Monto del abono
               </label>
@@ -300,87 +517,110 @@ export function SupplierPaymentModal({
                 inputMode="numeric"
                 autoComplete="off"
               />
-            </div>
-
-            <div>
-              <span className={appModalLabelClass}>Método</span>
-              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Método de pago">
-                {methodOptions.map(({ v, label, Icon, selected }) => {
-                  const active = paymentMethod === v
-                  return (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod(v)
-                        if (v !== 'mixed') {
-                          setCashStr('')
-                          setTransferStr('')
-                        }
-                      }}
-                      aria-pressed={active}
-                      className={cn(
-                        'flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-center text-xs font-bold transition-colors',
-                        active ? selected : methodIdleClass
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {paymentMethod === 'mixed' && (
-              <div className={cn(cardShell, 'space-y-3 p-3')}>
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  Desglose del abono mixto
+              {moneyOrigin === 'sale' && selectedSale && (
+                <p className={cn(appModalHintClass, 'mt-1')}>
+                  Máximo por este cobro: {formatCurrency(selectedSale.availableAmount)}
                 </p>
+              )}
+            </div>
+
+            {moneyOrigin === 'manual' && (
+              <>
                 <div>
-                  <label htmlFor="supplier-payment-cash" className={cn(appModalLabelClass, 'flex items-center gap-2')}>
-                    <Banknote className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    Monto en efectivo
-                  </label>
-                  <input
-                    id="supplier-payment-cash"
-                    value={cashStr}
-                    onChange={e => setCashStr(formatNumber(e.target.value))}
-                    className={cn(inputClass, 'h-11 text-base tabular-nums')}
-                    placeholder="0"
-                    inputMode="numeric"
-                  />
+                  <span className={appModalLabelClass}>Método</span>
+                  <div className="grid grid-cols-3 gap-2" role="group" aria-label="Método de pago">
+                    {methodOptions.map(({ v, label, Icon, selected }) => {
+                      const active = paymentMethod === v
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => {
+                            setPaymentMethod(v)
+                            if (v !== 'mixed') {
+                              setCashStr('')
+                              setTransferStr('')
+                            }
+                          }}
+                          aria-pressed={active}
+                          className={cn(
+                            'flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-center text-xs font-bold transition-colors',
+                            active ? selected : methodIdleClass
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div>
-                  <label
-                    htmlFor="supplier-payment-transfer"
-                    className={cn(appModalLabelClass, 'flex items-center gap-2')}
-                  >
-                    <CreditCard className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    Monto en transferencia
-                  </label>
-                  <input
-                    id="supplier-payment-transfer"
-                    value={transferStr}
-                    onChange={e => setTransferStr(formatNumber(e.target.value))}
-                    className={cn(inputClass, 'h-11 text-base tabular-nums')}
-                    placeholder="0"
-                    inputMode="numeric"
-                  />
-                </div>
-                {amountStr && (
-                  <p className={appModalHintClass}>
-                    Total abono:{' '}
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                      {formatCurrency(parseAmount(amountStr))}
-                    </span>
-                    {' · '}
-                    Suma desglose:{' '}
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                      {formatCurrency(parseAmount(cashStr) + parseAmount(transferStr))}
-                    </span>
-                  </p>
+
+                {paymentMethod === 'mixed' && (
+                  <div className={cn(cardShell, 'space-y-3 p-3')}>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      Desglose del abono mixto
+                    </p>
+                    <div>
+                      <label
+                        htmlFor="supplier-payment-cash"
+                        className={cn(appModalLabelClass, 'flex items-center gap-2')}
+                      >
+                        <Banknote className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        Monto en efectivo
+                      </label>
+                      <input
+                        id="supplier-payment-cash"
+                        value={cashStr}
+                        onChange={e => setCashStr(formatNumber(e.target.value))}
+                        className={cn(inputClass, 'h-11 text-base tabular-nums')}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="supplier-payment-transfer"
+                        className={cn(appModalLabelClass, 'flex items-center gap-2')}
+                      >
+                        <CreditCard className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        Monto en transferencia
+                      </label>
+                      <input
+                        id="supplier-payment-transfer"
+                        value={transferStr}
+                        onChange={e => setTransferStr(formatNumber(e.target.value))}
+                        className={cn(inputClass, 'h-11 text-base tabular-nums')}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
+                    </div>
+                    {amountStr && (
+                      <p className={appModalHintClass}>
+                        Total abono:{' '}
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                          {formatCurrency(parseAmount(amountStr))}
+                        </span>
+                        {' · '}
+                        Suma desglose:{' '}
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                          {formatCurrency(parseAmount(cashStr) + parseAmount(transferStr))}
+                        </span>
+                      </p>
+                    )}
+                  </div>
                 )}
+              </>
+            )}
+
+            {moneyOrigin === 'sale' && selectedSale && (
+              <div className={cn(cardShell, 'p-3')}>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  Canal del egreso:{' '}
+                  <span className="font-bold text-zinc-900 dark:text-zinc-50">
+                    {channelLabel(selectedSale.channel)}
+                  </span>
+                </p>
               </div>
             )}
 

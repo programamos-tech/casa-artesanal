@@ -3,9 +3,13 @@ import {
   Supplier,
   SupplierInvoice,
   SupplierInvoiceStatus,
-  SupplierPaymentRecord
+  SupplierPaymentRecord,
+  SaleCollectionOption,
+  SupplierPaymentSourceChannel
 } from '@/types'
-import { getCurrentUserStoreId, getCurrentUser } from './store-helper'
+import { getCurrentUserStoreId } from './store-helper'
+import { EgresosService } from './egresos-service'
+import { firstDayOfMonthISO } from './egreso-concepts'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -135,6 +139,10 @@ function mapInvoice(
 function mapPayment(row: Record<string, unknown>): SupplierPaymentRecord {
   const cash = row.cash_amount
   const transfer = row.transfer_amount
+  const saleJoin = row.sales as
+    | { invoice_number?: string; client_name?: string }
+    | null
+    | undefined
   return {
     id: row.id as string,
     invoiceId: row.invoice_id as string,
@@ -147,12 +155,55 @@ function mapPayment(row: Record<string, unknown>): SupplierPaymentRecord {
       transfer != null && transfer !== '' ? Number(transfer) : undefined,
     notes: (row.notes as string) || undefined,
     imageUrl: resolveSupplierInvoiceImageUrl(row.image_url),
+    sourceSaleId: (row.source_sale_id as string) || undefined,
+    sourceChannel: (row.source_channel as SupplierPaymentSourceChannel) || undefined,
+    sourceSaleInvoiceNumber:
+      (saleJoin && typeof saleJoin === 'object'
+        ? saleJoin.invoice_number
+        : undefined) || undefined,
+    sourceSaleClientName:
+      (saleJoin && typeof saleJoin === 'object' ? saleJoin.client_name : undefined) ||
+      undefined,
+    linkedEgresoId: (row.linked_egreso_id as string) || undefined,
     userId: row.user_id as string,
     userName: (row.user_name as string) || 'Usuario',
     storeId: (row.store_id as string) || undefined,
     status: (row.status as SupplierPaymentRecord['status']) || 'active',
     createdAt: row.created_at as string,
     updatedAt: (row.updated_at as string) || undefined
+  }
+}
+
+const SALE_COLLECTION_CHANNELS: SupplierPaymentSourceChannel[] = [
+  'cash',
+  'transfer',
+  'nequi',
+  'bancolombia',
+  'card',
+]
+
+function isSaleCollectionChannel(v: string): v is SupplierPaymentSourceChannel {
+  return (SALE_COLLECTION_CHANNELS as string[]).includes(v)
+}
+
+function channelToSupplierPaymentMethod(
+  channel: SupplierPaymentSourceChannel
+): 'cash' | 'transfer' {
+  return channel === 'cash' ? 'cash' : 'transfer'
+}
+
+function channelLabel(channel: SupplierPaymentSourceChannel): string {
+  switch (channel) {
+    case 'cash':
+      return 'Efectivo'
+    case 'nequi':
+      return 'Nequi'
+    case 'bancolombia':
+      return 'Bancolombia'
+    case 'card':
+      return 'Tarjeta'
+    default:
+      return 'Transferencia'
   }
 }
 
@@ -355,11 +406,133 @@ export class SupplierInvoicesService {
   static async getPaymentHistory(invoiceId: string): Promise<SupplierPaymentRecord[]> {
     const { data, error } = await supabase
       .from('supplier_payment_records')
-      .select('*')
+      .select('*, sales:source_sale_id(invoice_number, client_name)')
       .eq('invoice_id', invoiceId)
       .order('payment_date', { ascending: false })
     if (error) throw error
     return (data || []).map((r) => mapPayment(r as Record<string, unknown>))
+  }
+
+  /**
+   * Cobros de ventas recientes aún disponibles para destinar a un pago de proveedor.
+   * Una venta mixta aparece como una opción por canal.
+   */
+  static async listAvailableSaleCollections(options?: {
+    search?: string
+    limit?: number
+  }): Promise<SaleCollectionOption[]> {
+    const limit = Math.min(Math.max(options?.limit ?? 30, 1), 80)
+    const search = (options?.search || '').trim()
+
+    const since = new Date()
+    since.setDate(since.getDate() - 90)
+
+    let salesQuery = supabase
+      .from('sales')
+      .select('id, invoice_number, client_name, total, payment_method, created_at, store_id, status')
+      .gte('created_at', since.toISOString())
+      .neq('status', 'cancelled')
+      .neq('status', 'draft')
+      .neq('payment_method', 'credit')
+      .neq('payment_method', 'warranty')
+      .neq('payment_method', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(120)
+
+    salesQuery = applyStoreFilter(salesQuery)
+
+    if (search) {
+      const escaped = search.replace(/[%_,]/g, '')
+      if (escaped) {
+        salesQuery = salesQuery.or(
+          `invoice_number.ilike.%${escaped}%,client_name.ilike.%${escaped}%`
+        )
+      }
+    }
+
+    const { data: sales, error: salesError } = await salesQuery
+    if (salesError) throw salesError
+
+    const saleRows = (sales || []) as Array<Record<string, unknown>>
+    if (saleRows.length === 0) return []
+
+    const saleIds = saleRows.map((s) => s.id as string)
+    const mixedIds = saleRows
+      .filter((s) => String(s.payment_method) === 'mixed')
+      .map((s) => s.id as string)
+
+    const mixedBySale = new Map<string, Array<{ type: string; amount: number }>>()
+    if (mixedIds.length > 0) {
+      const { data: payments, error: payErr } = await supabase
+        .from('sale_payments')
+        .select('sale_id, payment_type, amount')
+        .in('sale_id', mixedIds)
+      if (payErr) throw payErr
+      for (const p of payments || []) {
+        const list = mixedBySale.get(p.sale_id) || []
+        list.push({
+          type: String(p.payment_type || ''),
+          amount: Number(p.amount) || 0,
+        })
+        mixedBySale.set(p.sale_id, list)
+      }
+    }
+
+    const { data: usedRows, error: usedErr } = await supabase
+      .from('supplier_payment_records')
+      .select('source_sale_id, source_channel, amount, status')
+      .in('source_sale_id', saleIds)
+      .eq('status', 'active')
+    if (usedErr) throw usedErr
+
+    const usedByKey = new Map<string, number>()
+    for (const u of usedRows || []) {
+      const sid = u.source_sale_id as string
+      const ch = String(u.source_channel || '')
+      if (!sid || !isSaleCollectionChannel(ch)) continue
+      const key = `${sid}:${ch}`
+      usedByKey.set(key, (usedByKey.get(key) || 0) + (Number(u.amount) || 0))
+    }
+
+    const optionsOut: SaleCollectionOption[] = []
+
+    for (const sale of saleRows) {
+      const saleId = sale.id as string
+      const method = String(sale.payment_method || '')
+      const invoiceNumber = String(sale.invoice_number || '').trim() || saleId.slice(0, 8)
+      const clientName = String(sale.client_name || 'Cliente')
+      const createdAt = String(sale.created_at || '')
+
+      const parts: Array<{ channel: SupplierPaymentSourceChannel; amount: number }> = []
+
+      if (method === 'mixed') {
+        for (const part of mixedBySale.get(saleId) || []) {
+          if (!isSaleCollectionChannel(part.type)) continue
+          if (part.amount <= 0) continue
+          parts.push({ channel: part.type, amount: part.amount })
+        }
+      } else if (isSaleCollectionChannel(method)) {
+        parts.push({ channel: method, amount: Number(sale.total) || 0 })
+      }
+
+      for (const part of parts) {
+        const used = usedByKey.get(`${saleId}:${part.channel}`) || 0
+        const available = Math.max(0, part.amount - used)
+        if (available < 1) continue
+        optionsOut.push({
+          saleId,
+          invoiceNumber,
+          clientName,
+          createdAt,
+          channel: part.channel,
+          collectedAmount: part.amount,
+          usedAmount: used,
+          availableAmount: available,
+        })
+      }
+    }
+
+    return optionsOut.slice(0, limit)
   }
 
   static async addPayment(input: {
@@ -373,6 +546,9 @@ export class SupplierInvoicesService {
     imageUrl?: string | null
     userId: string
     userName: string
+    /** Destinar cobro de esta venta al abono (crea egreso de cuenta). */
+    sourceSaleId?: string
+    sourceChannel?: SupplierPaymentSourceChannel
   }): Promise<SupplierPaymentRecord> {
     const inv = await this.getInvoiceById(input.invoiceId)
     if (!inv) throw new Error('Factura no encontrada')
@@ -381,9 +557,74 @@ export class SupplierInvoicesService {
     if (input.amount > pending + 0.01) {
       throw new Error('El abono supera el saldo pendiente')
     }
+
+    let paymentMethod = input.paymentMethod
     let cashAmount: number | null = null
     let transferAmount: number | null = null
-    if (input.paymentMethod === 'mixed') {
+    let sourceSaleId: string | null = null
+    let sourceChannel: SupplierPaymentSourceChannel | null = null
+    let saleMeta: {
+      invoiceNumber: string
+      clientName: string
+      createdAt: string
+    } | null = null
+
+    if (input.sourceSaleId) {
+      if (!input.sourceChannel || !isSaleCollectionChannel(input.sourceChannel)) {
+        throw new Error('Indica el canal del cobro de la venta')
+      }
+      sourceSaleId = input.sourceSaleId
+      sourceChannel = input.sourceChannel
+      paymentMethod = channelToSupplierPaymentMethod(sourceChannel)
+
+      const { data: sale, error: saleErr } = await supabase
+        .from('sales')
+        .select('id, invoice_number, client_name, total, payment_method, status, store_id, created_at')
+        .eq('id', sourceSaleId)
+        .maybeSingle()
+      if (saleErr) throw saleErr
+      if (!sale) throw new Error('La venta seleccionada no existe')
+      if (sale.status === 'cancelled' || sale.status === 'draft') {
+        throw new Error('La venta no está disponible')
+      }
+
+      const method = String(sale.payment_method || '')
+      let collected = 0
+      if (method === 'mixed') {
+        const { data: parts, error: partsErr } = await supabase
+          .from('sale_payments')
+          .select('payment_type, amount')
+          .eq('sale_id', sourceSaleId)
+          .eq('payment_type', sourceChannel)
+        if (partsErr) throw partsErr
+        collected = (parts || []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+      } else if (method === sourceChannel) {
+        collected = Number(sale.total) || 0
+      } else {
+        throw new Error('El canal no coincide con el método de pago de la venta')
+      }
+
+      const { data: usedRows, error: usedErr } = await supabase
+        .from('supplier_payment_records')
+        .select('amount')
+        .eq('source_sale_id', sourceSaleId)
+        .eq('source_channel', sourceChannel)
+        .eq('status', 'active')
+      if (usedErr) throw usedErr
+      const used = (usedRows || []).reduce((s, r) => s + (Number(r.amount) || 0), 0)
+      const available = Math.max(0, collected - used)
+      if (input.amount > available + 0.01) {
+        throw new Error(
+          `Ese cobro solo tiene ${available.toLocaleString('es-CO')} COP disponibles para destinar`
+        )
+      }
+
+      saleMeta = {
+        invoiceNumber: String(sale.invoice_number || '').trim() || sourceSaleId.slice(0, 8),
+        clientName: String(sale.client_name || 'Cliente'),
+        createdAt: String(sale.created_at || ''),
+      }
+    } else if (paymentMethod === 'mixed') {
       const c = input.cashAmount ?? 0
       const t = input.transferAmount ?? 0
       if (c <= 0 || t <= 0) {
@@ -395,29 +636,85 @@ export class SupplierInvoicesService {
       cashAmount = c
       transferAmount = t
     }
+
     const storeId = inv.storeId || getCurrentUserStoreId() || MAIN_STORE_ID
+    const autoNote =
+      sourceSaleId && sourceChannel && saleMeta
+        ? `Cobro venta ${saleMeta.invoiceNumber} · ${channelLabel(sourceChannel)} · ${saleMeta.clientName}`
+        : null
+    const notes =
+      [input.notes?.trim(), autoNote].filter(Boolean).join(' · ') || null
+
     const baseRow: Record<string, unknown> = {
       invoice_id: input.invoiceId,
       store_id: storeId,
       amount: input.amount,
       payment_date: input.paymentDate || new Date().toISOString(),
-      payment_method: input.paymentMethod,
-      notes: input.notes || null,
+      payment_method: paymentMethod,
+      notes,
       image_url: input.imageUrl?.trim() || null,
       user_id: input.userId,
       user_name: input.userName,
-      status: 'active'
+      status: 'active',
+      source_sale_id: sourceSaleId,
+      source_channel: sourceChannel,
     }
-    if (input.paymentMethod === 'mixed' && cashAmount != null && transferAmount != null) {
+    if (paymentMethod === 'mixed' && cashAmount != null && transferAmount != null) {
       baseRow.cash_amount = cashAmount
       baseRow.transfer_amount = transferAmount
     }
+
     const { data, error } = await supabase
       .from('supplier_payment_records')
       .insert([baseRow])
-      .select('*')
+      .select('*, sales:source_sale_id(invoice_number, client_name)')
       .single()
     if (error) throw new Error(supabaseErrorMessage(error))
-    return mapPayment(data as Record<string, unknown>)
+
+    const payment = mapPayment(data as Record<string, unknown>)
+
+    if (sourceSaleId && sourceChannel) {
+      const expenseDate = (input.paymentDate || new Date().toISOString()).slice(0, 10)
+      // El egreso cuenta en el mes en que entró el cobro de la venta (no en el mes del abono).
+      const saleDate = saleMeta?.createdAt
+        ? new Date(saleMeta.createdAt)
+        : new Date(`${expenseDate}T12:00:00`)
+      const periodMonth = firstDayOfMonthISO(
+        Number.isNaN(saleDate.getTime()) ? new Date(`${expenseDate}T12:00:00`) : saleDate
+      )
+      const egresoRes = await EgresosService.createEgreso(
+        {
+          concept: 'pago_proveedor',
+          description: `Abono proveedor ${inv.supplierName || ''} · factura ${inv.invoiceNumber} · cobro venta ${saleMeta?.invoiceNumber || ''}`.trim(),
+          amount: input.amount,
+          expenseDate,
+          paymentMethod: sourceChannel,
+          expenseKind: 'cuenta',
+          periodMonth,
+          storeId,
+        },
+        input.userId,
+        input.userName
+      )
+
+      if (!egresoRes.success || !egresoRes.egreso) {
+        await supabase.from('supplier_payment_records').delete().eq('id', payment.id)
+        throw new Error(
+          egresoRes.error ||
+            'No se pudo registrar el egreso de cuenta ligado al cobro de la venta'
+        )
+      }
+
+      const { error: linkErr } = await supabase
+        .from('supplier_payment_records')
+        .update({ linked_egreso_id: egresoRes.egreso.id })
+        .eq('id', payment.id)
+      if (linkErr) {
+        console.error('No se pudo vincular egreso al abono:', linkErr)
+      }
+      payment.linkedEgresoId = egresoRes.egreso.id
+    }
+
+    return payment
   }
 }
