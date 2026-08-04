@@ -44,6 +44,15 @@ import {
 } from '@/lib/product-pricing'
 import { ClientModal } from '@/components/clients/client-modal'
 import {
+  buildMixedPaymentsForSave as buildMixedPaymentsPayload,
+  createEmptyMixedPayment,
+  getAvailableMixedTypes,
+  getMixedPaymentTypeLabel,
+  summarizeMixedPayments,
+  validateMixedPayments,
+  type MixedPaymentType,
+} from '@/lib/mixed-payments'
+import {
   applyLineTotal,
   computeSaleAmounts,
   getLineDiscountAmount,
@@ -189,11 +198,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     if (paymentMethod === 'mixed') {
       setShowMixedPayments(true)
       setMixedPayments((prev) => {
-        if (prev.length >= 2 && prev[0]?.paymentType === 'cash') return prev
-        return [
-          { id: '', saleId: '', paymentType: 'cash', amount: 0, reference: '', notes: '', createdAt: '', updatedAt: '' },
-          { id: '', saleId: '', paymentType: 'nequi', amount: 0, reference: '', notes: '', createdAt: '', updatedAt: '' },
-        ]
+        if (prev.length >= 2) return prev
+        return [createEmptyMixedPayment('cash'), createEmptyMixedPayment('nequi')]
       })
     } else {
       setShowMixedPayments(false)
@@ -444,35 +450,6 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     }
   }
 
-  const getPaymentTypeLabel = (type: string) => {
-    switch (type) {
-      case 'cash':
-        return 'Efectivo'
-      case 'nequi':
-        return 'Nequi'
-      case 'bancolombia':
-        return 'Bancolombia'
-      case 'transfer':
-        return 'Transferencia (otro / sin canal)'
-      case 'card':
-        return 'Tarjeta'
-      default:
-        return type
-    }
-  }
-
-  const getTotalMixedPayments = () => {
-    return mixedPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
-  }
-
-  const mixedCashAmount = mixedPayments
-    .filter((p) => p.paymentType === 'cash')
-    .reduce((sum, p) => sum + (p.amount || 0), 0)
-
-  const mixedDigitalAmount = mixedPayments
-    .filter((p) => p.paymentType !== 'cash')
-    .reduce((sum, p) => sum + (p.amount || 0), 0)
-
   // Solo considerar productos con cantidad > 0 para cálculos
   const validProducts = selectedProducts.filter(item => item.quantity > 0)
 
@@ -497,9 +474,16 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
     discountType: orderDiscountType,
   })
   const { itemsSubtotal, orderDiscountAmount, subtotal, total } = saleAmounts
-  const roundedSaleTotal = Math.round(total)
-  const mixedCashOwed = Math.max(0, roundedSaleTotal - Math.round(mixedDigitalAmount))
-  const mixedCashChange = mixedCashAmount - mixedCashOwed
+  const mixedSummary = summarizeMixedPayments(mixedPayments, total)
+  const {
+    roundedSaleTotal,
+    cashAmount: mixedCashAmount,
+    hasCash: mixedHasCash,
+    cashOwed: mixedCashOwed,
+    cashChange: mixedCashChange,
+    remaining: mixedRemaining,
+    isComplete: mixedIsComplete,
+  } = mixedSummary
   const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashOwed : total
   const totalLineDiscount = validProductsForTotal.reduce(
     (sum, item) => sum + getLineDiscountAmount(item),
@@ -507,9 +491,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
   )
 
   const buildMixedPaymentsForSave = (): SalePayment[] =>
-    mixedPayments.map((p) =>
-      p.paymentType === 'cash' ? { ...p, amount: mixedCashOwed } : p
-    )
+    buildMixedPaymentsPayload(mixedPayments, mixedCashOwed)
 
   const handleAddProduct = (product: Product) => {
     const pricedProduct = productCache[product.id] ?? product
@@ -732,22 +714,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
       }
 
       if (paymentMethod === 'mixed') {
-        const digital = Math.round(mixedDigitalAmount)
-        const cashEntered = Math.round(mixedCashAmount)
-        const cashOwed = Math.max(0, Math.round(total) - digital)
-
-        if (digital > Math.round(total)) {
+        const mixedError = validateMixedPayments(mixedPayments, total)
+        if (mixedError) {
           isSubmittingRef.current = false
-          setPaymentError(
-            `El monto digital ($${digital.toLocaleString('es-CO')}) supera el total de la venta ($${Math.round(total).toLocaleString('es-CO')}).`
-          )
-          return
-        }
-        if (cashEntered < cashOwed) {
-          isSubmittingRef.current = false
-          setPaymentError(
-            `En efectivo faltan $${(cashOwed - cashEntered).toLocaleString('es-CO')}. Restante a cubrir: $${cashOwed.toLocaleString('es-CO')}.`
-          )
+          setPaymentError(mixedError)
           return
         }
       }
@@ -1392,36 +1362,46 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                         <h4 className="text-xs font-medium text-gray-900 dark:text-white mb-2">
                           Desglose de Pago Mixto
                         </h4>
+                        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                          Elige dos medios distintos (efectivo, Nequi, Bancolombia, transferencia o tarjeta).
+                        </p>
                         <div className="space-y-2">
-                          {mixedPayments.map((payment, index) => (
+                          {mixedPayments.map((payment, index) => {
+                            const otherType = mixedPayments[index === 0 ? 1 : 0]
+                              ?.paymentType as MixedPaymentType | undefined
+                            const isCashLine = payment.paymentType === 'cash'
+                            const otherAmount = mixedPayments[index === 0 ? 1 : 0]?.amount || 0
+                            const lineRemaining = Math.max(
+                              0,
+                              roundedSaleTotal - Math.round(otherAmount)
+                            )
+
+                            return (
                             <div key={index} className="space-y-2">
                               <div>
-                                {index === 1 ? (
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Monto digital — canal
-                                  </label>
-                                ) : null}
-                                {index === 1 ? (
-                                  <select
-                                    value={payment.paymentType}
-                                    onChange={(e) =>
-                                      updateMixedPayment(
-                                        index,
-                                        'paymentType',
-                                        e.target.value as SalePayment['paymentType']
-                                      )
-                                    }
-                                    className="w-full px-3 py-2 mb-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-green-500 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                                  >
-                                    <option value="nequi">Nequi</option>
-                                    <option value="bancolombia">Bancolombia</option>
-                                    <option value="transfer">Transferencia (otro / sin canal)</option>
-                                  </select>
-                                ) : (
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    {getPaymentTypeLabel(payment.paymentType)}
-                                  </label>
-                                )}
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Medio {index + 1}
+                                </label>
+                                <select
+                                  value={payment.paymentType}
+                                  onChange={(e) =>
+                                    updateMixedPayment(
+                                      index,
+                                      'paymentType',
+                                      e.target.value as SalePayment['paymentType']
+                                    )
+                                  }
+                                  className="w-full px-3 py-2 mb-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-green-500 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                                >
+                                  {getAvailableMixedTypes(
+                                    payment.paymentType as MixedPaymentType,
+                                    otherType
+                                  ).map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
                                 <input
                                   type="text"
                                   value={payment.amount ? payment.amount.toLocaleString('es-CO') : ''}
@@ -1433,7 +1413,10 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                   placeholder="0"
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-neutral-700 text-gray-900 dark:text-white text-sm"
                                 />
-                                {index === 1 && mixedDigitalAmount > 0 && (
+                                {!isCashLine &&
+                                  mixedHasCash &&
+                                  (payment.amount || 0) > 0 &&
+                                  mixedCashOwed > 0 && (
                                   <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                                     Restante en efectivo:{' '}
                                     <span className="font-bold tabular-nums">
@@ -1441,7 +1424,18 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                     </span>
                                   </p>
                                 )}
-                                {index === 0 && mixedCashAmount > 0 && (
+                                {!isCashLine &&
+                                  !mixedHasCash &&
+                                  otherAmount > 0 &&
+                                  lineRemaining > 0 && (
+                                  <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                                    Restante en {getMixedPaymentTypeLabel(payment.paymentType)}:{' '}
+                                    <span className="font-bold tabular-nums">
+                                      ${lineRemaining.toLocaleString('es-CO')}
+                                    </span>
+                                  </p>
+                                )}
+                                {isCashLine && mixedCashAmount > 0 && (
                                   <div className="mt-1.5 space-y-1">
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
                                       Debe cubrir en efectivo:{' '}
@@ -1469,7 +1463,8 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 )}
                               </div>
                             </div>
-                          ))}
+                            )
+                          })}
                           
                           {/* Campo de observaciones generales */}
                           <div className="pt-2">
@@ -1499,18 +1494,18 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 ${roundedSaleTotal.toLocaleString('es-CO')}
                               </span>
                             </div>
-                            {mixedDigitalAmount > 0 && mixedCashAmount === 0 && mixedCashOwed > 0 && (
+                            {mixedRemaining > 0 && !(mixedHasCash && mixedCashAmount > 0) && (
                               <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
                                 <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
                                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                                  Restante en efectivo
+                                  Restante por asignar
                                 </span>
                                 <span className="text-base font-bold text-amber-800 dark:text-amber-300">
-                                  ${mixedCashOwed.toLocaleString('es-CO')}
+                                  ${mixedRemaining.toLocaleString('es-CO')}
                                 </span>
                               </div>
                             )}
-                            {mixedCashAmount > 0 && mixedCashChange > 0 && (
+                            {mixedHasCash && mixedCashAmount > 0 && mixedCashChange > 0 && (
                               <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/20">
                                 <span className="text-sm font-medium text-green-800 dark:text-green-300">
                                   Vuelto a devolver
@@ -1520,7 +1515,7 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 </span>
                               </div>
                             )}
-                            {mixedCashAmount > 0 && mixedCashChange < 0 && (
+                            {mixedHasCash && mixedCashAmount > 0 && mixedCashChange < 0 && (
                               <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-900/20">
                                 <span className="text-sm font-medium text-red-700 dark:text-red-300">
                                   Faltan en efectivo
@@ -1530,15 +1525,12 @@ export function SaleModal({ isOpen, onClose, onSave, sale, onUpdate }: SaleModal
                                 </span>
                               </div>
                             )}
-                            {mixedCashAmount >= mixedCashOwed &&
-                              Math.round(mixedDigitalAmount) + mixedCashOwed === roundedSaleTotal &&
-                              (mixedDigitalAmount > 0 || mixedCashAmount > 0) &&
-                              validProducts.length > 0 && (
+                            {mixedIsComplete && validProducts.length > 0 && (
                               <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
                                 <CheckCircle className="h-4 w-4" />
                                 <span>
                                   Pago completo
-                                  {mixedCashChange > 0
+                                  {mixedHasCash && mixedCashChange > 0
                                     ? ` · vuelto $${mixedCashChange.toLocaleString('es-CO')}`
                                     : ''}
                                 </span>

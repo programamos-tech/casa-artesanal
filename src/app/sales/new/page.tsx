@@ -54,6 +54,15 @@ import {
   prepareSaleItemsForSave,
   type SaleDiscountType,
 } from '@/lib/sale-discount'
+import {
+  buildMixedPaymentsForSave as buildMixedPaymentsPayload,
+  createEmptyMixedPayment,
+  getAvailableMixedTypes,
+  getMixedPaymentTypeLabel,
+  summarizeMixedPayments,
+  validateMixedPayments,
+  type MixedPaymentType,
+} from '@/lib/mixed-payments'
 import { getProductAcquisitionCost } from '@/lib/sale-acquisition-cost'
 import { SaleLineDiscountFields } from '@/components/sales/sale-line-discount-fields'
 import { SaleLinePriceInput } from '@/components/sales/sale-line-price-input'
@@ -277,11 +286,8 @@ export default function NewSalePage() {
     if (paymentMethod === 'mixed') {
       setShowMixedPayments(true)
       setMixedPayments((prev) => {
-        if (prev.length >= 2 && prev[0]?.paymentType === 'cash') return prev
-        return [
-          { id: '', saleId: '', paymentType: 'cash', amount: 0, reference: '', notes: '', createdAt: '', updatedAt: '' },
-          { id: '', saleId: '', paymentType: 'nequi', amount: 0, reference: '', notes: '', createdAt: '', updatedAt: '' },
-        ]
+        if (prev.length >= 2) return prev
+        return [createEmptyMixedPayment('cash'), createEmptyMixedPayment('nequi')]
       })
     } else {
       setShowMixedPayments(false)
@@ -634,29 +640,20 @@ export default function NewSalePage() {
     [validProductsForTotal]
   )
 
-  const getTotalMixedPayments = () => {
-    return mixedPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
-  }
-
-  const mixedCashAmount = useMemo(
-    () =>
-      mixedPayments
-        .filter((p) => p.paymentType === 'cash')
-        .reduce((sum, p) => sum + (p.amount || 0), 0),
-    [mixedPayments]
+  const mixedSummary = useMemo(
+    () => summarizeMixedPayments(mixedPayments, total),
+    [mixedPayments, total]
   )
-  const mixedDigitalAmount = useMemo(
-    () =>
-      mixedPayments
-        .filter((p) => p.paymentType !== 'cash')
-        .reduce((sum, p) => sum + (p.amount || 0), 0),
-    [mixedPayments]
-  )
-  const roundedSaleTotal = Math.round(total)
-  /** Lo que debe quedar en efectivo después del monto digital */
-  const mixedCashOwed = Math.max(0, roundedSaleTotal - Math.round(mixedDigitalAmount))
-  /** Vuelto = efectivo entregado − lo que debía pagar en efectivo */
-  const mixedCashChange = mixedCashAmount - mixedCashOwed
+  const {
+    roundedSaleTotal,
+    cashAmount: mixedCashAmount,
+    hasCash: mixedHasCash,
+    cashOwed: mixedCashOwed,
+    cashChange: mixedCashChange,
+    appliedTotal: mixedAppliedTotal,
+    remaining: mixedRemaining,
+    isComplete: mixedIsComplete,
+  } = mixedSummary
   const changeBaseAmount = paymentMethod === 'mixed' ? mixedCashOwed : total
 
   const updateMixedPayment = (index: number, field: keyof SalePayment, value: any) => {
@@ -668,22 +665,7 @@ export default function NewSalePage() {
 
   /** Pagos mixtos listos para guardar: efectivo = lo adeudado (sin vuelto). */
   const buildMixedPaymentsForSave = (): SalePayment[] => {
-    return mixedPayments.map((p) =>
-      p.paymentType === 'cash' ? { ...p, amount: mixedCashOwed } : p
-    )
-  }
-
-  const getPaymentTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      cash: 'Efectivo',
-      nequi: 'Nequi',
-      bancolombia: 'Bancolombia',
-      transfer: 'Transferencia (otro banco / sin canal)',
-      card: 'Tarjeta',
-      credit: 'Crédito',
-      warranty: 'Garantía',
-    }
-    return labels[type] || type
+    return buildMixedPaymentsPayload(mixedPayments, mixedCashOwed)
   }
 
   const formatCurrency = (amount: number) => {
@@ -823,22 +805,10 @@ export default function NewSalePage() {
       }
 
       if (paymentMethod === 'mixed') {
-        const digital = Math.round(mixedDigitalAmount)
-        const cashEntered = Math.round(mixedCashAmount)
-        const cashOwed = Math.max(0, Math.round(total) - digital)
-
-        if (digital > Math.round(total)) {
+        const mixedError = validateMixedPayments(mixedPayments, total)
+        if (mixedError) {
           isSubmittingRef.current = false
-          setPaymentError(
-            `El monto digital (${formatCurrency(digital)}) supera el total de la venta (${formatCurrency(Math.round(total))}).`
-          )
-          return
-        }
-        if (cashEntered < cashOwed) {
-          isSubmittingRef.current = false
-          setPaymentError(
-            `En efectivo faltan ${formatCurrency(cashOwed - cashEntered)}. Restante a cubrir: ${formatCurrency(cashOwed)}.`
-          )
+          setPaymentError(mixedError)
           return
         }
       }
@@ -1528,34 +1498,44 @@ export default function NewSalePage() {
 
                   {showMixedPayments && (
                     <div className="space-y-3 rounded-lg border border-zinc-200/90 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
-                      {mixedPayments.map((payment, index) => (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Elige dos medios distintos (efectivo, Nequi, Bancolombia, transferencia o tarjeta).
+                      </p>
+                      {mixedPayments.map((payment, index) => {
+                        const otherType = mixedPayments[index === 0 ? 1 : 0]
+                          ?.paymentType as MixedPaymentType | undefined
+                        const isCashLine = payment.paymentType === 'cash'
+                        const otherAmount = mixedPayments[index === 0 ? 1 : 0]?.amount || 0
+                        const lineRemaining = Math.max(
+                          0,
+                          roundedSaleTotal - Math.round(otherAmount)
+                        )
+
+                        return (
                         <div key={index}>
-                          {index === 1 ? (
-                            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                              Monto digital — canal
-                            </label>
-                          ) : null}
-                          {index === 1 ? (
-                            <select
-                              value={payment.paymentType}
-                              onChange={(e) =>
-                                updateMixedPayment(
-                                  index,
-                                  'paymentType',
-                                  e.target.value as SalePayment['paymentType']
-                                )
-                              }
-                              className={cn(inputClass, 'mb-2 py-2')}
-                            >
-                              <option value="nequi">Nequi</option>
-                              <option value="bancolombia">Bancolombia</option>
-                              <option value="transfer">Transferencia (otro / sin canal)</option>
-                            </select>
-                          ) : (
-                            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                              {getPaymentTypeLabel(payment.paymentType)}
-                            </label>
-                          )}
+                          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            Medio {index + 1}
+                          </label>
+                          <select
+                            value={payment.paymentType}
+                            onChange={(e) =>
+                              updateMixedPayment(
+                                index,
+                                'paymentType',
+                                e.target.value as SalePayment['paymentType']
+                              )
+                            }
+                            className={cn(inputClass, 'mb-2 py-2')}
+                          >
+                            {getAvailableMixedTypes(
+                              payment.paymentType as MixedPaymentType,
+                              otherType
+                            ).map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
                           <input
                             type="text"
                             value={payment.amount ? payment.amount.toLocaleString('es-CO') : ''}
@@ -1566,8 +1546,10 @@ export default function NewSalePage() {
                             placeholder="0"
                             className={cn(inputClass, 'py-2 text-sm')}
                           />
-                          {/* Digital: cuánto falta en el otro medio (efectivo) */}
-                          {index === 1 && mixedDigitalAmount > 0 && (
+                          {!isCashLine &&
+                            mixedHasCash &&
+                            (payment.amount || 0) > 0 &&
+                            mixedCashOwed > 0 && (
                             <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                               Restante en efectivo:{' '}
                               <span className="tabular-nums font-bold">
@@ -1575,8 +1557,18 @@ export default function NewSalePage() {
                               </span>
                             </p>
                           )}
-                          {/* Efectivo: vuelto sobre lo que debía pagar en efectivo */}
-                          {index === 0 && mixedCashAmount > 0 && (
+                          {!isCashLine &&
+                            !mixedHasCash &&
+                            otherAmount > 0 &&
+                            lineRemaining > 0 && (
+                            <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                              Restante en {getMixedPaymentTypeLabel(payment.paymentType)}:{' '}
+                              <span className="tabular-nums font-bold">
+                                {formatCurrency(lineRemaining)}
+                              </span>
+                            </p>
+                          )}
+                          {isCashLine && mixedCashAmount > 0 && (
                             <div className="mt-1.5 space-y-1">
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                 Debe cubrir en efectivo:{' '}
@@ -1606,7 +1598,8 @@ export default function NewSalePage() {
                             </div>
                           )}
                         </div>
-                      ))}
+                        )
+                      })}
                       <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
                         <div className="flex justify-between text-sm">
                           <span className="text-zinc-500 dark:text-zinc-400">Total a pagar</span>
@@ -1615,26 +1608,23 @@ export default function NewSalePage() {
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500 dark:text-zinc-400">Digital + efectivo aplicado</span>
+                          <span className="text-zinc-500 dark:text-zinc-400">Total aplicado</span>
                           <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                            {formatCurrency(
-                              Math.round(mixedDigitalAmount) +
-                                Math.min(Math.round(mixedCashAmount), mixedCashOwed)
-                            )}
+                            {formatCurrency(mixedAppliedTotal)}
                           </span>
                         </div>
-                        {mixedDigitalAmount > 0 && mixedCashAmount === 0 && mixedCashOwed > 0 && (
+                        {mixedRemaining > 0 && !(mixedHasCash && mixedCashAmount > 0) && (
                           <div className="flex items-center justify-between rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/25">
                             <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                              Restante en efectivo
+                              Restante por asignar
                             </span>
                             <span className="text-base font-bold tabular-nums text-amber-800 dark:text-amber-300">
-                              {formatCurrency(mixedCashOwed)}
+                              {formatCurrency(mixedRemaining)}
                             </span>
                           </div>
                         )}
-                        {mixedCashAmount > 0 && mixedCashChange > 0 && (
+                        {mixedHasCash && mixedCashAmount > 0 && mixedCashChange > 0 && (
                           <div className="flex items-center justify-between rounded-lg border border-brand-200/80 bg-brand-50/90 px-3 py-2 dark:border-brand-900/40 dark:bg-brand-950/25">
                             <span className="text-sm font-medium text-brand-800 dark:text-brand-300">
                               Vuelto a devolver
@@ -1644,7 +1634,7 @@ export default function NewSalePage() {
                             </span>
                           </div>
                         )}
-                        {mixedCashAmount > 0 && mixedCashChange < 0 && (
+                        {mixedHasCash && mixedCashAmount > 0 && mixedCashChange < 0 && (
                           <div className="flex items-center justify-between rounded-lg border border-red-200/80 bg-red-50/90 px-3 py-2 dark:border-red-900/40 dark:bg-red-950/25">
                             <span className="text-sm font-medium text-red-700 dark:text-red-300">
                               Faltan en efectivo
@@ -1654,14 +1644,11 @@ export default function NewSalePage() {
                             </span>
                           </div>
                         )}
-                        {mixedCashAmount >= mixedCashOwed &&
-                          mixedCashOwed >= 0 &&
-                          Math.round(mixedDigitalAmount) + mixedCashOwed === roundedSaleTotal &&
-                          (mixedDigitalAmount > 0 || mixedCashAmount > 0) && (
+                        {mixedIsComplete && (
                             <div className="flex items-center gap-1.5 text-sm font-medium text-brand-700 dark:text-brand-400">
                               <CheckCircle className="h-3.5 w-3.5 shrink-0" />
                               Pago completo
-                              {mixedCashChange > 0
+                              {mixedHasCash && mixedCashChange > 0
                                 ? ` · vuelto ${formatCurrency(mixedCashChange)}`
                                 : ''}
                             </div>
