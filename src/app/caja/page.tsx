@@ -347,9 +347,9 @@ export default function CajaPage() {
             session={openSession}
             live={live}
             onClose={() => setCloseModal(false)}
-            onClosed={async () => {
+            onClosed={async (sessionId) => {
               setCloseModal(false)
-              await load()
+              router.push(`/caja/${sessionId}`)
             }}
           />
         )}

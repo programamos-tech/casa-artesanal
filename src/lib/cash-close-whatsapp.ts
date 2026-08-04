@@ -89,6 +89,8 @@ export interface CashCloseReportInput {
   notes?: string | null
   sales: CashCloseSaleLine[]
   egresos: CashCloseEgresoLine[]
+  /** URL absoluta al detalle del cierre (para el mensaje de WhatsApp) */
+  detailUrl?: string | null
 }
 
 export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): string {
@@ -123,6 +125,10 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
 
   if (input.notes?.trim()) {
     lines.push(`Nota: ${input.notes.trim()}`)
+  }
+
+  if (input.detailUrl?.trim()) {
+    lines.push('', `Ver detalle completo:`, input.detailUrl.trim())
   }
 
   return lines.join('\n')

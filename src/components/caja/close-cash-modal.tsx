@@ -17,7 +17,7 @@ interface CloseCashModalProps {
   session: CashSession
   live: CashSessionLiveSummary | null
   onClose: () => void
-  onClosed: () => void | Promise<void>
+  onClosed: (sessionId: string) => void | Promise<void>
 }
 
 function money(n: number) {
@@ -159,7 +159,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
       ].filter((w): w is Window => Boolean(w))
 
       await notifyWhatsApp(data.session.id, previewWindows)
-      await onClosed()
+      await onClosed(data.session.id)
     } catch (error) {
       console.error('close cash:', error)
       toast.error(
