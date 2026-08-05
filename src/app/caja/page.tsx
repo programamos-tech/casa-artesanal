@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
@@ -12,6 +12,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import {
   CashSessionsService,
   getCashRegisterStoreId,
+  isCashSessionFromPreviousDay,
 } from '@/lib/cash-sessions-service'
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import { OpenCashModal } from '@/components/caja/open-cash-modal'
@@ -26,6 +27,7 @@ import {
   Wallet,
   ArrowDownCircle,
   ArrowUpCircle,
+  AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StoreBadge } from '@/components/ui/store-badge'
@@ -55,11 +57,15 @@ export default function CajaPage() {
   const [openModal, setOpenModal] = useState(false)
   const [closeModal, setCloseModal] = useState(false)
   const storeId = getCashRegisterStoreId()
+  const stalePromptedRef = useRef<string | null>(null)
 
   const canOpen = canCreate('cash_register')
   const canClose =
     canCreate('cash_register') || canCancel('cash_register') || canEdit('cash_register')
   const closedSessions = history.filter((s) => s.status === 'closed')
+  const sessionFromPreviousDay = Boolean(
+    openSession && isCashSessionFromPreviousDay(openSession.openedAt)
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -86,6 +92,18 @@ export default function CajaPage() {
   useEffect(() => {
     void load()
   }, [load, user?.storeId])
+
+  // Si la caja quedó abierta de un día anterior, forzar el cierre
+  useEffect(() => {
+    if (!openSession || !canClose || loading) return
+    if (!isCashSessionFromPreviousDay(openSession.openedAt)) return
+    if (stalePromptedRef.current === openSession.id) return
+    stalePromptedRef.current = openSession.id
+    setCloseModal(true)
+    toast.message('Debes cerrar la caja del día anterior', {
+      description: 'No se puede dejar la caja abierta de un día para otro.',
+    })
+  }, [openSession, canClose, loading])
 
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
@@ -136,6 +154,33 @@ export default function CajaPage() {
             </CardContent>
           ) : openSession ? (
             <CardContent className="space-y-4 p-4 md:p-6">
+              {sessionFromPreviousDay && (
+                <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
+                    <div>
+                      <p className="font-semibold text-amber-950 dark:text-amber-100">
+                        Caja del día anterior aún abierta
+                      </p>
+                      <p className="mt-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
+                        No se puede dejar la caja abierta de un día para otro. Ciérrala ahora con
+                        conteo físico antes de seguir.
+                      </p>
+                    </div>
+                  </div>
+                  {canClose && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setCloseModal(true)}
+                    >
+                      <Lock className="h-3.5 w-3.5" />
+                      Cerrar ahora
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="border-0 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                   Caja abierta
@@ -165,8 +210,8 @@ export default function CajaPage() {
                 />
                 <SummaryTile
                   icon={Wallet}
-                  label="Efectivo esperado (sin base)"
-                  value={money(live?.expectedCash ?? 0)}
+                  label="Efectivo esperado"
+                  value="Conteo ciego al cerrar"
                   tone="cash"
                 />
               </div>

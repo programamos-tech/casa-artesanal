@@ -11,8 +11,61 @@ import { getEgresoConceptLabel } from './egreso-concepts'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
+const BOGOTA_TZ = 'America/Bogota'
+
 export function getCashRegisterStoreId(): string {
   return getCurrentUserStoreId() || MAIN_STORE_ID
+}
+
+/** Fecha calendario YYYY-MM-DD en zona Colombia. */
+export function getBogotaDateKey(isoOrDate: string | Date = new Date()): string {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: BOGOTA_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
+/** true si la caja se abrió en un día calendario anterior (Colombia). */
+export function isCashSessionFromPreviousDay(openedAt: string, now: Date = new Date()): boolean {
+  return getBogotaDateKey(openedAt) < getBogotaDateKey(now)
+}
+
+export type CashCloseBlocker = {
+  kind: 'draft' | 'empty_items'
+  id: string
+  invoiceNumber: string
+  clientName: string
+  total: number
+  status: string
+}
+
+export function formatCashCloseBlockersMessage(blockers: CashCloseBlocker[]): string {
+  if (blockers.length === 0) return ''
+  const drafts = blockers.filter((b) => b.kind === 'draft')
+  const empty = blockers.filter((b) => b.kind === 'empty_items')
+  const parts: string[] = [
+    'No se puede cerrar la caja: hay facturas que debes corregir o anular primero.',
+  ]
+  if (empty.length > 0) {
+    parts.push(
+      `Ventas sin productos (${empty.length}): ${empty
+        .slice(0, 5)
+        .map((b) => `${b.invoiceNumber || 'S/N'} ($${Math.round(b.total).toLocaleString('es-CO')})`)
+        .join(', ')}${empty.length > 5 ? '…' : ''}`
+    )
+  }
+  if (drafts.length > 0) {
+    parts.push(
+      `Borradores abiertos (${drafts.length}): ${drafts
+        .slice(0, 5)
+        .map((b) => b.invoiceNumber || 'Sin número')
+        .join(', ')}${drafts.length > 5 ? '…' : ''}`
+    )
+  }
+  return parts.join(' ')
 }
 
 function mapRow(row: any): CashSession {
@@ -100,6 +153,65 @@ export class CashSessionsService {
   static async hasOpenSession(storeId?: string | null): Promise<boolean> {
     const open = await this.getOpenSession(storeId)
     return Boolean(open)
+  }
+
+  /**
+   * Facturas del turno que impiden cerrar: borradores o ventas completadas sin ítems.
+   */
+  static async findCloseBlockers(
+    session: Pick<CashSession, 'storeId' | 'openedAt' | 'closedAt'>
+  ): Promise<CashCloseBlocker[]> {
+    const from = session.openedAt
+    const to = session.closedAt || new Date().toISOString()
+    const storeId = session.storeId
+
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('id, invoice_number, client_name, total, status, sale_items(id)')
+      .gte('created_at', from)
+      .lte('created_at', to)
+      .neq('status', 'cancelled')
+
+    salesQuery = applySalesStoreFilter(salesQuery, storeId)
+    const { data, error } = await salesQuery
+    if (error) {
+      console.error('findCloseBlockers:', error)
+      throw new Error('No se pudo validar las facturas del turno')
+    }
+
+    const blockers: CashCloseBlocker[] = []
+    for (const s of data || []) {
+      const invoiceNumber = String(s.invoice_number || 'S/N')
+      const clientName = String(s.client_name || 'Cliente')
+      const total = Number(s.total) || 0
+      const status = String(s.status || '')
+      const itemCount = Array.isArray(s.sale_items) ? s.sale_items.length : 0
+
+      if (status === 'draft') {
+        blockers.push({
+          kind: 'draft',
+          id: s.id,
+          invoiceNumber,
+          clientName,
+          total,
+          status,
+        })
+        continue
+      }
+
+      if (status === 'completed' && itemCount === 0) {
+        blockers.push({
+          kind: 'empty_items',
+          id: s.id,
+          invoiceNumber,
+          clientName,
+          total,
+          status,
+        })
+      }
+    }
+
+    return blockers
   }
 
   static async getSessionById(id: string): Promise<CashSession | null> {
@@ -340,7 +452,9 @@ export class CashSessionsService {
     notes?: string
     userId?: string
     userName?: string
-  }): Promise<{ success: boolean; session?: CashSession; error?: string }> {
+    /** El contado debe enviarse explícitamente (conteo ciego); no aceptar “olvidé el campo”. */
+    countedProvided?: boolean
+  }): Promise<{ success: boolean; session?: CashSession; error?: string; blockers?: CashCloseBlocker[] }> {
     const user = getCurrentUser()
     const { data: row, error: fetchError } = await supabaseAdmin
       .from('cash_sessions')
@@ -355,11 +469,44 @@ export class CashSessionsService {
       return { success: false, error: 'Esta caja ya está cerrada' }
     }
 
+    if (input.countedProvided === false) {
+      return {
+        success: false,
+        error: 'Debes contar el efectivo físico e ingresar el monto antes de cerrar.',
+      }
+    }
+
     const session = mapRow(row)
+
+    try {
+      const blockers = await this.findCloseBlockers(session)
+      if (blockers.length > 0) {
+        return {
+          success: false,
+          error: formatCashCloseBlockersMessage(blockers),
+          blockers,
+        }
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'No se pudo validar las facturas del turno',
+      }
+    }
+
     const closedAt = new Date().toISOString()
     const live = await this.computeLiveSummary({ ...session, closedAt })
     const countedCash = Math.max(0, Math.round(Number(input.countedCash) || 0))
     const difference = countedCash - live.expectedCash
+    const notes = input.notes?.trim() || ''
+
+    if (difference !== 0 && notes.length < 15) {
+      return {
+        success: false,
+        error:
+          'Hay diferencia entre lo contado y lo esperado. Escribe una nota de al menos 15 caracteres explicando el sobrante o faltante.',
+      }
+    }
 
     const { data, error } = await supabaseAdmin
       .from('cash_sessions')
@@ -386,7 +533,7 @@ export class CashSessionsService {
         expected_cash: live.expectedCash,
         counted_cash: countedCash,
         difference,
-        notes: input.notes?.trim() || session.notes || null,
+        notes: notes || session.notes || null,
         updated_at: closedAt,
       })
       .eq('id', input.sessionId)

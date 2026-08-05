@@ -1,12 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { X, Lock } from 'lucide-react'
+import { X, Lock, AlertTriangle, Eye } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
-import { CashSessionsService } from '@/lib/cash-sessions-service'
+import {
+  CashSessionsService,
+  type CashCloseBlocker,
+} from '@/lib/cash-sessions-service'
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import { appModalOverlayClass, appModalPanelClass } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
@@ -35,20 +39,45 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [summary, setSummary] = useState<CashSessionLiveSummary | null>(live)
+  /** Conteo ciego: no revelar esperado hasta que digiten lo contado y verifiquen. */
+  const [revealed, setRevealed] = useState(false)
+  const [blockers, setBlockers] = useState<CashCloseBlocker[]>([])
+  const [loadingBlockers, setLoadingBlockers] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
-    setCountedCash(String(Math.round(live?.expectedCash ?? 0)))
+    setCountedCash('')
     setNotes('')
+    setRevealed(false)
     setSummary(live)
+    setBlockers([])
+    setLoadingBlockers(true)
     void CashSessionsService.computeLiveSummary(session).then(setSummary)
+    void CashSessionsService.findCloseBlockers(session)
+      .then(setBlockers)
+      .catch(() => {
+        toast.error('No se pudo validar facturas del turno')
+        setBlockers([])
+      })
+      .finally(() => setLoadingBlockers(false))
   }, [isOpen, session, live])
 
   if (!isOpen) return null
 
-  const counted = parseInt(countedCash.replace(/[^\d]/g, ''), 10) || 0
+  const hasCountedInput = countedCash.trim() !== ''
+  const counted = hasCountedInput ? parseInt(countedCash.replace(/[^\d]/g, ''), 10) || 0 : 0
   const expected = summary?.expectedCash ?? 0
   const diff = counted - expected
+  const hasBlockers = blockers.length > 0
+  const notesRequired = revealed && diff !== 0
+  const notesOk = !notesRequired || notes.trim().length >= 15
+  const canConfirm =
+    !hasBlockers &&
+    !loadingBlockers &&
+    revealed &&
+    hasCountedInput &&
+    notesOk &&
+    !saving
 
   const notifyWhatsApp = async (sessionId: string, previewWindows: Window[]) => {
     const closePreviews = () => {
@@ -102,7 +131,6 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
             window.open(url, '_blank', 'noopener,noreferrer')
           }
         })
-        // Cerrar ventanas de más si sobran
         for (let i = urls.length; i < previewWindows.length; i++) {
           try {
             previewWindows[i].close()
@@ -126,11 +154,32 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
     }
   }
 
+  const handleReveal = () => {
+    if (!hasCountedInput) {
+      toast.error('Cuenta el efectivo físico e ingresa el monto primero.')
+      return
+    }
+    setRevealed(true)
+  }
+
   const handleSubmit = async () => {
     if (!user?.id) {
       toast.error('Sesión no válida. Cierra sesión e inicia de nuevo.')
       return
     }
+    if (hasBlockers) {
+      toast.error('Corrige o anula las facturas listadas antes de cerrar.')
+      return
+    }
+    if (!revealed || !hasCountedInput) {
+      toast.error('Primero cuenta el efectivo y verifica el conteo.')
+      return
+    }
+    if (!notesOk) {
+      toast.error('Con diferencia debes explicar el sobrante o faltante (mín. 15 caracteres).')
+      return
+    }
+
     setSaving(true)
     try {
       const res = await fetch('/api/caja/close', {
@@ -146,13 +195,15 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.session?.id) {
+        if (Array.isArray(data?.blockers) && data.blockers.length > 0) {
+          setBlockers(data.blockers)
+        }
         toast.error(
           typeof data?.error === 'string' ? data.error : 'No se pudo cerrar la caja'
         )
         return
       }
 
-      // Abrir WhatsApp después del cierre (gesto ya ocurrió; si el navegador bloquea, la caja ya quedó cerrada)
       const previewWindows = [
         window.open('about:blank', '_blank'),
         window.open('about:blank', '_blank'),
@@ -169,6 +220,9 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
       setSaving(false)
     }
   }
+
+  const emptyBlockers = blockers.filter((b) => b.kind === 'empty_items')
+  const draftBlockers = blockers.filter((b) => b.kind === 'draft')
 
   return (
     <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
@@ -187,7 +241,66 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="space-y-4 p-4">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto p-4">
+          {(hasBlockers || loadingBlockers) && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900/50 dark:bg-red-950/30">
+              <div className="mb-2 flex items-center gap-2 font-semibold text-red-800 dark:text-red-300">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {loadingBlockers
+                  ? 'Validando facturas del turno…'
+                  : 'No puedes cerrar hasta corregir esto'}
+              </div>
+              {!loadingBlockers && (
+                <div className="space-y-2 text-red-800 dark:text-red-200">
+                  {emptyBlockers.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide">
+                        Ventas sin productos ({emptyBlockers.length})
+                      </p>
+                      <ul className="mt-1 list-inside list-disc text-xs">
+                        {emptyBlockers.map((b) => (
+                          <li key={b.id}>
+                            <Link
+                              href={`/sales/${b.id}`}
+                              className="font-medium underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {b.invoiceNumber}
+                            </Link>
+                            {' · '}
+                            {b.clientName} · {money(b.total)} — anúlala o completa los ítems
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {draftBlockers.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide">
+                        Borradores abiertos ({draftBlockers.length})
+                      </p>
+                      <ul className="mt-1 list-inside list-disc text-xs">
+                        {draftBlockers.map((b) => (
+                          <li key={b.id}>
+                            <Link
+                              href={`/sales/new?draft=${b.id}`}
+                              className="font-medium underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {b.invoiceNumber || 'Borrador'}
+                            </Link>
+                            {' · '}
+                            {b.clientName || 'Sin cliente'} — factúralo o elimínalo
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
             <div>
               <p className="text-xs text-zinc-500">Ingresos</p>
@@ -203,9 +316,13 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
             </div>
             <div>
               <p className="text-xs text-zinc-500">Efectivo esperado (sin base)</p>
-              <p className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                {money(expected)}
-              </p>
+              {revealed ? (
+                <p className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                  {money(expected)}
+                </p>
+              ) : (
+                <p className="text-sm font-medium text-zinc-400">••••••</p>
+              )}
             </div>
           </div>
 
@@ -219,63 +336,110 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
                 <p className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
                   {money(summary?.creditAbonosCash || 0)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-zinc-500">Suma al efectivo esperado</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Otros medios</p>
                 <p className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
                   {money(summary?.creditAbonosOther || 0)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-zinc-500">Nequi, transferencia, etc.</p>
               </div>
-            </div>
-            <div className="mt-2 flex items-center justify-between border-t border-zinc-200 pt-2 dark:border-zinc-700">
-              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Total abonos</span>
-              <span className="font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
-                {money((summary?.creditAbonosCash || 0) + (summary?.creditAbonosOther || 0))}
-              </span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Efectivo contado en caja</Label>
+          <div className="space-y-2 rounded-xl border border-indigo-200/80 bg-indigo-50/40 p-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
+            <Label className="text-indigo-950 dark:text-indigo-100">
+              1. Cuenta el efectivo físico del turno
+            </Label>
+            <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80">
+              Sin mirar el esperado del sistema. Solo lo que hay en caja (sin el fondo inicial).
+            </p>
             <input
               type="text"
               inputMode="numeric"
-              value={countedCash ? counted.toLocaleString('es-CO') : ''}
-              onChange={(e) => setCountedCash(e.target.value.replace(/[^\d]/g, ''))}
+              value={hasCountedInput ? counted.toLocaleString('es-CO') : ''}
+              onChange={(e) => {
+                setCountedCash(e.target.value.replace(/[^\d]/g, ''))
+                setRevealed(false)
+              }}
               onFocus={(e) => e.target.select()}
+              placeholder="Escribe lo que contaste…"
+              disabled={hasBlockers}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-lg font-semibold tabular-nums dark:border-zinc-600 dark:bg-zinc-900"
             />
-            <div
-              className={cn(
-                'rounded-lg border px-3 py-2 text-sm',
-                diff === 0
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300'
-                  : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
-              )}
-            >
-              Diferencia: <span className="font-bold tabular-nums">{money(diff)}</span>
-              {diff === 0 ? ' · Cuadra perfecto' : diff > 0 ? ' · Sobra' : ' · Falta'}
-            </div>
+            {!revealed ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleReveal}
+                disabled={!hasCountedInput || hasBlockers || loadingBlockers}
+              >
+                <Eye className="h-4 w-4" />
+                2. Verificar conteo (revelar esperado)
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <div
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-sm',
+                    diff === 0
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300'
+                      : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
+                  )}
+                >
+                  Esperado: <span className="font-bold tabular-nums">{money(expected)}</span>
+                  {' · '}
+                  Diferencia: <span className="font-bold tabular-nums">{money(diff)}</span>
+                  {diff === 0 ? ' · Cuadra' : diff > 0 ? ' · Sobra' : ' · Falta'}
+                </div>
+                {expected === 0 && counted === 0 && (
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                    El sistema no esperaba efectivo en este turno (solo digital/crédito, o ventas −
+                    egresos = 0). Si contaste $0, puedes cerrar.
+                  </p>
+                )}
+                {expected === 0 && counted > 0 && (
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    El sistema esperaba $0 en efectivo y tú contaste {money(counted)}. Explica de
+                    dónde salió ese dinero en la nota.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>
-              Nota de cierre <span className="font-normal text-zinc-500">(opcional)</span>
+              Nota de cierre{' '}
+              {notesRequired ? (
+                <span className="font-normal text-amber-700 dark:text-amber-400">(obligatoria)</span>
+              ) : (
+                <span className="font-normal text-zinc-500">(opcional)</span>
+              )}
             </Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder={
+                notesRequired
+                  ? 'Explica el sobrante o faltante…'
+                  : 'Observaciones del cierre…'
+              }
+              disabled={!revealed && !hasBlockers}
+            />
+            {notesRequired && notes.trim().length < 15 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Mínimo 15 caracteres ({notes.trim().length}/15)
+              </p>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
           <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={saving}
-          >
+          <Button type="button" onClick={() => void handleSubmit()} disabled={!canConfirm}>
             {saving ? 'Cerrando y enviando…' : 'Confirmar cierre'}
           </Button>
         </div>
