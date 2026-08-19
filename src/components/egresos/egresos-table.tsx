@@ -118,8 +118,8 @@ export function EgresosTable({
             Egresos
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Caja del turno o cuenta (arriendo, nómina, servicios…). Los de cuenta no tocan el cierre.
-            {' '}
+            Caja del turno o cuenta (arriendo, nómina, servicios…). Las mensualidades no se pagan
+            en efectivo y no tocan el cierre.{' '}
             <Link href="/resultado-mensual" className="font-semibold text-teal-700 underline-offset-2 hover:underline dark:text-teal-400">
               Ver resultado del mes
             </Link>
@@ -279,7 +279,25 @@ export function EgresosTable({
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {getEgresoPaymentLabel(e.paymentMethod)}
+                      <div className="flex items-center gap-2">
+                        <span>{getEgresoPaymentLabel(e.paymentMethod)}</span>
+                        {e.imageUrl ? (
+                          <a
+                            href={e.imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Ver comprobante"
+                            className="block overflow-hidden rounded border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={e.imageUrl}
+                              alt="Comprobante"
+                              className="h-9 w-9 object-cover"
+                            />
+                          </a>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
                       {formatCOP(e.amount)}

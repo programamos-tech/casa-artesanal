@@ -185,6 +185,7 @@ export default function ClientCreditsPage() {
         transferAmount: paymentData.transferAmount,
         digitalTransferMethod: paymentData.digitalTransferMethod,
         description: paymentData.description,
+        imageUrl: paymentData.imageUrl,
         userId: paymentData.userId,
         userName: paymentData.userName
       })
@@ -251,6 +252,7 @@ export default function ClientCreditsPage() {
           digitalTransferMethod:
             method === 'mixed' ? payload.digitalTransferMethod : undefined,
           description: desc,
+          imageUrl: payload.imageUrl,
           userId: payload.userId ?? '',
           userName: payload.userName ?? 'Usuario Actual',
         })

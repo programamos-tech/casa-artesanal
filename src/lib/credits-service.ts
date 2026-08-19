@@ -3,6 +3,62 @@ import { Credit, PaymentRecord } from '@/types'
 import { AuthService } from './auth-service'
 import { getCurrentUserStoreId, canAccessAllStores, getCurrentUser } from './store-helper'
 
+/** URL pública completa o ruta dentro del bucket `credit-payments` (p. ej. receipts/xxx.jpg). */
+function resolveCreditPaymentImageUrl(raw: unknown): string | undefined {
+  if (raw == null) return undefined
+  const s = String(raw).trim()
+  if (!s) return undefined
+  if (/^https?:\/\//i.test(s)) return s
+  const path = s.replace(/^\/+/, '').replace(/^credit-payments\//, '')
+  if (!path) return undefined
+  const { data } = supabase.storage.from('credit-payments').getPublicUrl(path)
+  return data.publicUrl
+}
+
+type PaymentRecordRow = {
+  id: string
+  amount: number
+  payment_date: string
+  payment_method: PaymentRecord['paymentMethod']
+  description?: string | null
+  user_id: string
+  user_name: string
+  store_id?: string | null
+  status?: string | null
+  cancelled_at?: string | null
+  cancelled_by?: string | null
+  cancelled_by_name?: string | null
+  cancellation_reason?: string | null
+  created_at: string
+  image_url?: string | null
+}
+
+function mapPaymentRecordFromRow(
+  payment: PaymentRecordRow,
+  creditId: string | null
+): PaymentRecord {
+  return {
+    id: payment.id,
+    creditId: creditId as unknown as string,
+    amount: payment.amount,
+    paymentDate: payment.payment_date,
+    paymentMethod: payment.payment_method,
+    cashAmount: undefined,
+    transferAmount: undefined,
+    description: payment.description || undefined,
+    imageUrl: resolveCreditPaymentImageUrl(payment.image_url),
+    userId: payment.user_id,
+    userName: payment.user_name,
+    storeId: payment.store_id || undefined,
+    status: (payment.status as PaymentRecord['status']) || 'active',
+    cancelledAt: payment.cancelled_at || undefined,
+    cancelledBy: payment.cancelled_by || undefined,
+    cancelledByName: payment.cancelled_by_name || undefined,
+    cancellationReason: payment.cancellation_reason || undefined,
+    createdAt: payment.created_at,
+  }
+}
+
 export class CreditsService {
   // Crear un nuevo crédito (en navegador usa API para evitar fallos por RLS con vendedores)
   static async createCredit(creditData: Omit<Credit, 'id' | 'createdAt' | 'updatedAt'>): Promise<Credit> {
@@ -626,6 +682,8 @@ export class CreditsService {
       // Obtener store_id del crédito
       const storeId = credit.storeId || getCurrentUserStoreId() || '00000000-0000-0000-0000-000000000001'
 
+      const receiptImageUrl = paymentData.imageUrl?.trim() || null
+
       // Registro para efectivo
       const cashRecord = {
         payment_id: paymentDataResult.id,
@@ -635,7 +693,8 @@ export class CreditsService {
         user_id: userId,
         user_name: userName,
         store_id: storeId,
-        description: baseDescription ? `${baseDescription} (Parte en efectivo)` : 'Pago mixto - Parte en efectivo'
+        description: baseDescription ? `${baseDescription} (Parte en efectivo)` : 'Pago mixto - Parte en efectivo',
+        image_url: receiptImageUrl,
       }
 
       const digitalPm =
@@ -655,7 +714,8 @@ export class CreditsService {
         store_id: storeId,
         description: baseDescription
           ? `${baseDescription} (Parte ${digitalLabel})`
-          : `Pago mixto - Parte ${digitalLabel}`
+          : `Pago mixto - Parte ${digitalLabel}`,
+        image_url: receiptImageUrl,
       }
 
       // Insertar ambos registros
@@ -682,14 +742,15 @@ export class CreditsService {
       // Obtener store_id del crédito
       const storeId = credit.storeId || getCurrentUserStoreId() || '00000000-0000-0000-0000-000000000001'
 
-      const insertData: any = {
+      const insertData: Record<string, unknown> = {
         payment_id: paymentDataResult.id,
         amount: paymentData.amount,
         payment_date: paymentData.paymentDate,
         payment_method: paymentData.paymentMethod,
         user_id: userId,
         user_name: userName,
-        store_id: storeId
+        store_id: storeId,
+        image_url: paymentData.imageUrl?.trim() || null,
       }
 
       if (paymentData.description) {
@@ -768,6 +829,7 @@ export class CreditsService {
           newPaidAmount: newPaidAmount,
           paymentDescription: paymentData.description || null,
           digitalTransferMethod: paymentData.digitalTransferMethod ?? null,
+          imageUrl: paymentData.imageUrl?.trim() || null,
           // Información adicional si el crédito se completó
           isCompleted: isCompleted,
           totalAmount: isCompleted ? credit.totalAmount : null,
@@ -803,6 +865,7 @@ export class CreditsService {
       cashAmount: paymentData.cashAmount, // Mantener los valores originales
       transferAmount: paymentData.transferAmount, // Mantener los valores originales
       description: paymentData.description,
+      imageUrl: resolveCreditPaymentImageUrl(paymentData.imageUrl || firstRecord.image_url),
       userId: firstRecord.user_id,
       userName: firstRecord.user_name,
       storeId: firstRecord.store_id || credit.storeId || undefined,
@@ -887,24 +950,7 @@ export class CreditsService {
       return []
     }
 
-    return data.map(payment => ({
-      id: payment.id,
-      creditId: creditId,
-      amount: payment.amount,
-      paymentDate: payment.payment_date,
-      paymentMethod: payment.payment_method,
-      cashAmount: undefined,
-      transferAmount: undefined,
-      description: payment.description,
-      userId: payment.user_id,
-      userName: payment.user_name,
-      status: payment.status || 'active',
-      cancelledAt: payment.cancelled_at,
-      cancelledBy: payment.cancelled_by,
-      cancelledByName: payment.cancelled_by_name,
-      cancellationReason: payment.cancellation_reason,
-      createdAt: payment.created_at
-    }))
+    return data.map(payment => mapPaymentRecordFromRow(payment, creditId))
   }
 
   // Anular un crédito y todos sus abonos
@@ -1077,25 +1123,7 @@ export class CreditsService {
 
       if (error) throw error
 
-      return data.map(payment => ({
-        id: payment.id,
-        creditId: null, // No hay credit_id directo en payment_records
-        amount: payment.amount,
-        paymentDate: payment.payment_date,
-        paymentMethod: payment.payment_method,
-        cashAmount: undefined, // La tabla no tiene este campo
-        transferAmount: undefined, // La tabla no tiene este campo
-        description: payment.description,
-        userId: payment.user_id,
-        userName: payment.user_name,
-        storeId: payment.store_id || undefined,
-        status: payment.status || 'active', // Incluir status, por defecto 'active'
-        cancelledAt: payment.cancelled_at,
-        cancelledBy: payment.cancelled_by,
-        cancelledByName: payment.cancelled_by_name,
-        cancellationReason: payment.cancellation_reason,
-        createdAt: payment.created_at
-      }))
+      return data.map(payment => mapPaymentRecordFromRow(payment, null))
     } catch (error) {
       // Error silencioso en producción
       return []
@@ -1138,24 +1166,7 @@ export class CreditsService {
 
       if (error) throw error
 
-      return data.map(payment => ({
-        id: payment.id,
-        creditId: null,
-        amount: payment.amount,
-        paymentDate: payment.payment_date,
-        paymentMethod: payment.payment_method,
-        cashAmount: undefined,
-        transferAmount: undefined,
-        description: payment.description,
-        userId: payment.user_id,
-        userName: payment.user_name,
-        status: payment.status || 'active',
-        cancelledAt: payment.cancelled_at,
-        cancelledBy: payment.cancelled_by,
-        cancelledByName: payment.cancelled_by_name,
-        cancellationReason: payment.cancellation_reason,
-        createdAt: payment.created_at
-      }))
+      return data.map(payment => mapPaymentRecordFromRow(payment, null))
     } catch (error) {
       // Error silencioso en producción
       return []

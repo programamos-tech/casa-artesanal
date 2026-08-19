@@ -22,6 +22,7 @@ import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { Credit, PaymentRecord } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
 import { PaymentModal } from '@/components/credits/payment-modal'
+import { PaymentReceiptThumb } from '@/components/credits/payment-receipt-field'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
@@ -163,7 +164,9 @@ export default function CreditDetailPage() {
         paymentMethod: paymentData.paymentMethod!,
         cashAmount: paymentData.cashAmount,
         transferAmount: paymentData.transferAmount,
+        digitalTransferMethod: paymentData.digitalTransferMethod,
         description: paymentData.description,
+        imageUrl: paymentData.imageUrl,
         userId: paymentData.userId,
         userName: paymentData.userName
       })
@@ -487,13 +490,21 @@ export default function CreditDetailPage() {
                                 {payment.userName}
                               </div>
                             </div>
-                            <div>
-                              <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                Fecha
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                                  Fecha
+                                </div>
+                                <div className="text-sm font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
+                                  {formatDateTime(payment.paymentDate)}
+                                </div>
                               </div>
-                              <div className="text-sm font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
-                                {formatDateTime(payment.paymentDate)}
-                              </div>
+                              {payment.imageUrl ? (
+                                <PaymentReceiptThumb
+                                  url={payment.imageUrl}
+                                  amountLabel={formatCurrency(payment.amount)}
+                                />
+                              ) : null}
                             </div>
                           </div>
                           {payment.description && (

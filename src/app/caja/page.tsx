@@ -127,11 +127,11 @@ export default function CajaPage() {
               </Button>
               {canEgresos && (
                 <Link
-                  href="/egresos?tipo=cuenta&nuevo=1"
+                  href="/egresos?tipo=caja&nuevo=1"
                   className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-semibold text-zinc-800 shadow-none hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                 >
                   <Wallet className="h-3.5 w-3.5" />
-                  Egreso de cuenta
+                  Egreso de caja
                 </Link>
               )}
               {!openSession && canOpen && (
@@ -269,13 +269,30 @@ export default function CajaPage() {
                       </div>
 
                       <div className="space-y-3 text-sm">
-                        <div className="space-y-1.5">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                            Por medio
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                          Por medio
+                        </p>
+                        <Line label="En efectivo" value={money(live.egresosCash)} />
+                        <Line label="Otros medios" value={money(live.egresosOther)} />
+                      </div>
+                      {(live.egresosCuentaCount || 0) > 0 && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                          <p className="font-semibold">
+                            {live.egresosCuentaCount} egreso
+                            {live.egresosCuentaCount === 1 ? '' : 's'} de cuenta ·{' '}
+                            {money(live.egresosCuentaAmount)}
                           </p>
-                          <Line label="En efectivo" value={money(live.egresosCash)} />
-                          <Line label="Otros medios" value={money(live.egresosOther)} />
+                          <p className="mt-0.5 opacity-90">
+                            No salen de esta gaveta ni entran al cierre. Si pagaste en efectivo,
+                            cámbialos a «Caja del turno» en{' '}
+                            <Link href="/egresos?tipo=cuenta" className="font-semibold underline">
+                              Egresos
+                            </Link>
+                            .
+                          </p>
                         </div>
+                      )}
                       </div>
                     </div>
                   </div>

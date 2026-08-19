@@ -692,6 +692,7 @@ export class SupplierInvoicesService {
           expenseKind: 'cuenta',
           periodMonth,
           storeId,
+          imageUrl: input.imageUrl?.trim() || null,
         },
         input.userId,
         input.userName

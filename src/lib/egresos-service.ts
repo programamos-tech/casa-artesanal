@@ -2,7 +2,7 @@ import { supabaseAdmin } from './supabase'
 import { Egreso, EgresoKind } from '@/types'
 import { getCurrentUserStoreId, isMainStoreUser, getCurrentUser } from './store-helper'
 import type { EgresoPaymentMethod } from './egreso-concepts'
-import { firstDayOfMonthISO, getEgresoPaymentLabel } from './egreso-concepts'
+import { CUENTA_NO_CASH_MESSAGE, firstDayOfMonthISO, getEgresoPaymentLabel } from './egreso-concepts'
 import { MonthlyResultService } from './monthly-result-service'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -17,6 +17,7 @@ export type CreateEgresoInput = {
   expenseKind?: EgresoKind
   periodMonth?: string | null
   storeId?: string
+  imageUrl?: string | null
 }
 
 export type UpdateEgresoInput = Partial<
@@ -43,6 +44,17 @@ function normalizeKind(kind?: string | null): EgresoKind {
   return kind === 'cuenta' ? 'cuenta' : 'caja'
 }
 
+function resolveEgresoImageUrl(raw: unknown): string | null {
+  if (raw == null) return null
+  const s = String(raw).trim()
+  if (!s) return null
+  if (/^https?:\/\//i.test(s)) return s
+  const path = s.replace(/^\/+/, '').replace(/^supplier-invoices\//, '')
+  if (!path) return null
+  const { data } = supabaseAdmin.storage.from('supplier-invoices').getPublicUrl(path)
+  return data.publicUrl || null
+}
+
 function mapRow(row: any): Egreso {
   return {
     id: row.id,
@@ -62,6 +74,7 @@ function mapRow(row: any): Egreso {
     cancelledByName: row.cancelled_by_name ?? null,
     cancelledAt: row.cancelled_at ?? null,
     cancelReason: row.cancel_reason ?? null,
+    imageUrl: resolveEgresoImageUrl(row.image_url),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -173,6 +186,10 @@ export class EgresosService {
       const paymentMethod = (input.paymentMethod ||
         (expenseKind === 'cuenta' ? 'bancolombia' : 'cash')) as EgresoPaymentMethod
 
+      if (expenseKind === 'cuenta' && paymentMethod === 'cash') {
+        return { success: false, error: CUENTA_NO_CASH_MESSAGE }
+      }
+
       const periodMonth =
         expenseKind === 'cuenta'
           ? (input.periodMonth?.slice(0, 10) || firstDayOfMonthISO()).replace(
@@ -216,6 +233,7 @@ export class EgresosService {
           status: 'active',
           created_by: userId,
           created_by_name: userName || 'Usuario',
+          image_url: input.imageUrl?.trim() || null,
         })
         .select('*')
         .single()
@@ -284,6 +302,10 @@ export class EgresosService {
         nextKind === 'cuenta'
           ? String(patch.period_month || current.period_month || firstDayOfMonthISO()).slice(0, 10)
           : null
+
+      if (nextKind === 'cuenta' && nextMethod === 'cash') {
+        return { success: false, error: CUENTA_NO_CASH_MESSAGE }
+      }
 
       if (nextKind === 'cuenta' && nextPeriod) {
         const { year, month } = periodParts(nextPeriod)

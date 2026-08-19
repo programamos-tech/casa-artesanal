@@ -151,7 +151,9 @@ export default function CreditsPage() {
         paymentMethod: paymentData.paymentMethod!,
         cashAmount: paymentData.cashAmount,
         transferAmount: paymentData.transferAmount,
+        digitalTransferMethod: paymentData.digitalTransferMethod,
         description: paymentData.description,
+        imageUrl: paymentData.imageUrl,
         userId: paymentData.userId,
         userName: paymentData.userName
       })

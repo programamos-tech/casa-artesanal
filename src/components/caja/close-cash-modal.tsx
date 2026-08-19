@@ -43,6 +43,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const [revealed, setRevealed] = useState(false)
   const [blockers, setBlockers] = useState<CashCloseBlocker[]>([])
   const [loadingBlockers, setLoadingBlockers] = useState(false)
+  const [cuentaAck, setCuentaAck] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
@@ -51,6 +52,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
     setRevealed(false)
     setSummary(live)
     setBlockers([])
+    setCuentaAck(false)
     setLoadingBlockers(true)
     void CashSessionsService.computeLiveSummary(session).then(setSummary)
     void CashSessionsService.findCloseBlockers(session)
@@ -71,12 +73,15 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const hasBlockers = blockers.length > 0
   const notesRequired = revealed && diff !== 0
   const notesOk = !notesRequired || notes.trim().length >= 15
+  const hasCuentaEgresos = (summary?.egresosCuentaCount || 0) > 0
+  const cuentaOk = !hasCuentaEgresos || cuentaAck
   const canConfirm =
     !hasBlockers &&
     !loadingBlockers &&
     revealed &&
     hasCountedInput &&
     notesOk &&
+    cuentaOk &&
     !saving
 
   const notifyWhatsApp = async (sessionId: string, previewWindows: Window[]) => {
@@ -177,6 +182,10 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
     }
     if (!notesOk) {
       toast.error('Con diferencia debes explicar el sobrante o faltante (mín. 15 caracteres).')
+      return
+    }
+    if (hasCuentaEgresos && !cuentaAck) {
+      toast.error('Confirma que las mensualidades de este turno no salieron de la gaveta.')
       return
     }
 
@@ -325,6 +334,35 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
               )}
             </div>
           </div>
+
+          {hasCuentaEgresos && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <p className="font-semibold">
+                {summary?.egresosCuentaCount} egreso
+                {summary?.egresosCuentaCount === 1 ? '' : 's'} de cuenta en este turno:{' '}
+                {money(summary?.egresosCuentaAmount || 0)}
+              </p>
+              <p className="mt-1 text-xs opacity-90">
+                No salen de la gaveta ni bajan el efectivo esperado. Si alguno se pagó en efectivo,
+                corrígelo a «Caja del turno» en{' '}
+                <Link href="/egresos?tipo=cuenta" className="font-semibold underline">
+                  Egresos
+                </Link>{' '}
+                antes de cerrar.
+              </p>
+              <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  checked={cuentaAck}
+                  onChange={(e) => setCuentaAck(e.target.checked)}
+                />
+                <span>
+                  Confirmo que esas mensualidades no salieron de la gaveta de hoy.
+                </span>
+              </label>
+            </div>
+          )}
 
           <div className="rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">

@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUser } from '@/lib/store-helper'
 import { cn } from '@/lib/utils'
+import { PaymentReceiptField } from '@/components/credits/payment-receipt-field'
 
 export type BulkPaymentSubmitPayload = {
   paymentMethod: 'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'mixed'
@@ -27,6 +28,7 @@ export type BulkPaymentSubmitPayload = {
   /** Parte digital en abono mixto */
   digitalTransferMethod?: 'nequi' | 'bancolombia'
   description?: string
+  imageUrl?: string
   paymentDate: string
   userId?: string
   userName?: string
@@ -67,6 +69,8 @@ export function BulkPaymentModal({
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [mounted, setMounted] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   useLayoutEffect(() => {
     setMounted(true)
@@ -98,6 +102,8 @@ export function BulkPaymentModal({
       description: '',
     })
     setErrors({})
+    setImageUrl(null)
+    setUploading(false)
   }
 
   useEffect(() => {
@@ -197,16 +203,21 @@ export function BulkPaymentModal({
     }
 
     const paymentDate = new Date().toISOString()
+    const receipt = imageUrl?.trim() || undefined
+    const shared = {
+      description: formData.description || undefined,
+      imageUrl: receipt,
+      paymentDate,
+      userId,
+      userName: userName || 'Usuario Actual',
+    }
 
     if (formData.paymentMethod === 'transfer') {
       await onSubmit({
         paymentMethod: 'transfer',
         cashAmount: 0,
         transferAmount: totalPending,
-        description: formData.description || undefined,
-        paymentDate,
-        userId,
-        userName: userName || 'Usuario Actual',
+        ...shared,
       })
       return
     }
@@ -216,10 +227,7 @@ export function BulkPaymentModal({
         paymentMethod: 'nequi',
         cashAmount: 0,
         transferAmount: totalPending,
-        description: formData.description || undefined,
-        paymentDate,
-        userId,
-        userName: userName || 'Usuario Actual',
+        ...shared,
       })
       return
     }
@@ -229,10 +237,7 @@ export function BulkPaymentModal({
         paymentMethod: 'bancolombia',
         cashAmount: 0,
         transferAmount: totalPending,
-        description: formData.description || undefined,
-        paymentDate,
-        userId,
-        userName: userName || 'Usuario Actual',
+        ...shared,
       })
       return
     }
@@ -242,10 +247,7 @@ export function BulkPaymentModal({
         paymentMethod: 'card',
         cashAmount: 0,
         transferAmount: 0,
-        description: formData.description || undefined,
-        paymentDate,
-        userId,
-        userName: userName || 'Usuario Actual',
+        ...shared,
       })
       return
     }
@@ -255,10 +257,7 @@ export function BulkPaymentModal({
         paymentMethod: 'cash',
         cashAmount: totalPending,
         transferAmount: 0,
-        description: formData.description || undefined,
-        paymentDate,
-        userId,
-        userName: userName || 'Usuario Actual',
+        ...shared,
       })
       return
     }
@@ -268,10 +267,7 @@ export function BulkPaymentModal({
       cashAmount: parseFormattedNumber(formData.cashAmount),
       transferAmount: parseFormattedNumber(formData.transferAmount),
       digitalTransferMethod: formData.digitalChannel,
-      description: formData.description || undefined,
-      paymentDate,
-      userId,
-      userName: userName || 'Usuario Actual',
+      ...shared,
     })
   }
 
@@ -497,14 +493,21 @@ export function BulkPaymentModal({
                 className={cn(inputClass, 'min-h-[4rem] resize-y py-2.5 text-sm')}
               />
             </div>
+
+            <PaymentReceiptField
+              imageUrl={imageUrl}
+              onImageUrlChange={setImageUrl}
+              onUploadingChange={setUploading}
+              disabled={submitting}
+            />
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
             <Button type="button" variant="destructive" size="sm" onClick={handleClose} disabled={submitting}>
               Cancelar
             </Button>
-            <Button type="submit" size="sm" disabled={submitting}>
-              {submitting ? 'Registrando…' : 'Registrar pago'}
+            <Button type="submit" size="sm" disabled={submitting || uploading}>
+              {submitting ? 'Registrando…' : uploading ? 'Subiendo…' : 'Registrar pago'}
             </Button>
           </div>
         </form>

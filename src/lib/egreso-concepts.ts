@@ -38,14 +38,17 @@ export const EGRESO_KINDS = [
   {
     value: 'caja',
     label: 'Caja del turno',
-    hint: 'Gasto operativo del día. Si es en efectivo, baja el efectivo esperado.',
+    hint: 'Sale de la gaveta de hoy. Si es efectivo, baja el cierre.',
   },
   {
     value: 'cuenta',
     label: 'Cuenta (mensual / alto)',
-    hint: 'Arriendo, nómina… Sale de Nequi/Bancolombia/transferencia o del efectivo recaudado del mes. No toca el cierre diario de caja.',
+    hint: 'Arriendo, nómina, servicios. Solo Nequi, Bancolombia o transferencia. No toca el cierre.',
   },
 ] as const
+
+export const CUENTA_NO_CASH_MESSAGE =
+  'Las mensualidades no pueden pagarse en efectivo. Si salió de la gaveta, elige Caja del turno. Si sale de Nequi, Bancolombia o transferencia, elige ese medio.'
 
 export type EgresoKind = (typeof EGRESO_KINDS)[number]['value']
 

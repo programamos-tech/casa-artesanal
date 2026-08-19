@@ -228,6 +228,10 @@ export function SupplierPaymentModal({
         )
         return
       }
+      if (selectedSale.channel !== 'cash' && !imageUrl?.trim()) {
+        setError('Sube el comprobante de la transferencia al proveedor')
+        return
+      }
     }
 
     let cashAmount: number | undefined
@@ -339,6 +343,77 @@ export function SupplierPaymentModal({
   const originActive =
     'border-amber-300 bg-amber-50 text-amber-950 ring-1 ring-amber-200/80 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-800/50'
 
+  const saleReceiptRequired = moneyOrigin === 'sale' && selectedSale?.channel !== 'cash'
+  const receiptField = (
+    <div className={cn(cardShell, 'space-y-2 p-3')}>
+      <span className={cn(appModalLabelClass, 'mb-0')}>
+        {saleReceiptRequired
+          ? 'Comprobante de la transferencia al proveedor'
+          : 'Comprobante del abono (opcional)'}
+      </span>
+      <p className={appModalHintClass}>
+        {saleReceiptRequired
+          ? `Foto del comprobante ${channelLabel(selectedSale!.channel)} enviado al proveedor. Máx. 2 MB.`
+          : 'Foto del recibo o transferencia. Máx. 2 MB; se comprime en el navegador si hace falta.'}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label
+          className={cn(
+            'inline-flex cursor-pointer items-center gap-2 rounded-lg border-transparent bg-emerald-500 px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-600',
+            (uploading || submitting) && 'pointer-events-none opacity-50'
+          )}
+        >
+          <Upload className="h-4 w-4" strokeWidth={1.75} />
+          {uploading ? 'Subiendo…' : 'Subir imagen'}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleReceiptFile}
+            disabled={uploading || submitting}
+          />
+        </label>
+        {receiptPublicUrl ? (
+          <button
+            type="button"
+            className="text-sm font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+            onClick={() => {
+              setImageUrl(null)
+              setUploadPreview(null)
+            }}
+          >
+            Quitar
+          </button>
+        ) : null}
+        {receiptPublicUrl ? (
+          <a
+            href={receiptPublicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Abrir
+          </a>
+        ) : null}
+      </div>
+      {uploadPreview || receiptPublicUrl ? (
+        <div className="relative mt-1 max-h-[min(28dvh,180px)] overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/80">
+          {uploading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
+              Subiendo…
+            </div>
+          ) : null}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={uploadPreview || receiptPublicUrl || ''}
+            alt="Vista previa del comprobante de abono"
+            className="mx-auto block h-auto max-h-[min(28dvh,180px)] w-full object-contain"
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+
   const modal = (
     <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
       <div
@@ -424,7 +499,7 @@ export function SupplierPaymentModal({
               </div>
               <p className={cn(appModalHintClass, 'mt-1.5')}>
                 {moneyOrigin === 'sale'
-                  ? 'El cobro de la venta se destina a este proveedor y se registra un egreso de cuenta del mismo canal.'
+                  ? 'El cobro de la venta se destina a este proveedor. Si es transferencia, sube el comprobante enviado al proveedor.'
                   : 'Pagas desde el canal (efectivo, transferencia o mixto) sin vincular una factura de venta.'}
               </p>
             </div>
@@ -624,6 +699,8 @@ export function SupplierPaymentModal({
               </div>
             )}
 
+            {moneyOrigin === 'sale' && selectedSale ? receiptField : null}
+
             <div>
               <label htmlFor="supplier-payment-notes" className={appModalLabelClass}>
                 Notas (opcional)
@@ -638,67 +715,7 @@ export function SupplierPaymentModal({
               />
             </div>
 
-            <div className={cn(cardShell, 'space-y-2 p-3')}>
-              <span className={cn(appModalLabelClass, 'mb-0')}>Comprobante del abono (opcional)</span>
-              <p className={appModalHintClass}>
-                Foto del recibo o transferencia. Máx. 2 MB; se comprime en el navegador si hace falta.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <label
-                  className={cn(
-                    'inline-flex cursor-pointer items-center gap-2 rounded-lg border-transparent bg-emerald-500 px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-600',
-                    (uploading || submitting) && 'pointer-events-none opacity-50'
-                  )}
-                >
-                  <Upload className="h-4 w-4" strokeWidth={1.75} />
-                  {uploading ? 'Subiendo…' : 'Subir imagen'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleReceiptFile}
-                    disabled={uploading || submitting}
-                  />
-                </label>
-                {receiptPublicUrl && (
-                  <button
-                    type="button"
-                    className="text-sm font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
-                    onClick={() => {
-                      setImageUrl(null)
-                      setUploadPreview(null)
-                    }}
-                  >
-                    Quitar
-                  </button>
-                )}
-                {receiptPublicUrl && (
-                  <a
-                    href={receiptPublicUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-semibold text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
-                  >
-                    Abrir
-                  </a>
-                )}
-              </div>
-              {(uploadPreview || receiptPublicUrl) && (
-                <div className="relative mt-1 max-h-[min(28dvh,180px)] overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/80">
-                  {uploading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
-                      Subiendo…
-                    </div>
-                  )}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={uploadPreview || receiptPublicUrl || ''}
-                    alt="Vista previa del comprobante de abono"
-                    className="mx-auto block h-auto max-h-[min(28dvh,180px)] w-full object-contain"
-                  />
-                </div>
-              )}
-            </div>
+            {moneyOrigin === 'manual' ? receiptField : null}
 
             {error && <p className={appModalErrorClass}>{error}</p>}
           </div>

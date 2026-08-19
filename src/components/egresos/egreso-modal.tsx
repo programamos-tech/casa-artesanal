@@ -20,15 +20,16 @@ import {
   Building2,
   CreditCard,
   MoreHorizontal,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Egreso, EgresoKind } from '@/types'
 import {
   EGRESO_CONCEPTS,
   EGRESO_KINDS,
+  CUENTA_NO_CASH_MESSAGE,
   firstDayOfMonthISO,
   getEgresoPaymentLabel,
-  suggestedEgresoKind,
   type EgresoPaymentMethod,
 } from '@/lib/egreso-concepts'
 import { EgresosService, type CreateEgresoInput } from '@/lib/egresos-service'
@@ -148,17 +149,18 @@ export function EgresoModal({
   storeId,
 }: EgresoModalProps) {
   const isEdit = !!egreso
-  const [concept, setConcept] = useState('arriendo')
+  const [concept, setConcept] = useState('papeleria')
   const [conceptOther, setConceptOther] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState<Date | null>(todayDate())
-  const [expenseKind, setExpenseKind] = useState<EgresoKind>('cuenta')
+  const [expenseKind, setExpenseKind] = useState<EgresoKind>('caja')
   const [periodMonth, setPeriodMonth] = useState<Date | null>(todayDate())
-  const [paymentMethod, setPaymentMethod] = useState<EgresoPaymentMethod>('bancolombia')
+  const [paymentMethod, setPaymentMethod] = useState<EgresoPaymentMethod>('cash')
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [kindTouched, setKindTouched] = useState(false)
+  const [cuentaAckNotTill, setCuentaAckNotTill] = useState(false)
+  const [cuentaAckFromAccount, setCuentaAckFromAccount] = useState(false)
   const [channelAvail, setChannelAvail] = useState<{
     available: number
     inAmount: number
@@ -189,26 +191,32 @@ export function EgresoModal({
           : todayDate()
       )
       setPaymentMethod(egreso.paymentMethod || 'cash')
-      setKindTouched(true)
+      setCuentaAckNotTill(false)
+      setCuentaAckFromAccount(false)
     } else {
-      const initialConcept = defaultKind === 'caja' ? 'papeleria' : 'arriendo'
-      const kind = defaultKind || suggestedEgresoKind(initialConcept)
-      setConcept(initialConcept)
+      setConcept('papeleria')
       setConceptOther('')
       setDescription('')
       setAmount('')
       setExpenseDate(todayDate())
-      setExpenseKind(kind)
+      setExpenseKind('caja')
       setPeriodMonth(todayDate())
-      setPaymentMethod(kind === 'cuenta' ? 'bancolombia' : 'cash')
-      setKindTouched(!!defaultKind)
+      setPaymentMethod('cash')
+      setCuentaAckNotTill(false)
+      setCuentaAckFromAccount(false)
     }
   }, [isOpen, egreso, defaultKind])
 
   const showOther = concept === 'otro'
   const amountValue = parseAmountInput(amount)
   const isCuenta = expenseKind === 'cuenta'
-  const visiblePaymentOptions = paymentOptions
+  const cuentaCashConflict = isCuenta && paymentMethod === 'cash'
+  const needsCuentaDoubleCheck =
+    isCuenta && (!isEdit || (egreso?.expenseKind || 'caja') !== 'cuenta')
+  const cuentaDoubleCheckOk = !needsCuentaDoubleCheck || (cuentaAckNotTill && cuentaAckFromAccount)
+  const visiblePaymentOptions = isCuenta
+    ? paymentOptions.filter((option) => option.value !== 'cash')
+    : paymentOptions
 
   useEffect(() => {
     if (!isOpen || !isCuenta || !periodMonth) {
@@ -264,15 +272,15 @@ export function EgresoModal({
 
   const handleConceptChange = (next: string) => {
     setConcept(next)
-    if (!kindTouched && !isEdit) {
-      const kind = suggestedEgresoKind(next)
-      setExpenseKind(kind)
-    }
   }
 
   const handleKindChange = (kind: EgresoKind) => {
-    setKindTouched(true)
     setExpenseKind(kind)
+    setCuentaAckNotTill(false)
+    setCuentaAckFromAccount(false)
+    if (kind === 'cuenta' && paymentMethod === 'cash') {
+      setPaymentMethod('bancolombia')
+    }
   }
 
   const exceedsChannel =
@@ -329,6 +337,14 @@ export function EgresoModal({
       toast.error(
         `No hay suficiente dinero en ${channelAvail.label} este mes para ese monto`
       )
+      return
+    }
+    if (needsCuentaDoubleCheck && !cuentaDoubleCheckOk) {
+      toast.error('Marca las dos confirmaciones: esta mensualidad no sale de la gaveta ni entra al cierre.')
+      return
+    }
+    if (cuentaCashConflict) {
+      toast.error(CUENTA_NO_CASH_MESSAGE)
       return
     }
     setSaving(true)
@@ -534,7 +550,62 @@ export function EgresoModal({
                   </p>
                 </div>
               ) : null}
+              {cuentaCashConflict ? (
+                <p className="mt-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  {CUENTA_NO_CASH_MESSAGE}
+                </p>
+              ) : null}
             </div>
+
+            {isCuenta && (
+              <div className="space-y-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                  <div className="space-y-1 text-xs text-amber-950 dark:text-amber-100">
+                    <p className="font-semibold">Diferencia: caja vs mensualidad</p>
+                    <p>
+                      <span className="font-semibold">Caja del turno:</span> el dinero sale de la
+                      gaveta de hoy (efectivo). Baja el cierre de caja.
+                    </p>
+                    <p>
+                      <span className="font-semibold">Cuenta / mensualidad:</span> arriendo, nómina,
+                      servicios. Sale de Nequi, Bancolombia o transferencia. No toca la gaveta ni
+                      el cierre.
+                    </p>
+                  </div>
+                </div>
+                {needsCuentaDoubleCheck && (
+                  <div className="space-y-2 border-t border-amber-200/80 pt-2.5 dark:border-amber-800/60">
+                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-amber-950 dark:text-amber-100">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                        checked={cuentaAckNotTill}
+                        onChange={(e) => setCuentaAckNotTill(e.target.checked)}
+                      />
+                      <span>
+                        1. Entiendo que este gasto <span className="font-semibold">no sale de la
+                        gaveta de hoy</span> y <span className="font-semibold">no baja el cierre
+                        de caja</span>.
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-amber-950 dark:text-amber-100">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                        checked={cuentaAckFromAccount}
+                        onChange={(e) => setCuentaAckFromAccount(e.target.checked)}
+                      />
+                      <span>
+                        2. Confirmo que el dinero sale de{' '}
+                        <span className="font-semibold">Nequi, Bancolombia o transferencia</span>.
+                        Si salió en efectivo de la caja, debo elegir «Caja del turno».
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
 
             {isCuenta && (
               <div>
@@ -579,7 +650,16 @@ export function EgresoModal({
             <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving || amountValue <= 0 || !!exceedsChannel}>
+            <Button
+              type="submit"
+              disabled={
+                saving ||
+                amountValue <= 0 ||
+                !!exceedsChannel ||
+                cuentaCashConflict ||
+                !cuentaDoubleCheckOk
+              }
+            >
               {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar egreso'}
             </Button>
           </div>

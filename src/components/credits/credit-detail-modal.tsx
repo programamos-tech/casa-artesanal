@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { Credit, PaymentRecord } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
+import { PaymentReceiptThumb } from '@/components/credits/payment-receipt-field'
 import { cn } from '@/lib/utils'
 import {
   creditStatusSolidBadgeClass,
@@ -460,11 +461,19 @@ export function CreditDetailModal({ isOpen, onClose, credit, clientCredits = [],
                                 <div className="text-sm font-semibold text-gray-900 dark:text-white">{payment.userName}</div>
                               </div>
                               
-                              <div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha</div>
-                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                  {new Date(payment.paymentDate).toLocaleString('es-CO')}
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha</div>
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {new Date(payment.paymentDate).toLocaleString('es-CO')}
+                                  </div>
                                 </div>
+                                {payment.imageUrl ? (
+                                  <PaymentReceiptThumb
+                                    url={payment.imageUrl}
+                                    amountLabel={formatCurrency(payment.amount)}
+                                  />
+                                ) : null}
                               </div>
                             </div>
                             

@@ -45,7 +45,7 @@ export default function EgresosPage() {
     if (tipo !== 'all') setKindFilter(tipo)
     if (searchParams.get('nuevo') === '1' && canCreate('egresos')) {
       setSelected(null)
-      setDefaultKind(tipo === 'cuenta' || tipo === 'caja' ? tipo : 'cuenta')
+      setDefaultKind('caja')
       setModalOpen(true)
       router.replace('/egresos' + (tipo !== 'all' ? `?tipo=${tipo}` : ''), { scroll: false })
     }
@@ -108,7 +108,7 @@ export default function EgresosPage() {
           canCancel={canCancel('egresos')}
           onCreate={() => {
             setSelected(null)
-            setDefaultKind(kindFilter === 'cuenta' || kindFilter === 'caja' ? kindFilter : undefined)
+            setDefaultKind('caja')
             setModalOpen(true)
           }}
           onEdit={(e) => {

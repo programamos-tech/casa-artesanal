@@ -123,6 +123,8 @@ function emptySummary(_openingCash = 0): CashSessionLiveSummary {
     totalEgresos: 0,
     // El fondo/base de apertura no entra en el efectivo esperado del cierre
     expectedCash: 0,
+    egresosCuentaCount: 0,
+    egresosCuentaAmount: 0,
   }
 }
 
@@ -420,6 +422,20 @@ export class CashSessionsService {
         } else {
           summary.egresosOther += amount
         }
+      }
+
+      let cuentaQuery = supabaseAdmin
+        .from('egresos')
+        .select('amount, store_id, status, created_at, expense_kind')
+        .eq('status', 'active')
+        .eq('expense_kind', 'cuenta')
+        .gte('created_at', from)
+        .lte('created_at', to)
+      cuentaQuery = applySalesStoreFilter(cuentaQuery, storeId)
+      const { data: cuentaEgresos } = await cuentaQuery
+      for (const e of cuentaEgresos || []) {
+        summary.egresosCuentaCount += 1
+        summary.egresosCuentaAmount += Number(e.amount) || 0
       }
 
       // Solo dinero que realmente entró (ventas cobradas + abonos). El crédito facturado va aparte.

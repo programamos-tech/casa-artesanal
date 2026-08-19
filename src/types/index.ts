@@ -422,6 +422,8 @@ export interface PaymentRecord {
   cashAmount?: number
   transferAmount?: number
   description?: string
+  /** Comprobante del abono: ruta en bucket credit-payments (receipts/…) o URL pública. */
+  imageUrl?: string
   userId: string
   userName: string
   storeId?: string // ID de la tienda a la que pertenece el registro de pago
@@ -459,6 +461,8 @@ export interface Egreso {
   cancelledByName?: string | null
   cancelledAt?: string | null
   cancelReason?: string | null
+  /** Comprobante de la transferencia (ruta o URL pública). */
+  imageUrl?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -516,6 +520,9 @@ export interface CashSessionLiveSummary {
   totalIngresos: number
   totalEgresos: number
   expectedCash: number
+  /** Egresos de cuenta del turno: no salen de la gaveta ni entran al cierre. */
+  egresosCuentaCount: number
+  egresosCuentaAmount: number
 }
 
 // Store interface moved to store.ts for better module resolution

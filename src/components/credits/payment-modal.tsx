@@ -19,6 +19,7 @@ import { Credit, PaymentRecord } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUser } from '@/lib/store-helper'
 import { cn } from '@/lib/utils'
+import { PaymentReceiptField } from '@/components/credits/payment-receipt-field'
 import {
   appModalBodyClass,
   appModalErrorClass,
@@ -104,6 +105,8 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [mounted, setMounted] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   useLayoutEffect(() => {
     setMounted(true)
@@ -211,6 +214,10 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
       return
     }
 
+    if (uploading) {
+      return
+    }
+
     let userId = user?.id
     let userName = user?.name
 
@@ -226,6 +233,7 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
       paymentDate: new Date().toISOString(),
       paymentMethod: formData.paymentMethod,
       description: formData.description,
+      imageUrl: imageUrl?.trim() || undefined,
       userId: userId,
       userName: userName || 'Usuario Actual',
       createdAt: new Date().toISOString()
@@ -253,6 +261,8 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
       description: ''
     })
     setErrors({})
+    setImageUrl(null)
+    setUploading(false)
   }
 
   const handleClose = () => {
@@ -564,13 +574,21 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
                 className={cn(inputClass, 'min-h-[4rem] resize-y py-2.5 text-sm')}
               />
             </div>
+
+            <PaymentReceiptField
+              imageUrl={imageUrl}
+              onImageUrlChange={setImageUrl}
+              onUploadingChange={setUploading}
+            />
           </div>
 
           <div className={appModalFooterClass}>
             <Button type="button" variant="destructive" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit">Registrar abono</Button>
+            <Button type="submit" disabled={uploading}>
+              {uploading ? 'Subiendo…' : 'Registrar abono'}
+            </Button>
           </div>
         </form>
       </div>
