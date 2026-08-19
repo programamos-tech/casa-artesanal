@@ -119,6 +119,8 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
     `  · Otros medios: ${moneyCop(abonosOther)}`,
     `Facturado a crédito (aparte, no suma): ${moneyCop(input.salesCredit || 0)}`,
     `Egresos: ${moneyCop(input.totalEgresos)} (${input.egresosCount})`,
+    `Fondo inicial: ${moneyCop(input.openingCash)}`,
+    `Esperado (fondo + efectivo − egresos): ${moneyCop(input.expectedCash)}`,
     `Caja contada: ${moneyCop(input.countedCash)}`,
     `Diferencia: ${moneyCop(input.difference)} (${diffLabel})`,
   ]

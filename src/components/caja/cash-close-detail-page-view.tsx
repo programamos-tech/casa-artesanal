@@ -48,6 +48,8 @@ interface CashCloseDetailPageViewProps {
 
 export function CashCloseDetailPageView({ session, report }: CashCloseDetailPageViewProps) {
   const diff = report.difference || 0
+  const dayNet = (report.salesCash || 0) + (report.creditAbonosCash || 0) - (report.egresosCash || 0)
+  const usedFromOpening = Math.max(0, -dayNet)
 
   return (
     <div className="min-h-screen space-y-4 bg-white py-4 dark:bg-neutral-950 md:space-y-6 md:py-6">
@@ -91,11 +93,19 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
           </dl>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryTile icon={Banknote} label="Fondo inicial (no se suma)" value={money(report.openingCash)} />
+            <SummaryTile icon={Banknote} label="Fondo inicial (sí cuenta)" value={money(report.openingCash)} />
             <SummaryTile icon={ArrowUpCircle} label="Ingresos" value={money(report.totalIngresos)} tone="income" />
             <SummaryTile icon={ArrowDownCircle} label="Egresos" value={money(report.totalEgresos)} tone="expense" />
-            <SummaryTile icon={Wallet} label="Efectivo esperado (sin base)" value={money(report.expectedCash)} tone="cash" />
+            <SummaryTile icon={Wallet} label="Efectivo esperado (con fondo)" value={money(report.expectedCash)} tone="cash" />
           </div>
+
+          {usedFromOpening > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+              Ese día los egresos en efectivo superaron las ventas en efectivo. Se usaron{' '}
+              <span className="font-semibold tabular-nums">{money(usedFromOpening)}</span> del
+              fondo inicial. El esperado ya incluye el fondo que debía quedar en la gaveta.
+            </div>
+          )}
 
           <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:grid-cols-3">
             <div>
@@ -162,7 +172,8 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
               <Line label="Efectivo" value={money(report.egresosCash)} />
               <Line label="Otros medios" value={money(report.egresosOther)} />
               <p className="pt-3 text-xs text-zinc-500">
-                Efectivo esperado = fondo + ventas/abonos en efectivo − egresos en efectivo.
+                Efectivo esperado = fondo inicial + ventas/abonos en efectivo − egresos en efectivo.
+                Cuenta todo lo que hay en la gaveta, incluido el fondo.
               </p>
             </div>
           </div>

@@ -320,11 +320,11 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
               <p className="font-semibold tabular-nums">{money(summary?.totalEgresos || 0)}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Fondo inicial (no se suma)</p>
+              <p className="text-xs text-zinc-500">Fondo inicial (sí cuenta)</p>
               <p className="font-semibold tabular-nums">{money(session.openingCash)}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Efectivo esperado (sin base)</p>
+              <p className="text-xs text-zinc-500">Efectivo esperado (con fondo)</p>
               {revealed ? (
                 <p className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                   {money(expected)}
@@ -386,10 +386,10 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
 
           <div className="space-y-2 rounded-xl border border-indigo-200/80 bg-indigo-50/40 p-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
             <Label className="text-indigo-950 dark:text-indigo-100">
-              1. Cuenta el efectivo físico del turno
+              1. Cuenta todo el efectivo de la gaveta
             </Label>
             <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80">
-              Sin mirar el esperado del sistema. Solo lo que hay en caja (sin el fondo inicial).
+              Sin mirar el esperado. Incluye el fondo inicial: es el dinero que hay físico en caja.
             </p>
             <input
               type="text"
@@ -432,14 +432,21 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
                 </div>
                 {expected === 0 && counted === 0 && (
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    El sistema no esperaba efectivo en este turno (solo digital/crédito, o ventas −
-                    egresos = 0). Si contaste $0, puedes cerrar.
+                    El sistema no esperaba efectivo en este turno (fondo + ventas − egresos = 0).
+                    Si contaste $0, puedes cerrar.
                   </p>
                 )}
                 {expected === 0 && counted > 0 && (
                   <p className="text-xs text-amber-800 dark:text-amber-300">
                     El sistema esperaba $0 en efectivo y tú contaste {money(counted)}. Explica de
                     dónde salió ese dinero en la nota.
+                  </p>
+                )}
+                {(summary?.usedFromOpening || 0) > 0 && (
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    Los egresos en efectivo superaron las ventas en efectivo. Se usaron{' '}
+                    {money(summary?.usedFromOpening || 0)} del fondo inicial. Cuenta también lo
+                    que quede de ese fondo.
                   </p>
                 )}
               </div>

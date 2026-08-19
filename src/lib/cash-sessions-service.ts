@@ -104,7 +104,7 @@ function mapRow(row: any): CashSession {
   }
 }
 
-function emptySummary(_openingCash = 0): CashSessionLiveSummary {
+function emptySummary(openingCash = 0): CashSessionLiveSummary {
   return {
     salesCash: 0,
     salesTransfer: 0,
@@ -121,11 +121,21 @@ function emptySummary(_openingCash = 0): CashSessionLiveSummary {
     egresosCount: 0,
     totalIngresos: 0,
     totalEgresos: 0,
-    // El fondo/base de apertura no entra en el efectivo esperado del cierre
-    expectedCash: 0,
+    expectedCash: Math.max(0, openingCash),
+    usedFromOpening: 0,
     egresosCuentaCount: 0,
     egresosCuentaAmount: 0,
   }
+}
+
+function applyExpectedCash(
+  summary: CashSessionLiveSummary,
+  openingCash: number
+): CashSessionLiveSummary {
+  const dayNet = summary.salesCash + summary.creditAbonosCash - summary.egresosCash
+  summary.usedFromOpening = Math.max(0, -dayNet)
+  summary.expectedCash = openingCash + dayNet
+  return summary
 }
 
 function applySalesStoreFilter<T extends { or: Function; eq: Function }>(query: T, storeId: string): T {
@@ -451,9 +461,7 @@ export class CashSessionsService {
 
       summary.totalEgresos = summary.egresosCash + summary.egresosOther
 
-      // Efectivo esperado del día: ventas/abonos en efectivo − egresos en efectivo (sin la base de apertura)
-      summary.expectedCash =
-        summary.salesCash + summary.creditAbonosCash - summary.egresosCash
+      applyExpectedCash(summary, session.openingCash)
 
       return summary
     } catch (error) {

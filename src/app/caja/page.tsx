@@ -117,7 +117,7 @@ export default function CajaPage() {
                 <StoreBadge />
               </CardTitle>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Opcional: abre con un dinero base y al cierre ves ingresos y egresos del turno.
+                Opcional: abre con un dinero base. Al cierre cuentas todo lo de la gaveta, incluido ese fondo.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

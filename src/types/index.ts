@@ -520,6 +520,8 @@ export interface CashSessionLiveSummary {
   totalIngresos: number
   totalEgresos: number
   expectedCash: number
+  /** Cuánto del fondo inicial se usó porque los egresos en efectivo superaron lo que entró. */
+  usedFromOpening: number
   /** Egresos de cuenta del turno: no salen de la gaveta ni entran al cierre. */
   egresosCuentaCount: number
   egresosCuentaAmount: number

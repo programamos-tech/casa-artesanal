@@ -343,7 +343,8 @@ export function SupplierPaymentModal({
   const originActive =
     'border-amber-300 bg-amber-50 text-amber-950 ring-1 ring-amber-200/80 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-800/50'
 
-  const saleReceiptRequired = moneyOrigin === 'sale' && selectedSale?.channel !== 'cash'
+  const saleReceiptRequired =
+    moneyOrigin === 'sale' && selectedSale != null && selectedSale.channel !== 'cash'
   const receiptField = (
     <div className={cn(cardShell, 'space-y-2 p-3')}>
       <span className={cn(appModalLabelClass, 'mb-0')}>
@@ -352,8 +353,8 @@ export function SupplierPaymentModal({
           : 'Comprobante del abono (opcional)'}
       </span>
       <p className={appModalHintClass}>
-        {saleReceiptRequired
-          ? `Foto del comprobante ${channelLabel(selectedSale!.channel)} enviado al proveedor. Máx. 2 MB.`
+        {saleReceiptRequired && selectedSale
+          ? `Foto del comprobante ${channelLabel(selectedSale.channel)} enviado al proveedor. Máx. 2 MB.`
           : 'Foto del recibo o transferencia. Máx. 2 MB; se comprime en el navegador si hace falta.'}
       </p>
       <div className="flex flex-wrap items-center gap-2">
