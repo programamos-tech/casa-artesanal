@@ -69,7 +69,11 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const hasCountedInput = countedCash.trim() !== ''
   const counted = hasCountedInput ? parseInt(countedCash.replace(/[^\d]/g, ''), 10) || 0 : 0
   const expected = summary?.expectedCash ?? 0
+  const dayNet = summary?.dayNetCash ?? 0
+  const usedFromOpening = summary?.usedFromOpening ?? 0
   const diff = counted - expected
+  const countedFondoInicialOnly =
+    usedFromOpening > 0 && counted === session.openingCash && counted !== expected
   const hasBlockers = blockers.length > 0
   const notesRequired = revealed && diff !== 0
   const notesOk = !notesRequired || notes.trim().length >= 15
@@ -366,6 +370,43 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
 
           <div className="rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              Cómo se calcula el efectivo en gaveta
+            </p>
+            <div className="space-y-1.5">
+              <CashLine label="Fondo inicial" value={money(session.openingCash)} />
+              <CashLine label="Ventas en efectivo" value={money(summary?.salesCash || 0)} sign="+" />
+              <CashLine label="Abonos de crédito en efectivo" value={money(summary?.creditAbonosCash || 0)} sign="+" />
+              <CashLine label="Egresos en efectivo" value={money(summary?.egresosCash || 0)} sign="−" />
+              {dayNet !== 0 && (
+                <CashLine
+                  label="Balance del turno (ventas + abonos − egresos)"
+                  value={money(dayNet)}
+                  strong={dayNet < 0}
+                />
+              )}
+              <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">
+                <CashLine
+                  label="Debe haber en la gaveta"
+                  value={revealed ? money(expected) : '••••••'}
+                  strong
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Nequi, Bancolombia y transferencias no van en este conteo: no pasan por la gaveta.
+            </p>
+            {(summary?.usedFromOpening || 0) > 0 && revealed && (
+              <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+                Los egresos en efectivo ({money(summary?.egresosCash || 0)}) superaron las ventas y
+                abonos en efectivo ({money((summary?.salesCash || 0) + (summary?.creditAbonosCash || 0))}
+                ). Del fondo se usaron {money(summary?.usedFromOpening || 0)}; aun así debería
+                quedar {money(expected)} en caja.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
               Abonos de créditos (turno)
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -417,6 +458,19 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
               </Button>
             ) : (
               <div className="space-y-2">
+                {usedFromOpening > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                    <p>
+                      Balance del turno en efectivo:{' '}
+                      <span className="font-bold tabular-nums">{money(dayNet)}</span>
+                    </p>
+                    <p className="mt-1 text-xs opacity-90">
+                      Salieron {money(usedFromOpening)} del fondo porque los egresos en efectivo
+                      superaron lo cobrado en efectivo. Ese descuadre del turno es de{' '}
+                      {money(usedFromOpening)}, no confundirlo con la diferencia del conteo físico.
+                    </p>
+                  </div>
+                )}
                 <div
                   className={cn(
                     'rounded-lg border px-3 py-2 text-sm',
@@ -425,9 +479,12 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
                       : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
                   )}
                 >
-                  Esperado: <span className="font-bold tabular-nums">{money(expected)}</span>
+                  Debe haber en gaveta:{' '}
+                  <span className="font-bold tabular-nums">{money(expected)}</span>
                   {' · '}
-                  Diferencia: <span className="font-bold tabular-nums">{money(diff)}</span>
+                  Contaste: <span className="font-bold tabular-nums">{money(counted)}</span>
+                  {' · '}
+                  Diferencia física: <span className="font-bold tabular-nums">{money(diff)}</span>
                   {diff === 0 ? ' · Cuadra' : diff > 0 ? ' · Sobra' : ' · Falta'}
                 </div>
                 {expected === 0 && counted === 0 && (
@@ -442,11 +499,25 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
                     dónde salió ese dinero en la nota.
                   </p>
                 )}
-                {(summary?.usedFromOpening || 0) > 0 && (
+                {(summary?.usedFromOpening || 0) > 0 && !countedFondoInicialOnly && (
                   <p className="text-xs text-amber-800 dark:text-amber-300">
-                    Los egresos en efectivo superaron las ventas en efectivo. Se usaron{' '}
-                    {money(summary?.usedFromOpening || 0)} del fondo inicial. Cuenta también lo
-                    que quede de ese fondo.
+                    Del fondo inicial se usaron {money(summary?.usedFromOpening || 0)} porque los
+                    egresos en efectivo superaron lo cobrado en efectivo en el turno.
+                  </p>
+                )}
+                {countedFondoInicialOnly && (
+                  <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                    Contaste {money(counted)} (el fondo inicial completo). Del fondo ya salieron{' '}
+                    {money(usedFromOpening)} en este turno — en la gaveta deberían quedar{' '}
+                    {money(expected)}, no {money(session.openingCash)}. La diferencia física es{' '}
+                    {money(diff)} {diff > 0 ? 'de sobra' : 'de falta'}.
+                  </p>
+                )}
+                {expected > 0 && counted === 0 && (
+                  <p className="text-xs font-semibold text-rose-800 dark:text-rose-300">
+                    Contaste $0 pero el sistema espera {money(expected)} en la gaveta (fondo + efectivo
+                    del turno − egresos). Cuenta todo el billete que hay físicamente, incluido el
+                    fondo que no se gastó.
                   </p>
                 )}
               </div>
@@ -489,6 +560,35 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function CashLine({
+  label,
+  value,
+  sign,
+  strong,
+}: {
+  label: string
+  value: string
+  sign?: '+' | '−'
+  strong?: boolean
+}) {
+  return (
+    <div className="flex justify-between gap-3 text-sm">
+      <span className="text-zinc-600 dark:text-zinc-400">
+        {sign ? `${sign} ` : ''}
+        {label}
+      </span>
+      <span
+        className={cn(
+          'tabular-nums text-zinc-900 dark:text-zinc-100',
+          strong && 'font-semibold text-amber-700 dark:text-amber-400'
+        )}
+      >
+        {value}
+      </span>
     </div>
   )
 }

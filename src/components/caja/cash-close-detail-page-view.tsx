@@ -49,7 +49,7 @@ interface CashCloseDetailPageViewProps {
 export function CashCloseDetailPageView({ session, report }: CashCloseDetailPageViewProps) {
   const diff = report.difference || 0
   const dayNet = (report.salesCash || 0) + (report.creditAbonosCash || 0) - (report.egresosCash || 0)
-  const usedFromOpening = Math.max(0, -dayNet)
+  const usedFromOpening = Math.min(report.openingCash || 0, Math.max(0, -dayNet))
 
   return (
     <div className="min-h-screen space-y-4 bg-white py-4 dark:bg-neutral-950 md:space-y-6 md:py-6">

@@ -104,6 +104,8 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
   const abonosCash = input.creditAbonosCash || 0
   const abonosOther = input.creditAbonosOther || 0
   const abonosTotal = abonosCash + abonosOther
+  const dayNet = (input.salesCash || 0) + abonosCash - (input.egresosCash || 0)
+  const usedFromOpening = Math.min(input.openingCash || 0, Math.max(0, -dayNet))
 
   const lines: string[] = [
     '*CIERRE DE CAJA*',
@@ -120,7 +122,11 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
     `Facturado a crédito (aparte, no suma): ${moneyCop(input.salesCredit || 0)}`,
     `Egresos: ${moneyCop(input.totalEgresos)} (${input.egresosCount})`,
     `Fondo inicial: ${moneyCop(input.openingCash)}`,
-    `Esperado (fondo + efectivo − egresos): ${moneyCop(input.expectedCash)}`,
+    `Balance turno en efectivo: ${moneyCop(dayNet)}`,
+    ...(usedFromOpening > 0
+      ? [`Del fondo se usaron: ${moneyCop(usedFromOpening)}`]
+      : []),
+    `Esperado en gaveta (fondo + efectivo − egresos): ${moneyCop(input.expectedCash)}`,
     `Caja contada: ${moneyCop(input.countedCash)}`,
     `Diferencia: ${moneyCop(input.difference)} (${diffLabel})`,
   ]

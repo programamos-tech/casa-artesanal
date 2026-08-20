@@ -122,6 +122,7 @@ function emptySummary(openingCash = 0): CashSessionLiveSummary {
     totalIngresos: 0,
     totalEgresos: 0,
     expectedCash: Math.max(0, openingCash),
+    dayNetCash: 0,
     usedFromOpening: 0,
     egresosCuentaCount: 0,
     egresosCuentaAmount: 0,
@@ -133,8 +134,11 @@ function applyExpectedCash(
   openingCash: number
 ): CashSessionLiveSummary {
   const dayNet = summary.salesCash + summary.creditAbonosCash - summary.egresosCash
-  summary.usedFromOpening = Math.max(0, -dayNet)
-  summary.expectedCash = openingCash + dayNet
+  summary.dayNetCash = dayNet
+  const deficit = Math.max(0, -dayNet)
+  summary.usedFromOpening = Math.min(openingCash, deficit)
+  // Nunca negativo: si el esperado fuera < 0, la diferencia se invierte (parece "sobra").
+  summary.expectedCash = Math.max(0, openingCash + dayNet)
   return summary
 }
 
