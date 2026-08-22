@@ -163,7 +163,8 @@ function emptySummary(openingCash = 0): CashSessionLiveSummary {
     egresosCount: 0,
     totalIngresos: 0,
     totalEgresos: 0,
-    expectedCash: Math.max(0, openingCash),
+    // El fondo no entra al esperado del cierre: solo el neto del turno.
+    expectedCash: 0,
     dayNetCash: 0,
     usedFromOpening: 0,
     egresosCuentaCount: 0,
@@ -179,8 +180,9 @@ function applyExpectedCash(
   summary.dayNetCash = dayNet
   const deficit = Math.max(0, -dayNet)
   summary.usedFromOpening = Math.min(openingCash, deficit)
-  // Nunca negativo: si el esperado fuera < 0, la diferencia se invierte (parece "sobra").
-  summary.expectedCash = Math.max(0, openingCash + dayNet)
+  // El fondo/base no cuenta en el cierre: esperado = neto del turno (ventas/abonos − egresos).
+  // Así el conteo cuadra con lo del día y no aparece un “faltante” igual al fondo.
+  summary.expectedCash = Math.max(0, dayNet)
   return summary
 }
 

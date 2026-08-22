@@ -133,7 +133,7 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
     ...(usedFromOpening > 0
       ? [`Del fondo se usaron: ${moneyCop(usedFromOpening)}`]
       : []),
-    `Esperado en gaveta (fondo + efectivo − egresos): ${moneyCop(input.expectedCash)}`,
+    `Esperado del turno (efectivo − egresos, sin fondo): ${moneyCop(input.expectedCash)}`,
     `Caja contada: ${moneyCop(input.countedCash)}`,
     input.differenceKind === 'remaining'
       ? `Quedó en caja: ${moneyCop(input.difference)}`
