@@ -11,7 +11,9 @@ import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
   CashSessionsService,
+  cashSessionDifferenceTone,
   getCashRegisterStoreId,
+  getCashSessionDifferenceView,
   isCashSessionFromPreviousDay,
 } from '@/lib/cash-sessions-service'
 import type { CashSession, CashSessionLiveSummary } from '@/types'
@@ -344,7 +346,9 @@ export default function CajaPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {closedSessions.map((s) => (
+                    {closedSessions.map((s) => {
+                      const diffView = getCashSessionDifferenceView(s)
+                      return (
                       <tr
                         key={s.id}
                         className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-900/40"
@@ -366,14 +370,10 @@ export default function CajaPage() {
                         <td
                           className={cn(
                             'px-3 py-3 font-medium tabular-nums',
-                            (s.difference || 0) === 0
-                              ? 'text-emerald-700 dark:text-emerald-400'
-                              : (s.difference || 0) > 0
-                                ? 'text-sky-700 dark:text-sky-400'
-                                : 'text-red-600 dark:text-red-400'
+                            cashSessionDifferenceTone(diffView.kind)
                           )}
                         >
-                          {money(s.difference || 0)}
+                          {money(diffView.amount)}
                         </td>
                         <td className="px-3 py-3 text-right">
                           <Link
@@ -386,7 +386,8 @@ export default function CajaPage() {
                           </Link>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

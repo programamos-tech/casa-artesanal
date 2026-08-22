@@ -17,6 +17,10 @@ import { cardShell } from '@/lib/card-shell'
 import { StoreBadge } from '@/components/ui/store-badge'
 import type { CashSession } from '@/types'
 import type { CashCloseReportInput } from '@/lib/cash-close-whatsapp'
+import {
+  cashSessionDifferenceTone,
+  getCashSessionDifferenceView,
+} from '@/lib/cash-sessions-service'
 import { moneyCop, paymentLabel, formatDateTimeCo } from '@/lib/cash-close-whatsapp'
 
 function money(n: number) {
@@ -47,7 +51,8 @@ interface CashCloseDetailPageViewProps {
 }
 
 export function CashCloseDetailPageView({ session, report }: CashCloseDetailPageViewProps) {
-  const diff = report.difference || 0
+  const diffView = getCashSessionDifferenceView(session)
+  const diff = diffView.amount
   const dayNet = (report.salesCash || 0) + (report.creditAbonosCash || 0) - (report.egresosCash || 0)
   const usedFromOpening = Math.min(report.openingCash || 0, Math.max(0, -dayNet))
 
@@ -113,21 +118,17 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
               <p className="text-lg font-semibold tabular-nums">{money(report.countedCash)}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Diferencia</p>
+              <p className="text-xs text-zinc-500">
+                {diffView.kind === 'remaining' ? 'Quedó en caja' : 'Diferencia'}
+              </p>
               <p
                 className={cn(
                   'text-lg font-semibold tabular-nums',
-                  diff === 0
-                    ? 'text-emerald-700 dark:text-emerald-400'
-                    : diff > 0
-                      ? 'text-sky-700 dark:text-sky-400'
-                      : 'text-red-600 dark:text-red-400'
+                  cashSessionDifferenceTone(diffView.kind)
                 )}
               >
                 {money(diff)}
-                <span className="ml-2 text-xs font-medium">
-                  {diff === 0 ? 'Cuadra' : diff > 0 ? 'Sobra' : 'Falta'}
-                </span>
+                <span className="ml-2 text-xs font-medium">{diffView.label}</span>
               </p>
             </div>
             <div>

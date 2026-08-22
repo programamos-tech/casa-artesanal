@@ -71,6 +71,7 @@ export interface CashCloseReportInput {
   countedCash: number
   expectedCash: number
   difference: number
+  differenceKind?: 'match' | 'over' | 'under' | 'remaining'
   totalIngresos: number
   totalEgresos: number
   salesCash: number
@@ -99,7 +100,13 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
     (input.salesBancolombia || 0) +
     (input.salesTransfer || 0)
   const diffLabel =
-    input.difference === 0 ? 'Cuadra' : input.difference > 0 ? 'Sobra' : 'Falta'
+    input.differenceKind === 'remaining'
+      ? 'Quedó en caja'
+      : input.difference === 0
+        ? 'Cuadra'
+        : input.difference > 0
+          ? 'Sobra'
+          : 'Falta'
 
   const abonosCash = input.creditAbonosCash || 0
   const abonosOther = input.creditAbonosOther || 0
@@ -128,7 +135,9 @@ export function buildCashCloseWhatsAppMessage(input: CashCloseReportInput): stri
       : []),
     `Esperado en gaveta (fondo + efectivo − egresos): ${moneyCop(input.expectedCash)}`,
     `Caja contada: ${moneyCop(input.countedCash)}`,
-    `Diferencia: ${moneyCop(input.difference)} (${diffLabel})`,
+    input.differenceKind === 'remaining'
+      ? `Quedó en caja: ${moneyCop(input.difference)}`
+      : `Diferencia: ${moneyCop(input.difference)} (${diffLabel})`,
   ]
 
   if (input.notes?.trim()) {

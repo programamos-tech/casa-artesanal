@@ -42,6 +42,48 @@ export type CashCloseBlocker = {
   status: string
 }
 
+export type CashSessionDifferenceView = {
+  amount: number
+  kind: 'match' | 'over' | 'under' | 'remaining'
+  label: string
+}
+
+/** Cómo mostrar la columna de diferencia en historial / detalle. */
+export function getCashSessionDifferenceView(
+  session: Pick<CashSession, 'countedCash' | 'expectedCash' | 'difference'>
+): CashSessionDifferenceView {
+  const expected = session.expectedCash || 0
+  const counted = session.countedCash
+
+  // Sin conteo físico registrado: es lo que quedó en gaveta, no un faltante negativo.
+  if (counted == null || counted === 0) {
+    if (expected > 0) {
+      return { amount: expected, kind: 'remaining', label: 'Quedó' }
+    }
+    return { amount: 0, kind: 'match', label: 'Cuadra' }
+  }
+
+  const diff = session.difference ?? counted - expected
+  if (diff === 0) return { amount: 0, kind: 'match', label: 'Cuadra' }
+  if (diff > 0) return { amount: diff, kind: 'over', label: 'Sobra' }
+  return { amount: diff, kind: 'under', label: 'Falta' }
+}
+
+export function cashSessionDifferenceTone(
+  kind: CashSessionDifferenceView['kind']
+): string {
+  switch (kind) {
+    case 'match':
+      return 'text-emerald-700 dark:text-emerald-400'
+    case 'over':
+      return 'text-sky-700 dark:text-sky-400'
+    case 'under':
+      return 'text-red-600 dark:text-red-400'
+    case 'remaining':
+      return 'text-zinc-700 dark:text-zinc-300'
+  }
+}
+
 export function formatCashCloseBlockersMessage(blockers: CashCloseBlocker[]): string {
   if (blockers.length === 0) return ''
   const drafts = blockers.filter((b) => b.kind === 'draft')
@@ -644,6 +686,8 @@ export class CashSessionsService {
       createdAt: e.created_at,
     }))
 
+    const diffView = getCashSessionDifferenceView(session)
+
     const report: CashCloseReportInput = {
       storeName: storeRow?.name || 'Tienda',
       openedAt: session.openedAt,
@@ -653,7 +697,8 @@ export class CashSessionsService {
       openingCash: session.openingCash,
       countedCash: session.countedCash ?? session.expectedCash,
       expectedCash: session.expectedCash,
-      difference: session.difference ?? 0,
+      difference: diffView.amount,
+      differenceKind: diffView.kind,
       totalIngresos: session.totalIngresos,
       totalEgresos: session.totalEgresos,
       salesCash: session.salesCash,
