@@ -19,18 +19,9 @@ import {
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import { OpenCashModal } from '@/components/caja/open-cash-modal'
 import { CloseCashModal } from '@/components/caja/close-cash-modal'
+import { DayCashModal } from '@/components/caja/day-cash-modal'
 import { toast } from 'sonner'
-import {
-  Banknote,
-  Eye,
-  Lock,
-  LockOpen,
-  RefreshCw,
-  Wallet,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  AlertTriangle,
-} from 'lucide-react'
+import { Eye, Lock, LockOpen, RefreshCw, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
@@ -45,8 +36,6 @@ function money(n: number) {
   }).format(n || 0)
 }
 
-const formatDateTime = formatDateTimeCo
-
 export default function CajaPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -58,8 +47,10 @@ export default function CajaPage() {
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(false)
   const [closeModal, setCloseModal] = useState(false)
+  const [dayModal, setDayModal] = useState(false)
   const storeId = getCashRegisterStoreId()
   const stalePromptedRef = useRef<string | null>(null)
+  const dayModalAutoOpenedRef = useRef<string | null>(null)
 
   const canOpen = canCreate('cash_register')
   const canClose =
@@ -83,6 +74,7 @@ export default function CajaPage() {
         setLive(summary)
       } else {
         setLive(null)
+        setDayModal(false)
       }
     } catch {
       toast.error('No se pudo cargar la caja')
@@ -95,12 +87,21 @@ export default function CajaPage() {
     void load()
   }, [load, user?.storeId])
 
+  // Abrir modal de caja del día cuando hay turno abierto
+  useEffect(() => {
+    if (!openSession || loading) return
+    if (dayModalAutoOpenedRef.current === openSession.id) return
+    dayModalAutoOpenedRef.current = openSession.id
+    setDayModal(true)
+  }, [openSession, loading])
+
   // Si la caja quedó abierta de un día anterior, forzar el cierre
   useEffect(() => {
     if (!openSession || !canClose || loading) return
     if (!isCashSessionFromPreviousDay(openSession.openedAt)) return
     if (stalePromptedRef.current === openSession.id) return
     stalePromptedRef.current = openSession.id
+    setDayModal(false)
     setCloseModal(true)
     toast.message('Debes cerrar la caja del día anterior', {
       description: 'No se puede dejar la caja abierta de un día para otro.',
@@ -119,8 +120,18 @@ export default function CajaPage() {
                 <StoreBadge />
               </CardTitle>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Opcional: abre con un dinero base. Al cierre el esperado es solo el neto del turno (sin restar ni sumar el fondo).
+                Historial de cierres. La caja del día se abre en un modal encima de la tabla.
               </p>
+              {openSession && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge className="border-0 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    Caja abierta
+                  </Badge>
+                  <span className="text-xs text-zinc-500">
+                    Desde {formatDateTimeCo(openSession.openedAt)} · {openSession.openedByName}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
@@ -136,6 +147,12 @@ export default function CajaPage() {
                   Egreso de caja
                 </Link>
               )}
+              {openSession && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setDayModal(true)}>
+                  <Eye className="h-3.5 w-3.5" />
+                  Ver caja del día
+                </Button>
+              )}
               {!openSession && canOpen && (
                 <Button type="button" size="sm" onClick={() => setOpenModal(true)}>
                   <LockOpen className="h-3.5 w-3.5" />
@@ -150,184 +167,16 @@ export default function CajaPage() {
               )}
             </div>
           </CardHeader>
-          {loading ? (
-            <CardContent className="p-4 md:p-6">
-              <p className="text-sm text-zinc-500">Cargando…</p>
-            </CardContent>
-          ) : openSession ? (
-            <CardContent className="space-y-4 p-4 md:p-6">
-              {sessionFromPreviousDay && (
-                <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex gap-3">
-                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
-                    <div>
-                      <p className="font-semibold text-amber-950 dark:text-amber-100">
-                        Caja del día anterior aún abierta
-                      </p>
-                      <p className="mt-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
-                        No se puede dejar la caja abierta de un día para otro. Ciérrala ahora con
-                        conteo físico antes de seguir.
-                      </p>
-                    </div>
-                  </div>
-                  {canClose && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => setCloseModal(true)}
-                    >
-                      <Lock className="h-3.5 w-3.5" />
-                      Cerrar ahora
-                    </Button>
-                  )}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge className="border-0 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  Caja abierta
-                </Badge>
-                <span className="text-sm text-zinc-500">
-                  Desde {formatDateTime(openSession.openedAt)} · {openSession.openedByName}
-                </span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <SummaryTile
-                  icon={Banknote}
-                  label="Fondo inicial"
-                  value={money(openSession.openingCash)}
-                  tone="neutral"
-                />
-                <SummaryTile
-                  icon={ArrowUpCircle}
-                  label="Ingresos del turno"
-                  value={money(live?.totalIngresos || 0)}
-                  tone="income"
-                />
-                <SummaryTile
-                  icon={ArrowDownCircle}
-                  label="Egresos del turno"
-                  value={money(live?.totalEgresos || 0)}
-                  tone="expense"
-                />
-                <SummaryTile
-                  icon={Wallet}
-                  label="Efectivo esperado"
-                  value="Conteo ciego al cerrar"
-                  tone="cash"
-                />
-              </div>
-              {live && (
-                <div className="space-y-3">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {/* Ingresos */}
-                    <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                      <div className="mb-3 flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-                          Entra dinero
-                        </p>
-                        <p className="text-sm font-bold tabular-nums text-emerald-900 dark:text-emerald-200">
-                          {money(live.totalIngresos)}
-                        </p>
-                      </div>
 
-                      <div className="space-y-3 text-sm">
-                        <div className="space-y-1.5">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                            Efectivo
-                          </p>
-                          <Line label="Ventas en efectivo" value={money(live.salesCash)} />
-                          <Line label="Abonos de crédito" value={money(live.creditAbonosCash)} />
-                        </div>
-
-                        <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                            Digital / tarjeta
-                          </p>
-                          <div className="space-y-1.5">
-                            <Line label="Nequi" value={money(live.salesNequi)} />
-                            <Line label="Bancolombia" value={money(live.salesBancolombia)} />
-                            <Line label="Transferencia" value={money(live.salesTransfer)} />
-                            <Line label="Tarjeta" value={money(live.salesCard)} />
-                            <Line label="Abonos crédito (otros medios)" value={money(live.creditAbonosOther)} />
-                          </div>
-                        </div>
-
-                        <div className="border-t border-emerald-200/70 pt-3 dark:border-emerald-900/40">
-                          <Line label="Ventas cobradas" value={`${live.salesCount}`} muted />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Egresos */}
-                    <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 p-4 dark:border-rose-900/40 dark:bg-rose-950/20">
-                      <div className="mb-3 flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold uppercase tracking-wide text-rose-800 dark:text-rose-300">
-                          Sale dinero
-                        </p>
-                        <p className="text-sm font-bold tabular-nums text-rose-900 dark:text-rose-200">
-                          {money(live.totalEgresos)}
-                        </p>
-                      </div>
-
-                      <div className="space-y-3 text-sm">
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                          Por medio
-                        </p>
-                        <Line label="En efectivo" value={money(live.egresosCash)} />
-                        <Line label="Otros medios" value={money(live.egresosOther)} />
-                      </div>
-                      {(live.egresosCuentaCount || 0) > 0 && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-                          <p className="font-semibold">
-                            {live.egresosCuentaCount} egreso
-                            {live.egresosCuentaCount === 1 ? '' : 's'} de cuenta ·{' '}
-                            {money(live.egresosCuentaAmount)}
-                          </p>
-                          <p className="mt-0.5 opacity-90">
-                            No salen de esta gaveta ni entran al cierre. Si pagaste en efectivo,
-                            cámbialos a «Caja del turno» en{' '}
-                            <Link href="/egresos?tipo=cuenta" className="font-semibold underline">
-                              Egresos
-                            </Link>
-                            .
-                          </p>
-                        </div>
-                      )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {(live.salesCredit || 0) > 0 && (
-                    <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold uppercase tracking-wide text-sky-800 dark:text-sky-300">
-                          Facturado a crédito (aparte)
-                        </p>
-                        <p className="text-sm font-bold tabular-nums text-sky-900 dark:text-sky-200">
-                          {money(live.salesCredit)}
-                        </p>
-                      </div>
-                      <p className="text-xs text-sky-900/80 dark:text-sky-200/80">
-                        No suma a ingresos ni al efectivo esperado. Solo se cuentan los abonos cuando el cliente paga.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          ) : null}
-        </Card>
-
-        <Card className={cn(cardShell)}>
-          <CardHeader className="border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:px-6">
-            <CardTitle className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              Historial de cierres
-            </CardTitle>
-          </CardHeader>
           <CardContent className="p-0">
-            {closedSessions.length === 0 ? (
+            <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 md:px-6">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                Historial de cierres
+              </h3>
+            </div>
+            {loading ? (
+              <p className="p-4 text-sm text-zinc-500 md:p-6">Cargando…</p>
+            ) : closedSessions.length === 0 ? (
               <p className="p-4 text-sm text-zinc-500 md:p-6">Aún no hay cierres registrados.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -349,43 +198,43 @@ export default function CajaPage() {
                     {closedSessions.map((s) => {
                       const diffView = getCashSessionDifferenceView(s)
                       return (
-                      <tr
-                        key={s.id}
-                        className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-900/40"
-                        onClick={() => router.push(`/caja/${s.id}`)}
-                      >
-                        <td className="px-4 py-3">
-                          <div>{formatDateTime(s.openedAt)}</div>
-                          <div className="text-xs text-zinc-500">{s.openedByName}</div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <div>{formatDateTime(s.closedAt)}</div>
-                          <div className="text-xs text-zinc-500">{s.closedByName || '—'}</div>
-                        </td>
-                        <td className="px-3 py-3 tabular-nums">{money(s.openingCash)}</td>
-                        <td className="px-3 py-3 tabular-nums">{money(s.totalIngresos)}</td>
-                        <td className="px-3 py-3 tabular-nums">{money(s.totalEgresos)}</td>
-                        <td className="px-3 py-3 tabular-nums">{money(s.expectedCash)}</td>
-                        <td className="px-3 py-3 tabular-nums">{money(s.countedCash || 0)}</td>
-                        <td
-                          className={cn(
-                            'px-3 py-3 font-medium tabular-nums',
-                            cashSessionDifferenceTone(diffView.kind)
-                          )}
+                        <tr
+                          key={s.id}
+                          className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-900/40"
+                          onClick={() => router.push(`/caja/${s.id}`)}
                         >
-                          {money(diffView.amount)}
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <Link
-                            href={`/caja/${s.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
-                            aria-label="Ver detalle del cierre"
+                          <td className="px-4 py-3">
+                            <div>{formatDateTimeCo(s.openedAt)}</div>
+                            <div className="text-xs text-zinc-500">{s.openedByName}</div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div>{formatDateTimeCo(s.closedAt)}</div>
+                            <div className="text-xs text-zinc-500">{s.closedByName || '—'}</div>
+                          </td>
+                          <td className="px-3 py-3 tabular-nums">{money(s.openingCash)}</td>
+                          <td className="px-3 py-3 tabular-nums">{money(s.totalIngresos)}</td>
+                          <td className="px-3 py-3 tabular-nums">{money(s.totalEgresos)}</td>
+                          <td className="px-3 py-3 tabular-nums">{money(s.expectedCash)}</td>
+                          <td className="px-3 py-3 tabular-nums">{money(s.countedCash || 0)}</td>
+                          <td
+                            className={cn(
+                              'px-3 py-3 font-medium tabular-nums',
+                              cashSessionDifferenceTone(diffView.kind)
+                            )}
                           >
-                            <Eye className="h-4 w-4" strokeWidth={1.75} />
-                          </Link>
-                        </td>
-                      </tr>
+                            {money(diffView.amount)}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <Link
+                              href={`/caja/${s.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                              aria-label="Ver detalle del cierre"
+                            >
+                              <Eye className="h-4 w-4" strokeWidth={1.75} />
+                            </Link>
+                          </td>
+                        </tr>
                       )
                     })}
                   </tbody>
@@ -401,59 +250,39 @@ export default function CajaPage() {
           onOpened={async () => {
             setOpenModal(false)
             toast.success('Caja abierta')
+            dayModalAutoOpenedRef.current = null
             await load()
           }}
         />
+
         {openSession && (
-          <CloseCashModal
-            isOpen={closeModal}
-            session={openSession}
-            live={live}
-            onClose={() => setCloseModal(false)}
-            onClosed={async (sessionId) => {
-              setCloseModal(false)
-              router.push(`/caja/${sessionId}`)
-            }}
-          />
+          <>
+            <DayCashModal
+              isOpen={dayModal && !closeModal}
+              session={openSession}
+              live={live}
+              fromPreviousDay={sessionFromPreviousDay}
+              canClose={canClose}
+              onClose={() => setDayModal(false)}
+              onRequestCloseCash={() => {
+                setDayModal(false)
+                setCloseModal(true)
+              }}
+            />
+            <CloseCashModal
+              isOpen={closeModal}
+              session={openSession}
+              live={live}
+              onClose={() => setCloseModal(false)}
+              onClosed={async (sessionId) => {
+                setCloseModal(false)
+                setDayModal(false)
+                router.push(`/caja/${sessionId}`)
+              }}
+            />
+          </>
         )}
       </div>
     </RoleProtectedRoute>
-  )
-}
-
-function SummaryTile({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof Wallet
-  label: string
-  value: string
-  tone: 'neutral' | 'income' | 'expense' | 'cash'
-}) {
-  const tones = {
-    neutral: 'text-zinc-600 dark:text-zinc-400',
-    income: 'text-emerald-600 dark:text-emerald-400',
-    expense: 'text-rose-600 dark:text-rose-400',
-    cash: 'text-amber-600 dark:text-amber-400',
-  }
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-        <Icon className={cn('h-4 w-4', tones[tone])} strokeWidth={1.75} />
-        {label}
-      </div>
-      <p className="mt-2 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">{value}</p>
-    </div>
-  )
-}
-
-function Line({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <span className={cn('text-zinc-600 dark:text-zinc-400', muted && 'text-zinc-500')}>{label}</span>
-      <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{value}</span>
-    </div>
   )
 }
