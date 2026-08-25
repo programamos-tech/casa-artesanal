@@ -10,6 +10,7 @@ import { ReleaseNotesModal } from '@/components/ui/release-notes-modal'
 import { TransferAlertModal } from '@/components/layout/transfer-alert-modal'
 import { AppTopNav } from '@/components/layout/app-top-nav'
 import { OwnerAssistantBubble } from '@/components/assistant/owner-assistant-bubble'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 interface ConditionalLayoutProps {
   children: React.ReactNode
@@ -74,7 +75,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
         </main>
       </div>
       <ReleaseNotesModal />
-      <TransferAlertModal />
+      {isTransfersAndReceptionsEnabled() ? <TransferAlertModal /> : null}
       <OwnerAssistantBubble />
     </ProtectedRoute>
   )

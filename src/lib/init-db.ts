@@ -51,10 +51,10 @@ export async function initializeDatabase() {
         {
           id: '2',
           name: 'Administrador',
-          description: 'Gestión de productos, clientes y ventas',
+          description: 'Gestión de clientes, ventas y créditos (productos solo lectura)',
           permissions: [
             { module: 'dashboard', actions: ['view'] },
-            { module: 'products', actions: ['view', 'create', 'edit', 'delete'] },
+            { module: 'products', actions: ['view'] },
             { module: 'clients', actions: ['view', 'create', 'edit', 'delete'] },
             { module: 'sales', actions: ['view', 'create', 'edit', 'delete', 'cancel'] },
             { module: 'payments', actions: ['view', 'create', 'edit', 'delete'] },

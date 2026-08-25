@@ -3,7 +3,8 @@ import { Product } from '@/types'
 import { v4 as uuidv4 } from 'uuid'
 import { AuthService } from './auth-service'
 import { StoresService } from './stores-service'
-import { getCurrentUserStoreId, isMainStoreUser } from './store-helper'
+import { getCurrentUser, getCurrentUserStoreId, isMainStoreUser } from './store-helper'
+import { isOwnerUser } from './roles'
 import {
   compareProductsBySearchRelevance,
   escapeIlike,
@@ -11,6 +12,13 @@ import {
   referenceExactVariants,
   tokenizeProductSearch,
 } from './product-search'
+
+/** Solo el propietario puede mutar catálogo/stock/precios. */
+function assertOwnerCanManageInventory(): boolean {
+  if (isOwnerUser(getCurrentUser())) return true
+  console.warn('[PRODUCTS] Acción de inventario bloqueada: solo el propietario puede administrarlo')
+  return false
+}
 
 // Tipo para filtros de stock (funciona tanto para tienda principal como microtiendas)
 export type StockFilter =
@@ -1042,6 +1050,7 @@ export class ProductsService {
   // Crear nuevo producto
   static async createProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>, currentUserId?: string): Promise<Product | null> {
     try {
+      if (!assertOwnerCanManageInventory()) return null
       const retailPrice = productData.retailPrice ?? productData.price
       const wholesalePrice = productData.wholesalePrice ?? productData.price ?? retailPrice
       const insertData = {
@@ -1129,6 +1138,7 @@ export class ProductsService {
   // Actualizar producto
   static async updateProduct(id: string, updates: Partial<Product>, currentUserId?: string): Promise<boolean> {
     try {
+      if (!assertOwnerCanManageInventory()) return false
       const currentStoreId = getCurrentUserStoreId()
       const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
       const isMainStore = !currentStoreId || currentStoreId === MAIN_STORE_ID
@@ -1262,6 +1272,9 @@ export class ProductsService {
   // Eliminar producto (solo desde Sincelejo; no se permite si tiene stock en cualquier tienda)
   static async deleteProduct(id: string, currentUserId?: string): Promise<{ success: boolean, error?: string }> {
     try {
+      if (!assertOwnerCanManageInventory()) {
+        return { success: false, error: 'Solo el propietario puede eliminar productos' }
+      }
       const productToDelete = await this.getProductById(id)
       if (!productToDelete) {
         return { success: false, error: 'Producto no encontrado' }
@@ -1450,6 +1463,7 @@ export class ProductsService {
   // Transferir stock entre ubicaciones
   static async transferStock(productId: string, from: 'warehouse' | 'store', to: 'warehouse' | 'store', quantity: number, currentUserId?: string): Promise<boolean> {
     try {
+      if (!assertOwnerCanManageInventory()) return false
       const product = await this.getProductById(productId)
       if (!product) return false
 
@@ -1927,6 +1941,7 @@ export class ProductsService {
   // Ajustar stock
   static async adjustStock(productId: string, location: 'warehouse' | 'store', newQuantity: number, reason: string, currentUserId?: string): Promise<boolean> {
     try {
+      if (!assertOwnerCanManageInventory()) return false
       const product = await this.getProductById(productId)
       if (!product) return false
 
@@ -2063,6 +2078,7 @@ export class ProductsService {
   // Actualizar stock (método simplificado para garantías)
   static async updateProductStock(productId: string, stockUpdate: { local: number; warehouse: number }): Promise<boolean> {
     try {
+      if (!assertOwnerCanManageInventory()) return false
       const { error } = await supabase
         .from('products')
         .update({

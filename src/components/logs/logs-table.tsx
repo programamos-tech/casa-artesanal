@@ -41,6 +41,7 @@ import {
 } from '@/components/logs/log-display-helpers'
 import { cardShell } from '@/lib/card-shell'
 import { cn } from '@/lib/utils'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 /** Color solo en el trazo del icono (sin caja); alineado a KPIs del dashboard */
 function getLogTypeIconClass(type: string): string {
@@ -254,7 +255,9 @@ export function LogsTable({
     { value: 'credits', label: 'Créditos' },
     { value: 'egresos', label: 'Egresos' },
     { value: 'warranties', label: 'Garantías' },
-    { value: 'transfers', label: 'Traslados' },
+    ...(isTransfersAndReceptionsEnabled()
+      ? [{ value: 'transfers', label: 'Traslados' }]
+      : []),
     { value: 'roles', label: 'Roles' }
   ]
 

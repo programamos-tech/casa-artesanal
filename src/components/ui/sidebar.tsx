@@ -31,6 +31,7 @@ import { canAccessAllStores, getCurrentUserStoreId, isMainStoreUser } from '@/li
 import { StoresService } from '@/lib/stores-service'
 import { loadTransferAlerts, resolveUserStoreId } from '@/lib/transfer-alerts'
 import { APP_BRAND_LOGO, APP_NAME, APP_VERSION } from '@/config/app-meta'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 import type { Store } from '@/types/store'
 const navigation = [
   { name: 'Reportes', href: '/dashboard', icon: BarChart3, module: 'dashboard' },
@@ -41,8 +42,12 @@ const navigation = [
     module: 'products',
     submenu: [
       { name: 'Productos', href: '/inventory/products', icon: Package, module: 'products' },
-      { name: 'Traslados', href: '/inventory/transfers', icon: Truck, module: 'transfers' },
-      { name: 'Recepciones', href: '/inventory/receptions', icon: CheckCircle, module: 'receptions' },
+      ...(isTransfersAndReceptionsEnabled()
+        ? [
+            { name: 'Traslados', href: '/inventory/transfers', icon: Truck, module: 'transfers' },
+            { name: 'Recepciones', href: '/inventory/receptions', icon: CheckCircle, module: 'receptions' },
+          ]
+        : []),
     ]
   },
   { 
@@ -140,7 +145,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     let cancelled = false
 
     const loadPendingCounts = async () => {
-      if (!user) {
+      if (!user || !isTransfersAndReceptionsEnabled()) {
         setPendingReceptionsCount(0)
         setPendingApprovalsCount(0)
         return

@@ -35,6 +35,7 @@ import {
   type TransferAlertItem,
 } from '@/lib/transfer-alerts'
 import { cn } from '@/lib/utils'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 /** Altura única de la barra y de todos los controles interactivos */
 const NAV_BAR_H = 'h-16'
@@ -93,14 +94,13 @@ export function AppTopNav() {
   const bellRef = useRef<HTMLDivElement>(null)
   const searchSeqRef = useRef(0)
 
-  // Campana siempre activa para usuarios logueados: se apaga solo cuando no hay
-  // traslados por aprobar ni por recibir.
-  const showBell = Boolean(user)
+  // Campana de traslados/recepciones (módulo apagado → no mostrar)
+  const showBell = Boolean(user) && isTransfersAndReceptionsEnabled()
 
   useEffect(() => {
     let cancelled = false
     const loadPending = async () => {
-      if (!user) {
+      if (!user || !isTransfersAndReceptionsEnabled()) {
         if (!cancelled) {
           setApprovals([])
           setReceptions([])

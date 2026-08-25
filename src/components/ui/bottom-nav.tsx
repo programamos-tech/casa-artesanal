@@ -10,12 +10,17 @@ import { isMainStoreUser, canAccessAllStores } from '@/lib/store-helper'
 import { StoresService } from '@/lib/stores-service'
 import type { Store as StoreType } from '@/types/store'
 import { Logo } from '@/components/ui/logo'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 const items = [
   { href: '/dashboard', label: 'Reportes', icon: BarChart3, module: 'dashboard', alwaysVisible: true },
   { href: '/inventory/products', label: 'Productos', icon: Package, module: 'products' },
-  { href: '/inventory/transfers', label: 'Traslados', icon: Truck, module: 'transfers' },
-  { href: '/inventory/receptions', label: 'Recepciones', icon: CheckCircle, module: 'receptions' },
+  ...(isTransfersAndReceptionsEnabled()
+    ? [
+        { href: '/inventory/transfers', label: 'Traslados', icon: Truck, module: 'transfers' },
+        { href: '/inventory/receptions', label: 'Recepciones', icon: CheckCircle, module: 'receptions' },
+      ]
+    : []),
   { href: '/clients', label: 'Clientes', icon: Users, module: 'clients' },
   { href: '/sales', label: 'Ventas', icon: Receipt, module: 'sales' },
   { href: '/egresos', label: 'Egresos', icon: Wallet, module: 'egresos' },

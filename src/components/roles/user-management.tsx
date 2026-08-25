@@ -18,6 +18,8 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { cardShell } from '@/lib/card-shell'
 import { appModalOverlayClass, appModalPanelClass, modalCardShellClass } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
+import { isOwnerRole, isProductAdminAction } from '@/lib/roles'
 
 const roleOptions = [
   { value: 'superadmin', label: 'Propietario' },
@@ -32,8 +34,12 @@ const roleOptions = [
 const moduleOptions = [
   { value: 'dashboard', label: 'Reportes' },
   { value: 'products', label: 'Productos' },
-  { value: 'transfers', label: 'Traslados' },
-  { value: 'receptions', label: 'Recepciones' },
+  ...(isTransfersAndReceptionsEnabled()
+    ? [
+        { value: 'transfers', label: 'Traslados' },
+        { value: 'receptions', label: 'Recepciones' },
+      ]
+    : []),
   { value: 'clients', label: 'Clientes' },
   { value: 'sales', label: 'Ventas' },
   { value: 'payments', label: 'Créditos' },
@@ -52,6 +58,19 @@ const actionOptions = [
   { value: 'delete', label: 'Eliminar' },
   { value: 'cancel', label: 'Cancelar' }
 ]
+
+/** Inventario: create/edit/delete solo en rol propietario; el resto queda en view. */
+function sanitizePermissionsForRole(role: string, permissions: Permission[]): Permission[] {
+  if (isOwnerRole(role)) return permissions
+  return (permissions || []).map((p) => {
+    if (!p || p.module !== 'products') return p
+    const actions = (p.actions || (p as { permissions?: string[] }).permissions || []).filter(
+      (a) => !isProductAdminAction(a)
+    )
+    const next = actions.includes('view') ? actions : ['view', ...actions]
+    return { ...p, actions: Array.from(new Set(next)) }
+  })
+}
 
 // Permisos predefinidos por rol - todas las acciones se asignan automáticamente
 const allActions = ['view', 'create', 'edit', 'delete', 'cancel']
@@ -81,8 +100,12 @@ const rolePermissions = {
   'vendedor': [
     { module: 'dashboard', actions: allActions },
     { module: 'products', actions: ['view'] }, // Solo ver productos, no editar/eliminar
-    { module: 'transfers', actions: allActions },
-    { module: 'receptions', actions: allActions },
+    ...(isTransfersAndReceptionsEnabled()
+      ? [
+          { module: 'transfers', actions: allActions },
+          { module: 'receptions', actions: allActions },
+        ]
+      : []),
     { module: 'egresos', actions: allActions },
     { module: 'cash_register', actions: allActions },
     { module: 'clients', actions: allActions },
@@ -100,7 +123,7 @@ const rolePermissions = {
     { module: 'cash_register', actions: allActions }
   ],
   'inventario': [
-    { module: 'products', actions: allActions },
+    { module: 'products', actions: ['view'] },
     { module: 'supplier_invoices', actions: allActions }
   ],
   'contador': [
@@ -111,7 +134,7 @@ const rolePermissions = {
   ],
   'supervisor_tienda': [
     { module: 'dashboard', actions: allActions },
-    { module: 'products', actions: allActions },
+    { module: 'products', actions: ['view'] },
     { module: 'sales', actions: allActions },
     { module: 'clients', actions: allActions },
     { module: 'egresos', actions: allActions }
@@ -120,13 +143,13 @@ const rolePermissions = {
 
 // Descripciones de cada rol
 const roleDescriptions = {
-  'superadmin': 'Propietario: acceso completo a todos los módulos del sistema',
+  'superadmin': 'Propietario: acceso completo, único rol que administra inventario (productos, stock y precios)',
   'admin': 'Administrador: reportes, ventas, créditos, facturador y egresos',
   'cajero': 'Cajero: ventas, clientes, créditos, egresos (registro), garantías y reportes (productos solo lectura)',
   'vendedor': 'Vendedor: reportes, productos (lectura), traslados, recepciones, egresos, clientes, ventas y créditos',
-  'inventario': 'Inventario: productos y facturador de proveedores',
+  'inventario': 'Inventario: consulta de productos y facturador de proveedores (sin editar stock ni precios)',
   'contador': 'Contador: reportes (lectura), créditos, facturador y egresos',
-  'supervisor_tienda': 'Supervisor: reportes, productos, ventas, clientes y egresos en su tienda',
+  'supervisor_tienda': 'Supervisor: reportes, productos (lectura), ventas, clientes y egresos en su tienda',
 }
 
 // Estilos compartidos — alineados al formulario "Nueva venta" / "Nuevo producto"
@@ -273,6 +296,7 @@ export function UserManagement() {
     try {
       const userData = {
         ...formData,
+        permissions: sanitizePermissionsForRole(formData.role, formData.permissions),
         storeId: formData.storeId || undefined // Convertir string vacío a undefined
       }
 
@@ -299,7 +323,10 @@ export function UserManagement() {
 
     try {
 
-      const success = await updateUser(selectedUser.id, formData)
+      const success = await updateUser(selectedUser.id, {
+        ...formData,
+        permissions: sanitizePermissionsForRole(formData.role, formData.permissions),
+      })
       if (success) {
         toast.success('Usuario actualizado exitosamente')
         setIsEditModalOpen(false)
@@ -450,9 +477,11 @@ export function UserManagement() {
   const toggleModule = (module: string) => {
     try {
       if (!formData.permissions || !Array.isArray(formData.permissions)) {
-        // Si no hay permisos, crear uno nuevo con todas las acciones
+        // Si no hay permisos, crear uno nuevo (productos: solo view salvo propietario)
         const allActions = ['view', 'create', 'edit', 'delete', 'cancel']
-        setFormData({ ...formData, permissions: [{ module, actions: allActions }] })
+        const actions =
+          module === 'products' && !isOwnerRole(formData.role) ? ['view'] : allActions
+        setFormData({ ...formData, permissions: [{ module, actions }] })
         return
       }
       
@@ -468,9 +497,11 @@ export function UserManagement() {
           newPermissions.splice(index, 1)
         }
       } else {
-        // Si no existe, agregar el módulo con todas las acciones
+        // Si no existe, agregar el módulo (productos: solo view salvo propietario)
         const allActions = ['view', 'create', 'edit', 'delete', 'cancel']
-        newPermissions.push({ module, actions: allActions })
+        const actions =
+          module === 'products' && !isOwnerRole(formData.role) ? ['view'] : allActions
+        newPermissions.push({ module, actions })
       }
       
       setFormData({ ...formData, permissions: newPermissions })

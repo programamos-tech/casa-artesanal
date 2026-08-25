@@ -26,10 +26,7 @@ import type { StockFilter, CategoryFilter } from '@/lib/products-service'
 import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useAuth } from '@/contexts/auth-context'
 import { StoreBadge } from '@/components/ui/store-badge'
-import { getCurrentUserStoreId, isStoreSincelejo } from '@/lib/store-helper'
-import { StoresService } from '@/lib/stores-service'
 import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
 
@@ -98,35 +95,11 @@ export function ProductTable({
   onView,
 }: ProductTableProps) {
   const { hasPermission } = usePermissions()
-  const { user } = useAuth()
 
-  const isVendedor =
-    user?.role?.toLowerCase() === 'vendedor' || user?.role === 'vendedor' || user?.role === 'Vendedor'
-  const isInventario = user?.role?.toLowerCase() === 'inventario'
-  const isSuperAdmin =
-    user?.role === 'superadmin' || user?.role === 'Super Admin' || user?.role === 'Super Administrador'
-
-  const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-  const isMainStore = !user?.storeId || user?.storeId === MAIN_STORE_ID
-
-  const [isSincelejoStore, setIsSincelejoStore] = useState(false)
-  useEffect(() => {
-    const load = async () => {
-      const storeId = getCurrentUserStoreId() || MAIN_STORE_ID
-      const store =
-        storeId === MAIN_STORE_ID
-          ? await StoresService.getMainStore()
-          : await StoresService.getStoreById(storeId)
-      setIsSincelejoStore(isStoreSincelejo(store))
-    }
-    if (user) load()
-  }, [user?.storeId])
-
-  const canDoProductActionsSincelejo = isSincelejoStore && (isInventario || isSuperAdmin)
-  const canEdit = isVendedor ? false : (canDoProductActionsSincelejo || isSuperAdmin) && hasPermission('products', 'edit')
-  const canAdjust = isVendedor ? false : (canDoProductActionsSincelejo || isSuperAdmin) && hasPermission('products', 'edit')
-  const canCreate = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'create')
-  const canDelete = isVendedor ? false : canDoProductActionsSincelejo && hasPermission('products', 'delete')
+  const canEdit = hasPermission('products', 'edit')
+  const canAdjust = hasPermission('products', 'edit')
+  const canCreate = hasPermission('products', 'create')
+  const canDelete = hasPermission('products', 'delete')
 
   const [searchTerm, setSearchTerm] = useState('')
   const onSearchRef = useRef(onSearch)
@@ -337,12 +310,7 @@ export function ProductTable({
                     <span className="sm:hidden">Nuevo</span>
                   </Button>
                 )}
-                {!canCreate && hasPermission('products', 'create') && (
-                  <span className="rounded-md border-0 bg-amber-100/90 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/35 dark:text-amber-200">
-                    Solo puedes crear en la tienda de Sincelejo
-                  </span>
-                )}
-                {isSincelejoStore && canEdit && (
+                {canEdit && (
                   <Button onClick={onManageCategories} size="sm" variant="secondary" className="flex-1 sm:flex-none">
                     <Tag className={cn('h-3.5 w-3.5 shrink-0', productCategoriesIconClass)} />
                     <span className="hidden md:inline">Categorías</span>

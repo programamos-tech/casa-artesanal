@@ -2,6 +2,8 @@
 
 import { User, Permission } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
+import { isTransfersAndReceptionsEnabled, isTransfersModule } from '@/config/feature-flags'
+import { isOwnerRole, isProductAdminAction } from '@/lib/roles'
 
 const ALL_ACTIONS = ['view', 'create', 'edit', 'delete', 'cancel']
 
@@ -34,10 +36,21 @@ export function usePermissions() {
 
   const hasPermission = (module: string, action: string): boolean => {
     if (!currentUser) return false
+
+    // Módulo apagado por feature flag (código intacto; no aparece ni se puede acceder)
+    if (isTransfersModule(module) && !isTransfersAndReceptionsEnabled()) {
+      return false
+    }
+
+    const isOwner = isOwnerRole(currentUser.role)
+
+    // Inventario: crear / editar / borrar / stock solo propietario
+    if (module === 'products' && isProductAdminAction(action) && !isOwner) {
+      return false
+    }
     
     // Super admin tiene todos los permisos (cualquier variante del rol)
-    const roleNorm = (currentUser.role || '').toLowerCase().trim()
-    if (roleNorm === 'superadmin' || (roleNorm.includes('super') && (roleNorm.includes('admin') || roleNorm.includes('administrador')))) return true
+    if (isOwner) return true
 
     // El dashboard es accesible para todos los usuarios autenticados
     if (module === 'dashboard' && action === 'view') return true
@@ -53,9 +66,9 @@ export function usePermissions() {
       return ALL_ACTIONS.includes(action)
     }
 
-    // Rol inventario: solo productos por defecto (el resto según permisos guardados del usuario)
+    // Rol inventario: productos solo lectura (mutaciones reservadas al propietario)
     if (userRole === 'inventario' && module === 'products') {
-      return ALL_ACTIONS.includes(action)
+      return action === 'view'
     }
 
     // Restricción especial para vendedores
@@ -188,10 +201,15 @@ export function usePermissions() {
 
   const getAccessibleModules = (): string[] => {
     if (!currentUser) return []
+
+    const withoutDisabledModules = (modules: string[]) =>
+      isTransfersAndReceptionsEnabled()
+        ? modules
+        : modules.filter((m) => !isTransfersModule(m))
     
     const roleNorm = (currentUser.role || '').toLowerCase().trim()
     if (roleNorm === 'superadmin' || (roleNorm.includes('super') && (roleNorm.includes('admin') || roleNorm.includes('administrador')))) {
-      return ['dashboard', 'products', 'transfers', 'receptions', 'clients', 'sales', 'payments', 'supplier_invoices', 'egresos', 'cash_register', 'warranties', 'roles', 'logs', 'stores']
+      return withoutDisabledModules(['dashboard', 'products', 'transfers', 'receptions', 'clients', 'sales', 'payments', 'supplier_invoices', 'egresos', 'cash_register', 'warranties', 'roles', 'logs', 'stores'])
     }
 
     // Inventario: dashboard + solo los módulos que tenga marcados en permisos (ej. solo Productos)
@@ -201,19 +219,19 @@ export function usePermissions() {
             .filter(p => (p.actions || p.permissions || []).includes('view'))
             .map(p => p.module)
         : []
-      return Array.from(new Set(['dashboard', ...fromPermissions]))
+      return withoutDisabledModules(Array.from(new Set(['dashboard', ...fromPermissions])))
     }
 
     // Cajero: si no hay permisos explícitos, usar la lista por defecto del rol.
     if (currentUser.role?.toLowerCase() === 'cajero') {
       const hasExplicit = currentUser.permissions && Array.isArray(currentUser.permissions) && currentUser.permissions.length > 0
       if (!hasExplicit) {
-        return Object.keys(defaultCajeroPermissions)
+        return withoutDisabledModules(Object.keys(defaultCajeroPermissions))
       }
       const fromPermissions = currentUser.permissions
         .filter(p => (p.actions || p.permissions || []).includes('view'))
         .map(p => p.module)
-      return Array.from(new Set(['dashboard', ...Object.keys(defaultCajeroPermissions), ...fromPermissions]))
+      return withoutDisabledModules(Array.from(new Set(['dashboard', ...Object.keys(defaultCajeroPermissions), ...fromPermissions])))
     }
 
     // Vendedor: siempre incluir traslados/recepciones/egresos + defaults del rol
@@ -229,8 +247,8 @@ export function usePermissions() {
               .filter((p) => (p.actions || p.permissions || []).includes('view'))
               .map((p) => p.module)
           : []
-      return Array.from(
-        new Set(['dashboard', ...Object.keys(defaultVendedorPermissions), ...fromPermissions])
+      return withoutDisabledModules(
+        Array.from(new Set(['dashboard', ...Object.keys(defaultVendedorPermissions), ...fromPermissions]))
       )
     }
     
@@ -243,11 +261,21 @@ export function usePermissions() {
       })
       .map(p => p.module)
 
-    return Array.from(new Set(['dashboard', ...modules]))
+    return withoutDisabledModules(Array.from(new Set(['dashboard', ...modules])))
   }
 
   const getModuleActions = (module: string): string[] => {
     if (!currentUser) return []
+
+    if (isTransfersModule(module) && !isTransfersAndReceptionsEnabled()) {
+      return []
+    }
+
+    if (module === 'products' && !isOwnerRole(currentUser.role)) {
+      // Solo lectura de productos para no-propietarios
+      if (hasPermission('products', 'view')) return ['view']
+      return []
+    }
     
     const roleNorm = (currentUser.role || '').toLowerCase().trim()
     if (roleNorm === 'superadmin' || (roleNorm.includes('super') && (roleNorm.includes('admin') || roleNorm.includes('administrador')))) {
@@ -255,7 +283,7 @@ export function usePermissions() {
     }
 
     if (currentUser.role?.toLowerCase() === 'inventario') {
-      if (module === 'products') return ALL_ACTIONS
+      if (module === 'products') return ['view']
       // transfers y receptions solo si están en los permisos del usuario
     }
 

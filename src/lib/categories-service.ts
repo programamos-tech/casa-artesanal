@@ -2,6 +2,14 @@ import { supabase } from './supabase'
 import { Category } from '@/types'
 import { AuthService } from './auth-service'
 import { v4 as uuidv4 } from 'uuid'
+import { getCurrentUser } from './store-helper'
+import { isOwnerUser } from './roles'
+
+function assertOwnerCanManageInventory(): boolean {
+  if (isOwnerUser(getCurrentUser())) return true
+  console.warn('[CATEGORIES] Acción bloqueada: solo el propietario puede administrar categorías')
+  return false
+}
 
 export class CategoriesService {
   // Obtener todas las categorías
@@ -61,6 +69,7 @@ export class CategoriesService {
   // Crear nueva categoría
   static async createCategory(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>, currentUserId?: string): Promise<Category | null> {
     try {
+      if (!assertOwnerCanManageInventory()) return null
       const insertData = {
         id: uuidv4(),
         name: categoryData.name,
@@ -118,6 +127,7 @@ export class CategoriesService {
   // Actualizar categoría
   static async updateCategory(id: string, updates: Partial<Omit<Category, 'id' | 'createdAt' | 'updatedAt'>>, currentUserId?: string): Promise<boolean> {
     try {
+      if (!assertOwnerCanManageInventory()) return false
       const { error } = await supabase
         .from('categories')
         .update({
@@ -160,6 +170,7 @@ export class CategoriesService {
   // Eliminar categoría
   static async deleteCategory(id: string, currentUserId?: string): Promise<boolean> {
     try {
+      if (!assertOwnerCanManageInventory()) return false
       // Obtener la categoría antes de eliminarla para el log
       const category = await this.getCategoryById(id)
       const categoryName = category?.name || `ID: ${id}`

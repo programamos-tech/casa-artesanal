@@ -21,6 +21,7 @@ import {
   appModalOverlayClass,
   appModalPanelClass,
 } from '@/lib/app-modal'
+import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 type AlertModalState = {
   kind: TransferAlertKind
@@ -32,6 +33,14 @@ type AlertModalState = {
  * "Después" solo oculta el modal en esta sesión; la campana sigue encendida.
  */
 export function TransferAlertModal() {
+  if (!isTransfersAndReceptionsEnabled()) {
+    return null
+  }
+
+  return <TransferAlertModalInner />
+}
+
+function TransferAlertModalInner() {
   const router = useRouter()
   const { user } = useAuth()
   const [alert, setAlert] = useState<AlertModalState>(null)
