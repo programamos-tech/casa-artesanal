@@ -13,20 +13,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Falta sessionId' }, { status: 400 })
     }
 
+    const useExpectedCash = body?.useExpectedCash === true
     const countedRaw = body?.countedCash
     const countedProvided =
       countedRaw !== null &&
       countedRaw !== undefined &&
       String(countedRaw).trim() !== ''
-    if (!countedProvided) {
+
+    if (!useExpectedCash && !countedProvided) {
       return NextResponse.json(
         { error: 'Debes contar el efectivo físico e ingresar el monto antes de cerrar.' },
         { status: 400 }
       )
     }
 
-    const countedCash = Number(countedRaw)
-    if (!Number.isFinite(countedCash) || countedCash < 0) {
+    const countedCash = useExpectedCash ? 0 : Number(countedRaw)
+    if (!useExpectedCash && (!Number.isFinite(countedCash) || countedCash < 0)) {
       return NextResponse.json({ error: 'Efectivo contado inválido' }, { status: 400 })
     }
 
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       countedCash,
       countedProvided: true,
+      useExpectedCash,
       notes: typeof body?.notes === 'string' ? body.notes : undefined,
       userId: typeof body?.userId === 'string' ? body.userId : undefined,
       userName: typeof body?.userName === 'string' ? body.userName : undefined,

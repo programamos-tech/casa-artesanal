@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,10 @@ import {
 } from 'lucide-react'
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import {
+  CashSessionsService,
+  type CashCloseBlocker,
+} from '@/lib/cash-sessions-service'
+import {
   appModalBodyClass,
   appModalFooterClass,
   appModalHeaderClass,
@@ -22,6 +27,7 @@ import {
 } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
 import { formatDateTimeCo } from '@/lib/cash-close-whatsapp'
+import { toast } from 'sonner'
 
 function money(n: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -38,14 +44,14 @@ interface DayCashModalProps {
   live: CashSessionLiveSummary | null
   fromPreviousDay: boolean
   canClose: boolean
+  closing?: boolean
   onClose: () => void
   onRequestCloseCash: () => void
 }
 
 /**
  * Modal único al entrar a Caja con turno abierto: siempre "Caja del día"
- * (hoy o turno de ayer: el mismo). El conteo físico es otro paso solo si
- * pulsan "Cerrar caja".
+ * (hoy o turno de ayer: el mismo). Cerrar caja cierra el turno de inmediato.
  */
 export function DayCashModal({
   isOpen,
@@ -53,13 +59,41 @@ export function DayCashModal({
   live,
   fromPreviousDay,
   canClose,
+  closing = false,
   onClose,
   onRequestCloseCash,
 }: DayCashModalProps) {
+  const [blockers, setBlockers] = useState<CashCloseBlocker[]>([])
+  const [loadingBlockers, setLoadingBlockers] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    setBlockers([])
+    setLoadingBlockers(true)
+    void CashSessionsService.findCloseBlockers(session)
+      .then(setBlockers)
+      .catch(() => {
+        toast.error('No se pudo validar facturas del turno')
+        setBlockers([])
+      })
+      .finally(() => setLoadingBlockers(false))
+  }, [isOpen, session.id, session.openedAt, session.closedAt, session.storeId])
+
   if (!isOpen) return null
 
+  const hasBlockers = blockers.length > 0
+  const emptyBlockers = blockers.filter((b) => b.kind === 'empty_items')
+  const draftBlockers = blockers.filter((b) => b.kind === 'draft')
+  const closeDisabled = closing || loadingBlockers || hasBlockers
+
   return (
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+    <div
+      className={appModalOverlayClass}
+      role="presentation"
+      onClick={() => {
+        if (!closing) onClose()
+      }}
+    >
       <div
         className={cn(appModalPanelClass, 'max-w-5xl')}
         role="dialog"
@@ -85,6 +119,7 @@ export function DayCashModal({
             size="sm"
             className="h-8 w-8 shrink-0 rounded-md p-0"
             onClick={onClose}
+            disabled={closing}
             aria-label="Cerrar"
           >
             <X className="h-4 w-4" strokeWidth={1.75} />
@@ -101,7 +136,7 @@ export function DayCashModal({
                     Este turno se abrió ayer
                   </p>
                   <p className="mt-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
-                    Es la misma caja del día: revisa el resumen y cierra con conteo cuando estés lista.
+                    Es la misma caja del día: revisa el resumen y cierra cuando estés lista.
                   </p>
                 </div>
               </div>
@@ -130,8 +165,72 @@ export function DayCashModal({
                 value={money(live?.totalEgresos || 0)}
                 tone="expense"
               />
-              <SummaryTile icon={Wallet} label="Efectivo esperado" value="Conteo ciego al cerrar" tone="cash" />
+              <SummaryTile
+                icon={Wallet}
+                label="Efectivo esperado"
+                value={money(live?.expectedCash || 0)}
+                tone="cash"
+              />
             </div>
+
+            {(hasBlockers || loadingBlockers) && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900/50 dark:bg-red-950/30">
+                <div className="mb-2 flex items-center gap-2 font-semibold text-red-800 dark:text-red-300">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {loadingBlockers
+                    ? 'Validando facturas del turno…'
+                    : 'No puedes cerrar hasta corregir esto'}
+                </div>
+                {!loadingBlockers && (
+                  <div className="space-y-2 text-red-800 dark:text-red-200">
+                    {emptyBlockers.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide">
+                          Ventas sin productos ({emptyBlockers.length})
+                        </p>
+                        <ul className="mt-1 list-inside list-disc text-xs">
+                          {emptyBlockers.map((b) => (
+                            <li key={b.id}>
+                              <Link
+                                href={`/sales/${b.id}`}
+                                className="font-medium underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {b.invoiceNumber}
+                              </Link>
+                              {' · '}
+                              {b.clientName} · {money(b.total)} — anúlala o completa los ítems
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {draftBlockers.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide">
+                          Borradores abiertos ({draftBlockers.length})
+                        </p>
+                        <ul className="mt-1 list-inside list-disc text-xs">
+                          {draftBlockers.map((b) => (
+                            <li key={b.id}>
+                              <Link
+                                href={`/sales/new?draft=${b.id}`}
+                                className="font-medium underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {b.invoiceNumber || 'Borrador'}
+                              </Link>
+                              {' · '}
+                              {b.clientName || 'Sin cliente'} — factúralo o elimínalo
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {live && (
               <div className="space-y-3">
@@ -225,13 +324,13 @@ export function DayCashModal({
         </div>
 
         <div className={appModalFooterClass}>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={closing}>
             Ver historial
           </Button>
           {canClose && (
-            <Button type="button" onClick={onRequestCloseCash}>
+            <Button type="button" onClick={onRequestCloseCash} disabled={closeDisabled}>
               <Lock className="h-3.5 w-3.5" />
-              Cerrar caja
+              {closing ? 'Cerrando…' : 'Cerrar caja'}
             </Button>
           )}
         </div>

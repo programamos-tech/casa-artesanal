@@ -520,12 +520,14 @@ export class CashSessionsService {
 
   static async closeSession(input: {
     sessionId: string
-    countedCash: number
+    countedCash?: number
     notes?: string
     userId?: string
     userName?: string
     /** El contado debe enviarse explícitamente (conteo ciego); no aceptar “olvidé el campo”. */
     countedProvided?: boolean
+    /** Cierra con el efectivo esperado del sistema, sin conteo físico. */
+    useExpectedCash?: boolean
   }): Promise<{ success: boolean; session?: CashSession; error?: string; blockers?: CashCloseBlocker[] }> {
     const user = getCurrentUser()
     const { data: row, error: fetchError } = await supabaseAdmin
@@ -541,7 +543,7 @@ export class CashSessionsService {
       return { success: false, error: 'Esta caja ya está cerrada' }
     }
 
-    if (input.countedProvided === false) {
+    if (!input.useExpectedCash && input.countedProvided === false) {
       return {
         success: false,
         error: 'Debes contar el efectivo físico e ingresar el monto antes de cerrar.',
@@ -568,9 +570,13 @@ export class CashSessionsService {
 
     const closedAt = new Date().toISOString()
     const live = await this.computeLiveSummary({ ...session, closedAt })
-    const countedCash = Math.max(0, Math.round(Number(input.countedCash) || 0))
+    const countedCash = input.useExpectedCash
+      ? live.expectedCash
+      : Math.max(0, Math.round(Number(input.countedCash) || 0))
     const difference = countedCash - live.expectedCash
-    const notes = input.notes?.trim() || ''
+    const notes =
+      input.notes?.trim() ||
+      (input.useExpectedCash ? 'Cierre desde caja del día (sin conteo físico).' : '')
 
     if (difference !== 0 && notes.length < 15) {
       return {

@@ -18,7 +18,6 @@ import {
 } from '@/lib/cash-sessions-service'
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import { OpenCashModal } from '@/components/caja/open-cash-modal'
-import { CloseCashModal } from '@/components/caja/close-cash-modal'
 import { DayCashModal } from '@/components/caja/day-cash-modal'
 import { toast } from 'sonner'
 import { Eye, LockOpen, RefreshCw, Wallet } from 'lucide-react'
@@ -26,6 +25,11 @@ import { cn } from '@/lib/utils'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
 import { formatDateTimeCo } from '@/lib/cash-close-whatsapp'
+import {
+  closeCashCloseWhatsAppPreviews,
+  notifyCashCloseWhatsApp,
+  openCashCloseWhatsAppPreviews,
+} from '@/lib/notify-cash-close'
 
 function money(n: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -46,8 +50,8 @@ export default function CajaPage() {
   const [live, setLive] = useState<CashSessionLiveSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(false)
-  const [closeModal, setCloseModal] = useState(false)
   const [dayModal, setDayModal] = useState(false)
+  const [closing, setClosing] = useState(false)
   const storeId = getCashRegisterStoreId()
   const dayModalAutoOpenedRef = useRef<string | null>(null)
 
@@ -90,14 +94,55 @@ export default function CajaPage() {
   }, [load, user?.storeId])
 
   // Siempre el mismo modal al entrar: "Caja del día" (hoy o turno de ayer da igual).
-  // Nunca abrir solo el de conteo ("Cerrar caja") al cargar.
   useEffect(() => {
     if (!openSession || loading) return
-    setCloseModal(false)
     if (dayModalAutoOpenedRef.current === openSession.id) return
     dayModalAutoOpenedRef.current = openSession.id
     setDayModal(true)
   }, [openSession, loading])
+
+  const handleCloseCash = useCallback(async () => {
+    if (!openSession || closing) return
+    if (!user?.id) {
+      toast.error('Sesión no válida. Cierra sesión e inicia de nuevo.')
+      return
+    }
+
+    setClosing(true)
+    const previewWindows = openCashCloseWhatsAppPreviews()
+    try {
+      const res = await fetch('/api/caja/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: openSession.id,
+          useExpectedCash: true,
+          userId: user.id,
+          userName: user.name,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.session?.id) {
+        closeCashCloseWhatsAppPreviews(previewWindows)
+        toast.error(
+          typeof data?.error === 'string' ? data.error : 'No se pudo cerrar la caja'
+        )
+        return
+      }
+
+      await notifyCashCloseWhatsApp(data.session.id, previewWindows)
+      setDayModal(false)
+      router.push(`/caja/${data.session.id}`)
+    } catch (error) {
+      closeCashCloseWhatsAppPreviews(previewWindows)
+      console.error('close cash:', error)
+      toast.error(
+        error instanceof Error ? error.message : 'Error inesperado al cerrar la caja'
+      )
+    } finally {
+      setClosing(false)
+    }
+  }, [openSession, closing, user?.id, user?.name, router])
 
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
@@ -150,7 +195,7 @@ export default function CajaPage() {
                   Abrir caja
                 </Button>
               )}
-              {/* Cerrar solo desde el modal "Caja del día" → luego el de conteo */}
+              {/* Cerrar solo desde el modal "Caja del día" */}
             </div>
           </CardHeader>
 
@@ -242,34 +287,16 @@ export default function CajaPage() {
         />
 
         {openSession && (
-          <>
-            <DayCashModal
-              isOpen={dayModal && !closeModal}
-              session={openSession}
-              live={live}
-              fromPreviousDay={sessionFromPreviousDay}
-              canClose={canClose}
-              onClose={() => setDayModal(false)}
-              onRequestCloseCash={() => {
-                // Solo aquí se abre el conteo — nunca al entrar a la página
-                setCloseModal(true)
-              }}
-            />
-            <CloseCashModal
-              isOpen={closeModal}
-              session={openSession}
-              live={live}
-              onClose={() => {
-                setCloseModal(false)
-                setDayModal(true)
-              }}
-              onClosed={async (sessionId) => {
-                setCloseModal(false)
-                setDayModal(false)
-                router.push(`/caja/${sessionId}`)
-              }}
-            />
-          </>
+          <DayCashModal
+            isOpen={dayModal}
+            session={openSession}
+            live={live}
+            fromPreviousDay={sessionFromPreviousDay}
+            canClose={canClose}
+            closing={closing}
+            onClose={() => setDayModal(false)}
+            onRequestCloseCash={() => void handleCloseCash()}
+          />
         )}
       </div>
     </RoleProtectedRoute>
