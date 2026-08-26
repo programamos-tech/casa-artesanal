@@ -75,6 +75,8 @@ import {
 import { syncSaleLinePricesForClient } from '@/lib/sale-line-pricing-sync'
 import { useSaleClientSearch } from '@/hooks/use-sale-client-search'
 import { CopIntegerInput } from '@/components/sales/cop-integer-input'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
+import { isCashOperationBlockedError } from '@/lib/cash-operation-gate'
 
 // Constante para identificar la tienda principal
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
@@ -94,6 +96,7 @@ export default function NewSalePage() {
   const { products } = useProducts()
   const { createSale, updateSale, finalizeDraftSale } = useSales()
   const { user, getAllUsers } = useAuth()
+  const { ensureCashReady } = useCashOperationGate()
   
   // Detectar si es tienda principal o microtienda
   const isMainStore = !user?.storeId || user.storeId === MAIN_STORE_ID
@@ -242,6 +245,11 @@ export default function NewSalePage() {
     // clients se usa solo para hidratar; no re-disparar al refrescar listado
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftIdParam])
+
+  useEffect(() => {
+    if (draftIdParam) return
+    void ensureCashReady('sale')
+  }, [draftIdParam, ensureCashReady])
 
   // Cargar vendedores activos disponibles para asignar a la venta.
   // Filtramos por:
@@ -757,6 +765,14 @@ export default function NewSalePage() {
         return
       }
 
+      const cashOk = await ensureCashReady('sale', {
+        allowPreviousDay: Boolean(editingDraftId),
+      })
+      if (!cashOk) {
+        isSubmittingRef.current = false
+        return
+      }
+
       // El vendedor es obligatorio al facturar
       const sellerCheck = sellers.find((s) => s.id === selectedSellerId)
       if (!sellerCheck) {
@@ -867,10 +883,16 @@ export default function NewSalePage() {
       console.error('Error creating sale:', error)
       if (!editingDraftId) setInvoiceNumber('Pendiente')
       else setInvoiceNumber(previousInvoice)
+      if (isCashOperationBlockedError(error)) {
+        await ensureCashReady('sale', { allowPreviousDay: Boolean(editingDraftId) })
+        return
+      }
       alert(
         isDraft
           ? 'Error al guardar el borrador. Por favor intenta de nuevo.'
-          : 'Error al crear la venta. Por favor intenta de nuevo.'
+          : error instanceof Error
+            ? error.message
+            : 'Error al crear la venta. Por favor intenta de nuevo.'
       )
     } finally {
       isSubmittingRef.current = false

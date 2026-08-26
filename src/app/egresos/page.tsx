@@ -14,6 +14,7 @@ import {
   getEgresosStoreIdForCurrentUser,
 } from '@/lib/egresos-service'
 import { toast } from 'sonner'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 
 function parseKindParam(raw: string | null): EgresoKind | 'all' {
   if (raw === 'caja' || raw === 'cuenta') return raw
@@ -25,6 +26,7 @@ export default function EgresosPage() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { canCreate, canEdit, canCancel } = usePermissions()
+  const { ensureCashReady } = useCashOperationGate()
   const [egresos, setEgresos] = useState<Egreso[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -44,9 +46,12 @@ export default function EgresosPage() {
     const tipo = parseKindParam(searchParams.get('tipo'))
     if (tipo !== 'all') setKindFilter(tipo)
     if (searchParams.get('nuevo') === '1' && canCreate('egresos')) {
-      setSelected(null)
-      setDefaultKind('caja')
-      setModalOpen(true)
+      void (async () => {
+        if (!(await ensureCashReady('expense'))) return
+        setSelected(null)
+        setDefaultKind('caja')
+        setModalOpen(true)
+      })()
       router.replace('/egresos' + (tipo !== 'all' ? `?tipo=${tipo}` : ''), { scroll: false })
     }
     // Solo reaccionar a la query
@@ -107,9 +112,12 @@ export default function EgresosPage() {
           canEdit={canEdit('egresos')}
           canCancel={canCancel('egresos')}
           onCreate={() => {
-            setSelected(null)
-            setDefaultKind('caja')
-            setModalOpen(true)
+            void (async () => {
+              if (!(await ensureCashReady('expense'))) return
+              setSelected(null)
+              setDefaultKind('caja')
+              setModalOpen(true)
+            })()
           }}
           onEdit={(e) => {
             setSelected(e)

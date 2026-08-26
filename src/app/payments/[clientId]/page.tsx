@@ -34,6 +34,8 @@ import {
 import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
+import { isCashOperationBlockedError } from '@/lib/cash-operation-gate'
 import {
   creditStatusBadgeClass,
   creditStatusIconClass,
@@ -54,6 +56,7 @@ export default function ClientCreditsPage() {
   const params = useParams()
   const router = useRouter()
   const clientId = params.clientId as string
+  const { ensureCashReady } = useCashOperationGate()
   
   const [credits, setCredits] = useState<Credit[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -167,7 +170,8 @@ export default function ClientCreditsPage() {
     router.push(`/payments/${clientId}/credit/${creditId}`)
   }
 
-  const handlePayment = (credit: Credit) => {
+  const handlePayment = async (credit: Credit) => {
+    if (!(await ensureCashReady('payment'))) return
     setSelectedCredit(credit)
     setIsPaymentModalOpen(true)
   }
@@ -208,7 +212,10 @@ export default function ClientCreditsPage() {
       setSelectedCredit(null)
       await loadCredits()
     } catch (error) {
-      // Error silencioso en producción
+      if (isCashOperationBlockedError(error)) {
+        await ensureCashReady('payment')
+        return
+      }
       alert('Error al agregar el pago. Por favor intenta de nuevo.')
     }
   }
@@ -262,7 +269,11 @@ export default function ClientCreditsPage() {
       setSelectedCreditIds(new Set())
       setCreditSelectionMode(false)
       await loadCredits()
-    } catch {
+    } catch (error) {
+      if (isCashOperationBlockedError(error)) {
+        await ensureCashReady('payment')
+        return
+      }
       alert(
         'No se pudieron registrar todos los pagos. Revisa el estado de los créditos y vuelve a intentar; algunos abonos podrían haberse aplicado.'
       )
@@ -588,7 +599,12 @@ export default function ClientCreditsPage() {
                       type="button"
                       size="sm"
                       className="shrink-0"
-                      onClick={() => setBulkModalOpen(true)}
+                      onClick={() => {
+                        void (async () => {
+                          if (!(await ensureCashReady('payment'))) return
+                          setBulkModalOpen(true)
+                        })()
+                      }}
                     >
                       <Wallet className="mr-1.5 h-4 w-4 shrink-0 text-white" strokeWidth={1.5} aria-hidden />
                       <span className="text-white">Pagar selección</span>

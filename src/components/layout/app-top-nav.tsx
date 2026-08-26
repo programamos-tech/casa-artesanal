@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 import { useTheme } from '@/components/theme-provider'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { GlobalSearchService, type GlobalSearchHit } from '@/lib/global-search-service'
@@ -77,6 +78,7 @@ export function AppTopNav() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const { canView, canCreate } = usePermissions()
+  const { ensureCashReady } = useCashOperationGate()
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<GlobalSearchHit[]>([])
   const [searchOpen, setSearchOpen] = useState(false)
@@ -303,7 +305,18 @@ export function AppTopNav() {
                 <Link
                   key={action.href}
                   href={action.href}
-                  onClick={() => setPlusOpen(false)}
+                  onClick={(e) => {
+                    if (action.href !== '/sales/new') {
+                      setPlusOpen(false)
+                      return
+                    }
+                    e.preventDefault()
+                    setPlusOpen(false)
+                    void (async () => {
+                      const ok = await ensureCashReady('sale')
+                      if (ok) router.push('/sales/new')
+                    })()
+                  }}
                   className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800/80"
                 >
                   <action.icon className="h-4 w-4 text-zinc-400" strokeWidth={1.75} />

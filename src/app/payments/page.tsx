@@ -10,11 +10,13 @@ import { aggregateCreditsDisplayStatus } from '@/lib/credit-status-ui'
 import { Credit, PaymentRecord } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
 import { useAuth } from '@/contexts/auth-context'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 
 export default function CreditsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { ensureCashReady } = useCashOperationGate()
   const [credits, setCredits] = useState<Credit[]>([])
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -129,7 +131,8 @@ export default function CreditsPage() {
     await loadCredits()
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    if (!(await ensureCashReady('credit'))) return
     setIsCreditModalOpen(true)
   }
 

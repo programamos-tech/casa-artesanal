@@ -7,6 +7,7 @@ import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { useSales } from '@/contexts/sales-context'
 import { Sale } from '@/types'
 import { printSaleTicket } from '@/lib/sales-print-ticket'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 
 export default function SalesPage() {
   const router = useRouter()
@@ -23,6 +24,7 @@ export default function SalesPage() {
     searchSales,
     refreshSales,
   } = useSales()
+  const { ensureCashReady } = useCashOperationGate()
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -68,7 +70,8 @@ export default function SalesPage() {
     await refreshSales()
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    if (!(await ensureCashReady('sale'))) return
     router.push('/sales/new')
   }
 

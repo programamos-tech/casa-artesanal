@@ -32,6 +32,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { SalesService } from '@/lib/sales-service'
 import { CreditsService } from '@/lib/credits-service'
 import { ProductsService } from '@/lib/products-service'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 import {
   compareProductsBySearchRelevance,
   isReferenceLikeQuery,
@@ -81,6 +82,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
   const { clients, getAllClients } = useClients()
   const { products } = useProducts()
   const { user } = useAuth()
+  const { ensureCashReady } = useCashOperationGate()
   
   // Función helper para identificar si un cliente es una tienda
   const isStoreClient = (client: Client): boolean => {
@@ -462,6 +464,10 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
     setLoading(true)
 
     try {
+      if (!isDraft) {
+        const cashOk = await ensureCashReady('credit')
+        if (!cashOk) return
+      }
       if (!formData.clientId) {
         showStockAlert('❌ Por favor selecciona un cliente')
         return

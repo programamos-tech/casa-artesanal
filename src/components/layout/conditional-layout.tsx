@@ -10,6 +10,8 @@ import { ReleaseNotesModal } from '@/components/ui/release-notes-modal'
 import { TransferAlertModal } from '@/components/layout/transfer-alert-modal'
 import { AppTopNav } from '@/components/layout/app-top-nav'
 import { OwnerAssistantBubble } from '@/components/assistant/owner-assistant-bubble'
+import { CashOperationGateProvider } from '@/components/caja/cash-operation-gate-provider'
+import { CashStaleAlertBar } from '@/components/caja/cash-stale-alert-bar'
 import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 interface ConditionalLayoutProps {
@@ -37,18 +39,10 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
     pathname !== '/select-store' &&
     !pathname.startsWith('/sales/new')
 
-  /** Listas con paginación (ventas, productos, créditos, actividades): menos padding inferior cerca de la bottom nav (hasta xl). */
-  const compactListBottomPad =
-    pathname === '/sales' ||
-    pathname === '/inventory/products' ||
-    pathname.startsWith('/payments') ||
-    pathname === '/logs'
-      ? 'pb-[max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom)))] scroll-pb-[max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom)))]'
-      : 'pb-[max(4.75rem,calc(3.75rem+env(safe-area-inset-bottom)))] scroll-pb-[max(4.75rem,calc(3.75rem+env(safe-area-inset-bottom)))]'
-
   // Para todas las demás páginas, mostrar el layout completo con sidebar
   return (
     <ProtectedRoute>
+    <CashOperationGateProvider>
       <div className="flex h-screen min-h-0 min-w-0 bg-white dark:bg-zinc-950">
         <Sidebar onMobileMenuToggle={setIsMobileMenuOpen} />
         <main
@@ -61,9 +55,10 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
           <div
             className={cn(
               'min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain bg-white dark:bg-zinc-950',
-              /* Alineado con bottom nav compacta (h-10/11 + safe area). */
               showMobileBottomNavInset &&
-                `${compactListBottomPad} xl:pb-0 xl:scroll-pb-0`,
+                'pb-[calc(var(--cash-stale-alert-h,0px)+max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom))))] scroll-pb-[calc(var(--cash-stale-alert-h,0px)+max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom))))] xl:pb-[var(--cash-stale-alert-h,0px)] xl:scroll-pb-[var(--cash-stale-alert-h,0px)]',
+              !showMobileBottomNavInset &&
+                'pb-[var(--cash-stale-alert-h,0px)] scroll-pb-[var(--cash-stale-alert-h,0px)]',
               hideMainScrollbar && 'scrollbar-hide'
             )}
           >
@@ -77,6 +72,8 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
       <ReleaseNotesModal />
       {isTransfersAndReceptionsEnabled() ? <TransferAlertModal /> : null}
       <OwnerAssistantBubble />
+      <CashStaleAlertBar />
+    </CashOperationGateProvider>
     </ProtectedRoute>
   )
 }

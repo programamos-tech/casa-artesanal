@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getCashGateBody, getCashOperationGate } from '@/lib/cash-operation-gate'
 
 /**
  * POST /api/credits - Crear crédito (usa service role para evitar fallos por RLS con vendedores)
@@ -68,6 +69,14 @@ export async function POST(request: NextRequest) {
           updatedAt: existing.updated_at
         })
       }
+    }
+
+    const gate = await getCashOperationGate(resolvedStoreId)
+    if (gate.status !== 'ok') {
+      return NextResponse.json(
+        { error: getCashGateBody(gate.status, 'credit') },
+        { status: 400 }
+      )
     }
 
     const { data, error } = await supabaseAdmin

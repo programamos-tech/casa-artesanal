@@ -2,6 +2,7 @@ import { supabase, supabaseAdmin } from './supabase'
 import { Credit, PaymentRecord } from '@/types'
 import { AuthService } from './auth-service'
 import { getCurrentUserStoreId, canAccessAllStores, getCurrentUser } from './store-helper'
+import { assertCashReadyForOperation } from './cash-operation-gate'
 
 /** URL pública completa o ruta dentro del bucket `credit-payments` (p. ej. receipts/xxx.jpg). */
 function resolveCreditPaymentImageUrl(raw: unknown): string | undefined {
@@ -106,6 +107,7 @@ export class CreditsService {
     }
 
     if (typeof window !== 'undefined') {
+      await assertCashReadyForOperation('credit', storeId)
       try {
         const res = await fetch('/api/credits', {
           method: 'POST',
@@ -155,6 +157,8 @@ export class CreditsService {
         throw e
       }
     }
+
+    await assertCashReadyForOperation('credit', storeId)
 
     const { data, error } = await supabaseAdmin
       .from('credits')
@@ -620,6 +624,7 @@ export class CreditsService {
 
   // Crear registro de pago
   static async createPaymentRecord(paymentData: Omit<PaymentRecord, 'id' | 'createdAt'>): Promise<PaymentRecord> {
+    await assertCashReadyForOperation('payment', getCurrentUserStoreId())
     // Validar y obtener userId válido (evitar que falle para vendedoras por sesión/RLS)
     let userId = paymentData.userId
     let userName = paymentData.userName

@@ -3,6 +3,7 @@ import { Sale, SaleItem, SalePayment } from '@/types'
 import { AuthService } from './auth-service'
 import { ProductsService } from './products-service'
 import { getCurrentUserStoreId, canAccessAllStores, getCurrentUser } from './store-helper'
+import { assertCashReadyForOperation } from './cash-operation-gate'
 
 function readTransportPrice(row: { transport_price?: number | string | null } | null | undefined): number {
   return Math.max(0, Number(row?.transport_price ?? 0) || 0)
@@ -833,6 +834,7 @@ export class SalesService {
         if (!paymentMethod || paymentMethod === 'pending') {
           throw new Error('Debes seleccionar un método de pago para facturar.')
         }
+        await assertCashReadyForOperation('sale', storeId)
       }
 
       const resolvedStoreId = storeId || '00000000-0000-0000-0000-000000000001'
@@ -1261,6 +1263,9 @@ export class SalesService {
       if (!draftSale.items?.length) {
         throw new Error('El borrador no tiene productos para facturar.')
       }
+      await assertCashReadyForOperation('sale', draftSale.storeId, {
+        allowPreviousDay: true,
+      })
       for (const item of draftSale.items) {
         if (!item.unitPrice || item.unitPrice <= 0) {
           throw new Error(`Asigna precio a "${item.productName}" antes de finalizar.`)

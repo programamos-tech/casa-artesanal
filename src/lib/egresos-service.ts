@@ -4,6 +4,10 @@ import { getCurrentUserStoreId, isMainStoreUser, getCurrentUser } from './store-
 import type { EgresoPaymentMethod } from './egreso-concepts'
 import { CUENTA_NO_CASH_MESSAGE, firstDayOfMonthISO, getEgresoPaymentLabel } from './egreso-concepts'
 import { MonthlyResultService } from './monthly-result-service'
+import {
+  assertCashReadyForOperation,
+  isCashOperationBlockedError,
+} from './cash-operation-gate'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -199,6 +203,15 @@ export class EgresosService {
           : null
 
       const storeId = resolveStoreId(input.storeId)
+
+      try {
+        await assertCashReadyForOperation('expense', storeId)
+      } catch (error) {
+        if (isCashOperationBlockedError(error)) {
+          return { success: false, error: error.message }
+        }
+        throw error
+      }
 
       if (expenseKind === 'cuenta' && periodMonth) {
         const { year, month } = periodParts(periodMonth)

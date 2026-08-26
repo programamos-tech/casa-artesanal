@@ -33,6 +33,14 @@ export function isCashSessionFromPreviousDay(openedAt: string, now: Date = new D
   return getBogotaDateKey(openedAt) < getBogotaDateKey(now)
 }
 
+export type CashStaleOpenAlert = {
+  sessionId: string
+  storeId: string
+  storeName: string
+  openedAt: string
+  openedByName: string
+}
+
 export type CashCloseBlocker = {
   kind: 'draft' | 'empty_items'
   id: string
@@ -213,6 +221,59 @@ export class CashSessionsService {
   static async hasOpenSession(storeId?: string | null): Promise<boolean> {
     const open = await this.getOpenSession(storeId)
     return Boolean(open)
+  }
+
+  /** Turnos abiertos de días anteriores (Colombia), opcionalmente filtrados por tienda. */
+  static async listStaleOpenSessions(
+    storeId?: string | null
+  ): Promise<CashStaleOpenAlert[]> {
+    const { data, error } = await supabaseAdmin
+      .from('cash_sessions')
+      .select('id, store_id, opened_at, opened_by_name, stores(name, city)')
+      .eq('status', 'open')
+      .order('opened_at', { ascending: true })
+
+    if (error) {
+      console.error('listStaleOpenSessions:', error)
+      return []
+    }
+
+    const alerts: CashStaleOpenAlert[] = []
+    for (const row of data || []) {
+      if (!isCashSessionFromPreviousDay(String(row.opened_at))) continue
+
+      const rowStoreId = String(row.store_id || MAIN_STORE_ID)
+      if (storeId) {
+        const scopedId = storeId || MAIN_STORE_ID
+        const matchesScope =
+          rowStoreId === scopedId ||
+          (scopedId === MAIN_STORE_ID && (row.store_id == null || rowStoreId === MAIN_STORE_ID))
+        if (!matchesScope) continue
+      }
+
+      const storeRaw = row.stores as
+        | { name?: string; city?: string | null }
+        | { name?: string; city?: string | null }[]
+        | null
+      const store = Array.isArray(storeRaw) ? storeRaw[0] : storeRaw
+      const storeName = store?.name
+        ? store.city
+          ? `${store.name} — ${store.city}`
+          : store.name
+        : rowStoreId === MAIN_STORE_ID
+          ? 'Tienda principal'
+          : 'Sede'
+
+      alerts.push({
+        sessionId: String(row.id),
+        storeId: rowStoreId,
+        storeName,
+        openedAt: String(row.opened_at),
+        openedByName: String(row.opened_by_name || ''),
+      })
+    }
+
+    return alerts
   }
 
   /**

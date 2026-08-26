@@ -26,6 +26,7 @@ import { PaymentReceiptThumb } from '@/components/credits/payment-receipt-field'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { cn } from '@/lib/utils'
 import { cardShell } from '@/lib/card-shell'
+import { isCashOperationBlockedError } from '@/lib/cash-operation-gate'
 import {
   creditStatusBadgeClass,
   creditStatusIconClass,
@@ -33,6 +34,7 @@ import {
   getEffectiveCreditStatus,
   isCreditCancelled,
 } from '@/lib/credit-status-ui'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 
 function getCreditDescription(credit: Credit): string {
   const clientInitials = credit.clientName
@@ -50,6 +52,7 @@ export default function CreditDetailPage() {
   const router = useRouter()
   const clientId = params.clientId as string
   const creditId = params.creditId as string
+  const { ensureCashReady } = useCashOperationGate()
 
   const [credit, setCredit] = useState<Credit | null>(null)
   const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([])
@@ -187,7 +190,11 @@ export default function CreditDetailPage() {
 
       setIsPaymentModalOpen(false)
       await loadCredit()
-    } catch {
+    } catch (error) {
+      if (isCashOperationBlockedError(error)) {
+        await ensureCashReady('payment')
+        return
+      }
       alert('Error al agregar el pago. Por favor intenta de nuevo.')
     }
   }
@@ -362,7 +369,12 @@ export default function CreditDetailPage() {
                           className="h-9 w-9 shrink-0"
                           title="Abonar"
                           aria-label="Abonar"
-                          onClick={() => setIsPaymentModalOpen(true)}
+                          onClick={() => {
+                            void (async () => {
+                              if (!(await ensureCashReady('payment'))) return
+                              setIsPaymentModalOpen(true)
+                            })()
+                          }}
                         >
                           <DollarSign className="h-4 w-4" strokeWidth={1.5} />
                         </Button>
