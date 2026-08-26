@@ -49,7 +49,6 @@ export default function CajaPage() {
   const [closeModal, setCloseModal] = useState(false)
   const [dayModal, setDayModal] = useState(false)
   const storeId = getCashRegisterStoreId()
-  const stalePromptedRef = useRef<string | null>(null)
   const dayModalAutoOpenedRef = useRef<string | null>(null)
 
   const canOpen = canCreate('cash_register')
@@ -90,32 +89,15 @@ export default function CajaPage() {
     void load()
   }, [load, user?.storeId])
 
-  // Abrir siempre "Caja del día" al entrar (vendedora / admin / propietario).
-  // El modal de conteo ("Cerrar caja") solo se abre con acción explícita.
+  // Siempre el mismo modal al entrar: "Caja del día" (hoy o turno de ayer da igual).
+  // Nunca abrir solo el de conteo ("Cerrar caja") al cargar.
   useEffect(() => {
     if (!openSession || loading) return
-    if (closeModal) return
-
-    const previousDay = isCashSessionFromPreviousDay(openSession.openedAt)
-    const firstOpen = dayModalAutoOpenedRef.current !== openSession.id
-
-    if (firstOpen || previousDay) {
-      dayModalAutoOpenedRef.current = openSession.id
-      setDayModal(true)
-    }
-
-    if (
-      firstOpen &&
-      canClose &&
-      previousDay &&
-      stalePromptedRef.current !== openSession.id
-    ) {
-      stalePromptedRef.current = openSession.id
-      toast.message('Caja del día anterior aún abierta', {
-        description: 'Primero revisa el resumen de la caja del día; luego cierra con el conteo.',
-      })
-    }
-  }, [openSession, loading, canClose, closeModal])
+    setCloseModal(false)
+    if (dayModalAutoOpenedRef.current === openSession.id) return
+    dayModalAutoOpenedRef.current = openSession.id
+    setDayModal(true)
+  }, [openSession, loading])
 
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
@@ -269,7 +251,7 @@ export default function CajaPage() {
               canClose={canClose}
               onClose={() => setDayModal(false)}
               onRequestCloseCash={() => {
-                setDayModal(false)
+                // Solo aquí se abre el conteo — nunca al entrar a la página
                 setCloseModal(true)
               }}
             />
@@ -279,7 +261,6 @@ export default function CajaPage() {
               live={live}
               onClose={() => {
                 setCloseModal(false)
-                // Volver al resumen del día si cancelan el conteo
                 setDayModal(true)
               }}
               onClosed={async (sessionId) => {

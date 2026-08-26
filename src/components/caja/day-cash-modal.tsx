@@ -43,8 +43,9 @@ interface DayCashModalProps {
 }
 
 /**
- * Resumen de la caja abierta (ingresos/egresos). El conteo físico va en CloseCashModal.
- * Se renderiza en el árbol de la página (sin portal) para que no quede oculto.
+ * Modal único al entrar a Caja con turno abierto: siempre "Caja del día"
+ * (hoy o turno de ayer: el mismo). El conteo físico es otro paso solo si
+ * pulsan "Cerrar caja".
  */
 export function DayCashModal({
   isOpen,
@@ -57,16 +58,8 @@ export function DayCashModal({
 }: DayCashModalProps) {
   if (!isOpen) return null
 
-  const dismissible = !fromPreviousDay
-
   return (
-    <div
-      className={appModalOverlayClass}
-      role="presentation"
-      onClick={() => {
-        if (dismissible) onClose()
-      }}
-    >
+    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
       <div
         className={cn(appModalPanelClass, 'max-w-5xl')}
         role="dialog"
@@ -80,47 +73,37 @@ export function DayCashModal({
               id="day-cash-modal-title"
               className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
             >
-              {fromPreviousDay ? 'Caja pendiente de cerrar' : 'Caja del día'}
+              Caja del día
             </h2>
             <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
               Turno abierto · {formatDateTimeCo(session.openedAt)} · {session.openedByName}
             </p>
           </div>
-          {dismissible ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 shrink-0 rounded-md p-0"
-              onClick={onClose}
-              aria-label="Cerrar"
-            >
-              <X className="h-4 w-4" strokeWidth={1.75} />
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 rounded-md p-0"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </Button>
         </div>
 
         <div className={appModalBodyClass}>
           <div className="space-y-4">
             {fromPreviousDay && (
-              <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
-                  <div>
-                    <p className="font-semibold text-amber-950 dark:text-amber-100">
-                      Caja del día anterior aún abierta
-                    </p>
-                    <p className="mt-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
-                      Revisa el resumen y luego cierra con el conteo físico.
-                    </p>
-                  </div>
+              <div className="flex gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
+                <div>
+                  <p className="font-semibold text-amber-950 dark:text-amber-100">
+                    Este turno se abrió ayer
+                  </p>
+                  <p className="mt-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
+                    Es la misma caja del día: revisa el resumen y cierra con conteo cuando estés lista.
+                  </p>
                 </div>
-                {canClose && (
-                  <Button type="button" size="sm" className="shrink-0" onClick={onRequestCloseCash}>
-                    <Lock className="h-3.5 w-3.5" />
-                    Cerrar ahora
-                  </Button>
-                )}
               </div>
             )}
 
@@ -242,15 +225,9 @@ export function DayCashModal({
         </div>
 
         <div className={appModalFooterClass}>
-          {dismissible ? (
-            <Button type="button" variant="outline" onClick={onClose}>
-              Ver historial
-            </Button>
-          ) : (
-            <p className="mr-auto text-xs text-amber-800 dark:text-amber-300">
-              Debes cerrar esta caja antes de continuar.
-            </p>
-          )}
+          <Button type="button" variant="outline" onClick={onClose}>
+            Ver historial
+          </Button>
           {canClose && (
             <Button type="button" onClick={onRequestCloseCash}>
               <Lock className="h-3.5 w-3.5" />
