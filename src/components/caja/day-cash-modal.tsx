@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { createPortal } from 'react-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,6 +42,10 @@ interface DayCashModalProps {
   onRequestCloseCash: () => void
 }
 
+/**
+ * Resumen de la caja abierta (ingresos/egresos). El conteo físico va en CloseCashModal.
+ * Se renderiza en el árbol de la página (sin portal) para que no quede oculto.
+ */
 export function DayCashModal({
   isOpen,
   session,
@@ -53,25 +55,18 @@ export function DayCashModal({
   onClose,
   onRequestCloseCash,
 }: DayCashModalProps) {
-  const [mounted, setMounted] = useState(false)
+  if (!isOpen) return null
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const dismissible = !fromPreviousDay
 
-  useEffect(() => {
-    if (!isOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen, onClose])
-
-  if (!isOpen || !mounted) return null
-
-  const modal = (
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+  return (
+    <div
+      className={appModalOverlayClass}
+      role="presentation"
+      onClick={() => {
+        if (dismissible) onClose()
+      }}
+    >
       <div
         className={cn(appModalPanelClass, 'max-w-5xl')}
         role="dialog"
@@ -91,16 +86,18 @@ export function DayCashModal({
               Turno abierto · {formatDateTimeCo(session.openedAt)} · {session.openedByName}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 rounded-md p-0"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
-            <X className="h-4 w-4" strokeWidth={1.75} />
-          </Button>
+          {dismissible ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 shrink-0 rounded-md p-0"
+              onClick={onClose}
+              aria-label="Cerrar"
+            >
+              <X className="h-4 w-4" strokeWidth={1.75} />
+            </Button>
+          ) : null}
         </div>
 
         <div className={appModalBodyClass}>
@@ -114,7 +111,7 @@ export function DayCashModal({
                       Caja del día anterior aún abierta
                     </p>
                     <p className="mt-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
-                      Ciérrala ahora con conteo físico antes de seguir.
+                      Revisa el resumen y luego cierra con el conteo físico.
                     </p>
                   </div>
                 </div>
@@ -138,8 +135,18 @@ export function DayCashModal({
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <SummaryTile icon={Banknote} label="Fondo inicial" value={money(session.openingCash)} tone="neutral" />
-              <SummaryTile icon={ArrowUpCircle} label="Ingresos del turno" value={money(live?.totalIngresos || 0)} tone="income" />
-              <SummaryTile icon={ArrowDownCircle} label="Egresos del turno" value={money(live?.totalEgresos || 0)} tone="expense" />
+              <SummaryTile
+                icon={ArrowUpCircle}
+                label="Ingresos del turno"
+                value={money(live?.totalIngresos || 0)}
+                tone="income"
+              />
+              <SummaryTile
+                icon={ArrowDownCircle}
+                label="Egresos del turno"
+                value={money(live?.totalEgresos || 0)}
+                tone="expense"
+              />
               <SummaryTile icon={Wallet} label="Efectivo esperado" value="Conteo ciego al cerrar" tone="cash" />
             </div>
 
@@ -235,9 +242,15 @@ export function DayCashModal({
         </div>
 
         <div className={appModalFooterClass}>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cerrar
-          </Button>
+          {dismissible ? (
+            <Button type="button" variant="outline" onClick={onClose}>
+              Ver historial
+            </Button>
+          ) : (
+            <p className="mr-auto text-xs text-amber-800 dark:text-amber-300">
+              Debes cerrar esta caja antes de continuar.
+            </p>
+          )}
           {canClose && (
             <Button type="button" onClick={onRequestCloseCash}>
               <Lock className="h-3.5 w-3.5" />
@@ -248,8 +261,6 @@ export function DayCashModal({
       </div>
     </div>
   )
-
-  return createPortal(modal, document.body)
 }
 
 function SummaryTile({

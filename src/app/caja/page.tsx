@@ -21,7 +21,7 @@ import { OpenCashModal } from '@/components/caja/open-cash-modal'
 import { CloseCashModal } from '@/components/caja/close-cash-modal'
 import { DayCashModal } from '@/components/caja/day-cash-modal'
 import { toast } from 'sonner'
-import { Eye, Lock, LockOpen, RefreshCw, Wallet } from 'lucide-react'
+import { Eye, LockOpen, RefreshCw, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StoreBadge } from '@/components/ui/store-badge'
 import { cardShell } from '@/lib/card-shell'
@@ -90,26 +90,32 @@ export default function CajaPage() {
     void load()
   }, [load, user?.storeId])
 
-  // Abrir siempre el modal "Caja del día" al entrar (resumen). El conteo ciego
-  // solo aparece cuando el usuario pulsa "Cerrar caja" — no saltar directo a él.
+  // Abrir siempre "Caja del día" al entrar (vendedora / admin / propietario).
+  // El modal de conteo ("Cerrar caja") solo se abre con acción explícita.
   useEffect(() => {
     if (!openSession || loading) return
-    if (dayModalAutoOpenedRef.current === openSession.id) return
-    dayModalAutoOpenedRef.current = openSession.id
-    setCloseModal(false)
-    setDayModal(true)
+    if (closeModal) return
+
+    const previousDay = isCashSessionFromPreviousDay(openSession.openedAt)
+    const firstOpen = dayModalAutoOpenedRef.current !== openSession.id
+
+    if (firstOpen || previousDay) {
+      dayModalAutoOpenedRef.current = openSession.id
+      setDayModal(true)
+    }
 
     if (
+      firstOpen &&
       canClose &&
-      isCashSessionFromPreviousDay(openSession.openedAt) &&
+      previousDay &&
       stalePromptedRef.current !== openSession.id
     ) {
       stalePromptedRef.current = openSession.id
       toast.message('Caja del día anterior aún abierta', {
-        description: 'Revisa el resumen y cierra con el conteo físico cuando estés lista.',
+        description: 'Primero revisa el resumen de la caja del día; luego cierra con el conteo.',
       })
     }
-  }, [openSession, loading, canClose])
+  }, [openSession, loading, canClose, closeModal])
 
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
@@ -162,12 +168,7 @@ export default function CajaPage() {
                   Abrir caja
                 </Button>
               )}
-              {openSession && canClose && (
-                <Button type="button" size="sm" onClick={() => setCloseModal(true)}>
-                  <Lock className="h-3.5 w-3.5" />
-                  Cerrar caja
-                </Button>
-              )}
+              {/* Cerrar solo desde el modal "Caja del día" → luego el de conteo */}
             </div>
           </CardHeader>
 
