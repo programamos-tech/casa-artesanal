@@ -85,7 +85,7 @@ export function DayCashModal({
               id="day-cash-modal-title"
               className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
             >
-              Caja del día
+              {fromPreviousDay ? 'Caja pendiente de cerrar' : 'Caja del día'}
             </h2>
             <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
               Turno abierto · {formatDateTimeCo(session.openedAt)} · {session.openedByName}

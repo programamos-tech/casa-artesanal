@@ -53,8 +53,11 @@ export default function CajaPage() {
   const dayModalAutoOpenedRef = useRef<string | null>(null)
 
   const canOpen = canCreate('cash_register')
+  // Vendedoras/cajeras: deben poder cerrar siempre que operen caja (create/edit/cancel).
   const canClose =
-    canCreate('cash_register') || canCancel('cash_register') || canEdit('cash_register')
+    canCreate('cash_register') ||
+    canCancel('cash_register') ||
+    canEdit('cash_register')
   const closedSessions = history.filter((s) => s.status === 'closed')
   const sessionFromPreviousDay = Boolean(
     openSession && isCashSessionFromPreviousDay(openSession.openedAt)
@@ -87,26 +90,26 @@ export default function CajaPage() {
     void load()
   }, [load, user?.storeId])
 
-  // Abrir modal de caja del día cuando hay turno abierto
+  // Abrir siempre el modal "Caja del día" al entrar (resumen). El conteo ciego
+  // solo aparece cuando el usuario pulsa "Cerrar caja" — no saltar directo a él.
   useEffect(() => {
     if (!openSession || loading) return
     if (dayModalAutoOpenedRef.current === openSession.id) return
     dayModalAutoOpenedRef.current = openSession.id
+    setCloseModal(false)
     setDayModal(true)
-  }, [openSession, loading])
 
-  // Si la caja quedó abierta de un día anterior, forzar el cierre
-  useEffect(() => {
-    if (!openSession || !canClose || loading) return
-    if (!isCashSessionFromPreviousDay(openSession.openedAt)) return
-    if (stalePromptedRef.current === openSession.id) return
-    stalePromptedRef.current = openSession.id
-    setDayModal(false)
-    setCloseModal(true)
-    toast.message('Debes cerrar la caja del día anterior', {
-      description: 'No se puede dejar la caja abierta de un día para otro.',
-    })
-  }, [openSession, canClose, loading])
+    if (
+      canClose &&
+      isCashSessionFromPreviousDay(openSession.openedAt) &&
+      stalePromptedRef.current !== openSession.id
+    ) {
+      stalePromptedRef.current = openSession.id
+      toast.message('Caja del día anterior aún abierta', {
+        description: 'Revisa el resumen y cierra con el conteo físico cuando estés lista.',
+      })
+    }
+  }, [openSession, loading, canClose])
 
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
@@ -273,7 +276,11 @@ export default function CajaPage() {
               isOpen={closeModal}
               session={openSession}
               live={live}
-              onClose={() => setCloseModal(false)}
+              onClose={() => {
+                setCloseModal(false)
+                // Volver al resumen del día si cancelan el conteo
+                setDayModal(true)
+              }}
               onClosed={async (sessionId) => {
                 setCloseModal(false)
                 setDayModal(false)
