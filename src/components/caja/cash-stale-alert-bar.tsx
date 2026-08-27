@@ -53,15 +53,15 @@ const SEMAPHORE_STYLES: Record<
       'text-emerald-700 hover:bg-emerald-200/80 dark:text-emerald-100 dark:hover:bg-emerald-800/80',
   },
   orange: {
-    bar: 'border-t-2 border-yellow-400 bg-yellow-50 text-yellow-950 shadow-sm dark:border-yellow-300 dark:bg-yellow-400 dark:text-yellow-950 dark:shadow-[0_-4px_20px_rgba(250,204,21,0.4)]',
-    icon: 'text-yellow-600 dark:text-yellow-900',
-    muted: 'text-yellow-800/90 dark:text-yellow-900/85',
-    dot: 'bg-yellow-500 dark:bg-yellow-600',
-    link: 'text-yellow-900 underline-offset-2 hover:text-yellow-950 dark:text-yellow-950 dark:hover:text-black',
+    bar: 'border-t-2 border-yellow-500 bg-yellow-400 text-yellow-950 shadow-sm dark:border-yellow-300 dark:bg-yellow-400 dark:text-yellow-950 dark:shadow-[0_-4px_20px_rgba(250,204,21,0.4)]',
+    icon: 'text-yellow-900 dark:text-yellow-900',
+    muted: 'text-yellow-900/85 dark:text-yellow-900/85',
+    dot: 'bg-yellow-600 dark:bg-yellow-600',
+    link: 'text-yellow-950 underline-offset-2 hover:text-black dark:text-yellow-950 dark:hover:text-black',
     button:
-      'border-yellow-400/90 bg-yellow-100 text-yellow-950 hover:bg-yellow-200 dark:border-yellow-600/60 dark:bg-yellow-300 dark:text-yellow-950 dark:hover:bg-yellow-200',
+      'border-yellow-600/50 bg-yellow-300 text-yellow-950 hover:bg-yellow-200 dark:border-yellow-600/60 dark:bg-yellow-300 dark:text-yellow-950 dark:hover:bg-yellow-200',
     dismiss:
-      'text-yellow-800 hover:bg-yellow-200/80 dark:text-yellow-950 dark:hover:bg-yellow-500/50',
+      'text-yellow-950 hover:bg-yellow-500/50 dark:text-yellow-950 dark:hover:bg-yellow-500/50',
   },
   red: {
     bar: 'border-t-2 border-red-500 bg-red-50 text-red-950 shadow-sm dark:border-red-500 dark:bg-red-900 dark:text-red-50 dark:shadow-[0_-4px_20px_rgba(220,38,38,0.2)]',
@@ -243,12 +243,13 @@ export function CashStaleAlertBar() {
       role="status"
       aria-live="polite"
       className={cn(
-        'casa-artesanal-preserve-surface fixed left-0 right-0 z-[55]',
+        'casa-artesanal-preserve-surface fixed z-[55]',
+        'left-0 right-0 xl:left-60',
         styles.bar,
         'bottom-11 md:bottom-12 xl:bottom-0'
       )}
     >
-      <div className="mx-auto flex max-w-[100%] items-start gap-2 px-3 py-2 md:px-5 xl:pl-[calc(15rem+1.25rem)] xl:pr-24">
+      <div className="mx-auto flex max-w-[100%] items-start gap-2 px-3 py-2 md:px-5 xl:pr-24">
         <StatusIcon status={barStatus} className={styles.icon} />
         <div className="min-w-0 flex-1 text-xs leading-snug sm:text-sm">
           {isOwner ? (
