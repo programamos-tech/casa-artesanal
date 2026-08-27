@@ -5,7 +5,7 @@ import {
   isCashSessionFromPreviousDay,
 } from '@/lib/cash-sessions-service'
 
-export type CashGateAction = 'sale' | 'credit' | 'payment' | 'expense'
+export type CashGateAction = 'sale' | 'credit' | 'payment' | 'expense' | 'supplier'
 export type CashGateStatus = 'ok' | 'must_close' | 'must_open'
 
 export type CashOperationGate =
@@ -18,6 +18,7 @@ const ACTION_LABEL: Record<CashGateAction, string> = {
   credit: 'crear un crédito',
   payment: 'registrar un abono',
   expense: 'registrar un egreso o gasto',
+  supplier: 'registrar proveedores o abonos',
 }
 
 export class CashOperationBlockedError extends Error {

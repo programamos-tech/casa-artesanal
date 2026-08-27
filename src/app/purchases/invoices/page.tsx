@@ -11,10 +11,12 @@ import { SupplierInvoice } from '@/types'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 
 export default function SupplierInvoicesPage() {
   const { user } = useAuth()
   const { canCreate } = usePermissions()
+  const { ensureCashReady } = useCashOperationGate()
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
@@ -41,7 +43,8 @@ export default function SupplierInvoicesPage() {
 
   const groups = useMemo(() => groupInvoicesBySupplier(invoices), [invoices])
 
-  const openNewInvoice = () => {
+  const openNewInvoice = async () => {
+    if (!(await ensureCashReady('supplier'))) return
     setInvoiceModalOpen(true)
   }
 

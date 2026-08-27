@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { SaleCollectionOption, SupplierInvoice } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
+import { isCashOperationBlockedError } from '@/lib/cash-operation-gate'
 import { getCurrentUser } from '@/lib/store-helper'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
 import { supabase } from '@/lib/supabase'
@@ -72,6 +74,7 @@ export function SupplierPaymentModal({
   onAddPayment,
 }: SupplierPaymentModalProps) {
   const { user } = useAuth()
+  const { ensureCashReady } = useCashOperationGate()
   const [amountStr, setAmountStr] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'mixed'>('transfer')
   const [cashStr, setCashStr] = useState('')
@@ -261,6 +264,7 @@ export function SupplierPaymentModal({
       setError('No se pudo identificar el usuario')
       return
     }
+    if (!(await ensureCashReady('supplier'))) return
     setSubmitting(true)
     try {
       await SupplierInvoicesService.addPayment({
@@ -287,6 +291,10 @@ export function SupplierPaymentModal({
         toast.success('Abono registrado y egreso de cuenta creado')
       }
     } catch (err) {
+      if (isCashOperationBlockedError(err)) {
+        await ensureCashReady('supplier')
+        return
+      }
       const msg =
         err instanceof Error
           ? err.message

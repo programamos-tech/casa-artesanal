@@ -14,6 +14,8 @@ import {
   SUPPLIER_INVOICE_MAX_PDF_BYTES,
 } from '@/lib/supplier-invoice-image-limits'
 import { useAuth } from '@/contexts/auth-context'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
+import { isCashOperationBlockedError } from '@/lib/cash-operation-gate'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -74,6 +76,7 @@ export function SupplierInvoiceModal({
   defaultSupplierId = '',
 }: SupplierInvoiceModalProps) {
   const { user } = useAuth()
+  const { ensureCashReady } = useCashOperationGate()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
@@ -229,6 +232,7 @@ export function SupplierInvoiceModal({
       toast.error('Escribe el nombre del proveedor')
       return
     }
+    if (!(await ensureCashReady('supplier'))) return
     try {
       const s = await SupplierInvoicesService.createSupplier({
         name,
@@ -240,7 +244,11 @@ export function SupplierInvoiceModal({
       setShowNewSupplier(false)
       setNewSupplierName('')
       toast.success('Proveedor creado')
-    } catch {
+    } catch (error) {
+      if (isCashOperationBlockedError(error)) {
+        await ensureCashReady('supplier')
+        return
+      }
       toast.error('No se pudo crear el proveedor')
     }
   }
@@ -275,6 +283,7 @@ export function SupplierInvoiceModal({
       const d2 = String(dueDate.getDate()).padStart(2, '0')
       dueIso = `${y2}-${m2}-${d2}`
     }
+    if (!invoice && !(await ensureCashReady('supplier'))) return
     setSaving(true)
     try {
       if (invoice) {
@@ -303,6 +312,10 @@ export function SupplierInvoiceModal({
       await Promise.resolve(onSaved())
       onClose()
     } catch (err) {
+      if (isCashOperationBlockedError(err)) {
+        await ensureCashReady('supplier')
+        return
+      }
       toast.error(err instanceof Error ? err.message : 'Error al guardar')
     } finally {
       setSaving(false)

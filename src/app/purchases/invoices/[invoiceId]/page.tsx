@@ -12,6 +12,7 @@ import { SupplierPaymentModal } from '@/components/supplier-invoices/supplier-pa
 import { SupplierInvoice } from '@/types'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 import { cn } from '@/lib/utils'
 
 export default function SupplierInvoiceDetailPage() {
@@ -20,6 +21,7 @@ export default function SupplierInvoiceDetailPage() {
   const shortId = invoiceId ? invoiceId.slice(-6) : ''
 
   const { canCreate, canEdit, canCancel } = usePermissions()
+  const { ensureCashReady } = useCashOperationGate()
   const [invoice, setInvoice] = useState<SupplierInvoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
@@ -82,7 +84,10 @@ export default function SupplierInvoiceDetailPage() {
                 invoiceLoading={loading}
                 onRefresh={loadInvoice}
                 onOpenEdit={() => setInvoiceModalOpen(true)}
-                onOpenAddPayment={() => setPaymentModalOpen(true)}
+                onOpenAddPayment={async () => {
+                  if (!(await ensureCashReady('supplier'))) return
+                  setPaymentModalOpen(true)
+                }}
                 canRecordPayment={canCreate('supplier_invoices')}
                 canEdit={canEdit('supplier_invoices')}
                 canCancel={canCancel('supplier_invoices')}

@@ -10,6 +10,7 @@ import {
 import { getCurrentUserStoreId } from './store-helper'
 import { EgresosService } from './egresos-service'
 import { firstDayOfMonthISO } from './egreso-concepts'
+import { assertCashReadyForOperation } from './cash-operation-gate'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -223,6 +224,7 @@ export class SupplierInvoicesService {
     input: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<Supplier> {
     const storeId = input.storeId || getCurrentUserStoreId() || MAIN_STORE_ID
+    await assertCashReadyForOperation('supplier', storeId)
     const { data, error } = await supabase
       .from('suppliers')
       .insert([
@@ -307,6 +309,7 @@ export class SupplierInvoicesService {
     createdBy?: string
   }): Promise<SupplierInvoice> {
     const storeId = getCurrentUserStoreId() || MAIN_STORE_ID
+    await assertCashReadyForOperation('supplier', storeId)
     const docs = (input.documentUrls || [])
       .map((s) => s.trim())
       .filter(Boolean)
@@ -553,6 +556,8 @@ export class SupplierInvoicesService {
     const inv = await this.getInvoiceById(input.invoiceId)
     if (!inv) throw new Error('Factura no encontrada')
     if (inv.status === 'cancelled') throw new Error('La factura está anulada')
+    const storeId = inv.storeId || getCurrentUserStoreId() || MAIN_STORE_ID
+    await assertCashReadyForOperation('supplier', storeId)
     const pending = inv.totalAmount - inv.paidAmount
     if (input.amount > pending + 0.01) {
       throw new Error('El abono supera el saldo pendiente')
@@ -637,7 +642,6 @@ export class SupplierInvoicesService {
       transferAmount = t
     }
 
-    const storeId = inv.storeId || getCurrentUserStoreId() || MAIN_STORE_ID
     const autoNote =
       sourceSaleId && sourceChannel && saleMeta
         ? `Cobro venta ${saleMeta.invoiceNumber} · ${channelLabel(sourceChannel)} · ${saleMeta.clientName}`

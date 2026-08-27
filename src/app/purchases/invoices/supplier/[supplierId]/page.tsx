@@ -12,6 +12,7 @@ import { SupplierInvoice } from '@/types'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/user-avatar'
 
@@ -30,6 +31,7 @@ export default function SupplierPayablesDetailPage() {
 
   const { user } = useAuth()
   const { canCreate } = usePermissions()
+  const { ensureCashReady } = useCashOperationGate()
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
@@ -147,7 +149,10 @@ export default function SupplierPayablesDetailPage() {
               invoices={supplierInvoices}
               suppliers={[]}
               onView={goToDetail}
-              onCreate={() => setInvoiceModalOpen(true)}
+              onCreate={async () => {
+                if (!(await ensureCashReady('supplier'))) return
+                setInvoiceModalOpen(true)
+              }}
               canCreate={canCreate('supplier_invoices')}
               isLoading={loading}
               onRefresh={loadAll}
