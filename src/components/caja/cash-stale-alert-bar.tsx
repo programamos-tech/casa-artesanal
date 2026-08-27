@@ -53,15 +53,15 @@ const SEMAPHORE_STYLES: Record<
       'text-emerald-700 hover:bg-emerald-200/80 dark:text-emerald-100 dark:hover:bg-emerald-800/80',
   },
   orange: {
-    bar: 'border-t-2 border-amber-500 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-500 dark:bg-amber-900 dark:text-amber-50 dark:shadow-[0_-4px_20px_rgba(245,158,11,0.2)]',
-    icon: 'text-amber-600 dark:text-amber-300',
-    muted: 'text-amber-800/85 dark:text-amber-200/85',
-    dot: 'bg-amber-500 dark:bg-amber-300',
-    link: 'text-amber-900 hover:text-amber-950 dark:text-amber-100 dark:hover:text-white',
+    bar: 'border-t-2 border-yellow-400 bg-yellow-50 text-yellow-950 shadow-sm dark:border-yellow-300 dark:bg-yellow-400 dark:text-yellow-950 dark:shadow-[0_-4px_20px_rgba(250,204,21,0.4)]',
+    icon: 'text-yellow-600 dark:text-yellow-900',
+    muted: 'text-yellow-800/90 dark:text-yellow-900/85',
+    dot: 'bg-yellow-500 dark:bg-yellow-600',
+    link: 'text-yellow-900 underline-offset-2 hover:text-yellow-950 dark:text-yellow-950 dark:hover:text-black',
     button:
-      'border-amber-300/90 bg-amber-100 text-amber-950 hover:bg-amber-200 dark:border-amber-500/40 dark:bg-amber-800 dark:text-amber-50 dark:hover:bg-amber-700',
+      'border-yellow-400/90 bg-yellow-100 text-yellow-950 hover:bg-yellow-200 dark:border-yellow-600/60 dark:bg-yellow-300 dark:text-yellow-950 dark:hover:bg-yellow-200',
     dismiss:
-      'text-amber-800 hover:bg-amber-200/80 dark:text-amber-100 dark:hover:bg-amber-800/80',
+      'text-yellow-800 hover:bg-yellow-200/80 dark:text-yellow-950 dark:hover:bg-yellow-500/50',
   },
   red: {
     bar: 'border-t-2 border-red-500 bg-red-50 text-red-950 shadow-sm dark:border-red-500 dark:bg-red-900 dark:text-red-50 dark:shadow-[0_-4px_20px_rgba(220,38,38,0.2)]',
