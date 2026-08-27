@@ -17,6 +17,7 @@ import type { CashSession, CashSessionLiveSummary } from '@/types'
 import {
   CashSessionsService,
   type CashCloseBlocker,
+  type TodaySalesBeforeOpen,
 } from '@/lib/cash-sessions-service'
 import {
   appModalBodyClass,
@@ -47,6 +48,7 @@ interface DayCashModalProps {
   closing?: boolean
   onClose: () => void
   onRequestCloseCash: () => void
+  onSessionUpdated?: (session: CashSession, live: CashSessionLiveSummary) => void
 }
 
 /**
@@ -62,9 +64,13 @@ export function DayCashModal({
   closing = false,
   onClose,
   onRequestCloseCash,
+  onSessionUpdated,
 }: DayCashModalProps) {
   const [blockers, setBlockers] = useState<CashCloseBlocker[]>([])
   const [loadingBlockers, setLoadingBlockers] = useState(false)
+  const [pendingToday, setPendingToday] = useState<TodaySalesBeforeOpen | null>(null)
+  const [loadingPendingToday, setLoadingPendingToday] = useState(false)
+  const [includingToday, setIncludingToday] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
@@ -78,6 +84,47 @@ export function DayCashModal({
       })
       .finally(() => setLoadingBlockers(false))
   }, [isOpen, session.id, session.openedAt, session.closedAt, session.storeId])
+
+  useEffect(() => {
+    if (!isOpen || session.status !== 'open') {
+      setPendingToday(null)
+      return
+    }
+    setLoadingPendingToday(true)
+    void fetch(`/api/caja/include-today-sales?storeId=${encodeURIComponent(session.storeId)}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error('No se pudo consultar ventas del día')
+        return res.json() as Promise<{ pending: TodaySalesBeforeOpen | null }>
+      })
+      .then((data) => setPendingToday(data.pending))
+      .catch(() => setPendingToday(null))
+      .finally(() => setLoadingPendingToday(false))
+  }, [isOpen, session.id, session.openedAt, session.status, session.storeId])
+
+  const handleIncludeTodaySales = async () => {
+    if (includingToday || closing || !pendingToday?.canInclude) return
+    setIncludingToday(true)
+    try {
+      const res = await fetch('/api/caja/include-today-sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, storeId: session.storeId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'No se pudieron incluir las ventas de hoy')
+      }
+      toast.success(
+        `Se incluyeron ${data.salesIncluded} venta(s) de hoy en este turno de caja.`
+      )
+      setPendingToday(null)
+      onSessionUpdated?.(data.session as CashSession, data.live as CashSessionLiveSummary)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudieron incluir las ventas')
+    } finally {
+      setIncludingToday(false)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -139,6 +186,35 @@ export function DayCashModal({
                     Es la misma caja del día: revisa el resumen y cierra cuando estés lista.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {!fromPreviousDay && pendingToday?.canInclude && (
+              <div className="flex flex-col gap-3 rounded-xl border border-sky-300 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-sky-800 dark:bg-sky-950/40">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sky-950 dark:text-sky-100">
+                    Hay {pendingToday.salesCount} venta(s) de hoy fuera de este turno
+                  </p>
+                  <p className="mt-0.5 text-sm text-sky-900/90 dark:text-sky-200/90">
+                    Se facturaron antes de abrir caja ({money(pendingToday.salesTotal)}). Inclúyelas
+                    para que entren en el cierre de hoy.
+                  </p>
+                  {pendingToday.invoiceNumbers.length > 0 && (
+                    <p className="mt-1 truncate text-xs text-sky-800/80 dark:text-sky-300/80">
+                      {pendingToday.invoiceNumbers.slice(0, 8).join(', ')}
+                      {pendingToday.invoiceNumbers.length > 8 ? '…' : ''}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 border-sky-400 bg-white text-sky-950 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-100 dark:hover:bg-sky-900"
+                  disabled={includingToday || closing || loadingPendingToday}
+                  onClick={() => void handleIncludeTodaySales()}
+                >
+                  {includingToday ? 'Incluyendo…' : 'Incluir facturas de hoy'}
+                </Button>
               </div>
             )}
 

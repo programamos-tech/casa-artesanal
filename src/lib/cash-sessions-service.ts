@@ -28,6 +28,20 @@ export function getBogotaDateKey(isoOrDate: string | Date = new Date()): string 
   }).format(d)
 }
 
+/** Medianoche del día calendario en Colombia (UTC-5, sin DST). */
+export function getBogotaDayStartISO(isoOrDate: string | Date = new Date()): string {
+  const key = getBogotaDateKey(isoOrDate)
+  return `${key}T00:00:00-05:00`
+}
+
+export type TodaySalesBeforeOpen = {
+  salesCount: number
+  salesTotal: number
+  invoiceNumbers: string[]
+  dayStart: string
+  canInclude: boolean
+}
+
 /** true si la caja se abrió en un día calendario anterior (Colombia). */
 export function isCashSessionFromPreviousDay(openedAt: string, now: Date = new Date()): boolean {
   return getBogotaDateKey(openedAt) < getBogotaDateKey(now)
@@ -456,6 +470,127 @@ export class CashSessionsService {
     }
 
     return { success: true, session: mapRow(data) }
+  }
+
+  /** Ventas completadas hoy antes de la hora de apertura (no entran al resumen del turno). */
+  static async getTodaySalesBeforeSessionOpen(
+    session: Pick<CashSession, 'storeId' | 'openedAt' | 'status'>
+  ): Promise<TodaySalesBeforeOpen> {
+    const dayStart = getBogotaDayStartISO(session.openedAt)
+    const empty: TodaySalesBeforeOpen = {
+      salesCount: 0,
+      salesTotal: 0,
+      invoiceNumbers: [],
+      dayStart,
+      canInclude: false,
+    }
+
+    if (session.status !== 'open') return empty
+    if (getBogotaDateKey(session.openedAt) !== getBogotaDateKey()) return empty
+    if (new Date(session.openedAt).getTime() <= new Date(dayStart).getTime()) return empty
+
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('id, invoice_number, total, payment_method, status, created_at')
+      .gte('created_at', dayStart)
+      .lt('created_at', session.openedAt)
+      .neq('status', 'cancelled')
+      .neq('status', 'draft')
+      .order('created_at', { ascending: true })
+
+    salesQuery = applySalesStoreFilter(salesQuery, session.storeId)
+    const { data, error } = await salesQuery
+    if (error) {
+      console.error('getTodaySalesBeforeSessionOpen:', error)
+      throw new Error('No se pudieron consultar las ventas del día')
+    }
+
+    const rows = data || []
+    const invoiceNumbers: string[] = []
+    let salesTotal = 0
+    let salesCount = 0
+
+    for (const sale of rows) {
+      if (String(sale.payment_method || '') === 'credit') continue
+      salesCount += 1
+      salesTotal += Number(sale.total) || 0
+      invoiceNumbers.push(String(sale.invoice_number || 'S/N'))
+    }
+
+    return {
+      salesCount,
+      salesTotal,
+      invoiceNumbers,
+      dayStart,
+      canInclude: salesCount > 0,
+    }
+  }
+
+  /**
+   * Retrocede opened_at al inicio del día (Colombia) para que ventas/abonos/egresos
+   * de hoy queden dentro del cierre del turno abierto.
+   */
+  static async includeTodaySalesInOpenSession(input: {
+    storeId?: string
+    sessionId?: string
+  }): Promise<{
+    success: boolean
+    session?: CashSession
+    previousOpenedAt?: string
+    newOpenedAt?: string
+    salesIncluded?: number
+    error?: string
+  }> {
+    const sid = input.storeId || getCashRegisterStoreId()
+    const session =
+      input.sessionId != null
+        ? await this.getSessionById(input.sessionId)
+        : await this.getOpenSession(sid)
+
+    if (!session || session.status !== 'open') {
+      return { success: false, error: 'No hay una caja abierta en esta tienda.' }
+    }
+    if (session.storeId !== sid) {
+      return { success: false, error: 'La sesión no corresponde a esta tienda.' }
+    }
+
+    const pending = await this.getTodaySalesBeforeSessionOpen(session)
+    if (!pending.canInclude) {
+      return {
+        success: false,
+        error: 'No hay ventas de hoy anteriores a la apertura que incluir en este turno.',
+      }
+    }
+
+    const noteLine = `[${new Date().toISOString()}] Apertura ajustada al inicio del día para incluir ${pending.salesCount} venta(s) facturadas antes de abrir caja.`
+    const notes = session.notes?.trim()
+      ? `${session.notes.trim()}\n${noteLine}`
+      : noteLine
+
+    const { data, error } = await supabaseAdmin
+      .from('cash_sessions')
+      .update({
+        opened_at: pending.dayStart,
+        notes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', session.id)
+      .eq('status', 'open')
+      .select('*')
+      .single()
+
+    if (error || !data) {
+      console.error('includeTodaySalesInOpenSession:', error)
+      return { success: false, error: error?.message || 'No se pudo ajustar la apertura de caja' }
+    }
+
+    return {
+      success: true,
+      session: mapRow(data),
+      previousOpenedAt: session.openedAt,
+      newOpenedAt: pending.dayStart,
+      salesIncluded: pending.salesCount,
+    }
   }
 
   /** Calcula ingresos/egresos de la ventana de la sesión (hasta ahora o closedAt). */

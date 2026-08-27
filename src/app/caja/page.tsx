@@ -296,6 +296,10 @@ export default function CajaPage() {
             closing={closing}
             onClose={() => setDayModal(false)}
             onRequestCloseCash={() => void handleCloseCash()}
+            onSessionUpdated={(session, summary) => {
+              setOpenSession(session)
+              setLive(summary)
+            }}
           />
         )}
       </div>
