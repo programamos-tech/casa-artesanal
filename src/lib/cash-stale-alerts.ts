@@ -1,10 +1,13 @@
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { type CashStaleOpenAlert } from '@/lib/cash-sessions-service'
+import {
+  type CashOpenSessionStatus,
+  type CashSessionSemaphore,
+} from '@/lib/cash-sessions-service'
 import { isOwnerRole } from '@/lib/roles'
 import { getCurrentUserStoreId } from '@/lib/store-helper'
 
-export type { CashStaleOpenAlert }
+export type { CashOpenSessionStatus, CashSessionSemaphore }
 
 export function formatCashOpenDuration(openedAt: string, now: Date = new Date()): string {
   const distance = formatDistanceToNow(new Date(openedAt), {
@@ -14,10 +17,18 @@ export function formatCashOpenDuration(openedAt: string, now: Date = new Date())
   return `desde hace ${distance}`
 }
 
-export async function loadCashStaleAlerts(options: {
+export function worstCashSessionSemaphore(
+  sessions: Pick<CashOpenSessionStatus, 'status'>[]
+): CashSessionSemaphore {
+  if (sessions.some((session) => session.status === 'red')) return 'red'
+  if (sessions.some((session) => session.status === 'orange')) return 'orange'
+  return 'green'
+}
+
+export async function loadCashSessionStatuses(options: {
   isOwner: boolean
   storeId?: string | null
-}): Promise<CashStaleOpenAlert[]> {
+}): Promise<CashOpenSessionStatus[]> {
   try {
     const params = new URLSearchParams()
     if (!options.isOwner) {
@@ -33,19 +44,21 @@ export async function loadCashStaleAlerts(options: {
 
     if (!response.ok) return []
 
-    const payload = (await response.json()) as { alerts?: CashStaleOpenAlert[] }
-    return Array.isArray(payload.alerts) ? payload.alerts : []
+    const payload = (await response.json()) as { sessions?: CashOpenSessionStatus[] }
+    return Array.isArray(payload.sessions) ? payload.sessions : []
   } catch (error) {
-    console.error('loadCashStaleAlerts:', error)
+    console.error('loadCashSessionStatuses:', error)
     return []
   }
 }
 
-export function shouldShowCashStaleAlertsForUser(user: {
-  role?: string | null
+/** @deprecated Use loadCashSessionStatuses */
+export async function loadCashStaleAlerts(options: {
+  isOwner: boolean
   storeId?: string | null
-} | null): boolean {
-  return Boolean(user?.role)
+}): Promise<CashOpenSessionStatus[]> {
+  const sessions = await loadCashSessionStatuses(options)
+  return sessions.filter((session) => session.status === 'red')
 }
 
 export function resolveCashStaleAlertScope(user: {

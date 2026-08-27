@@ -26,7 +26,7 @@ function parseUserFromCookie(request: NextRequest): SessionUser | null {
 
 /**
  * GET /api/caja/stale-alerts
- * Turnos de caja abiertos desde días anteriores (zona Colombia).
+ * Estado del semáforo de cajas abiertas (verde / naranja / rojo).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
       ? null
       : user.storeId || request.nextUrl.searchParams.get('storeId') || MAIN_STORE_ID
 
-    const alerts = await CashSessionsService.listStaleOpenSessions(scopeStoreId)
-    return NextResponse.json({ alerts, isOwner })
+    const sessions = await CashSessionsService.listOpenSessionStatuses(scopeStoreId)
+    return NextResponse.json({ sessions, isOwner })
   } catch (error) {
     console.error('[stale-alerts]', error)
     return NextResponse.json({ error: 'No se pudieron cargar las alertas' }, { status: 500 })

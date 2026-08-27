@@ -33,13 +33,41 @@ export function isCashSessionFromPreviousDay(openedAt: string, now: Date = new D
   return getBogotaDateKey(openedAt) < getBogotaDateKey(now)
 }
 
-export type CashStaleOpenAlert = {
+/** Hora local Colombia (0–23). */
+export function getBogotaHour(now: Date = new Date()): number {
+  const hour = new Intl.DateTimeFormat('en-US', {
+    timeZone: BOGOTA_TZ,
+    hour: 'numeric',
+    hour12: false,
+  }).format(now)
+  return Number(hour)
+}
+
+/** A partir de las 19:00 (Colombia) se avisa que conviene cerrar el turno del día. */
+export const CASH_CLOSING_REMINDER_HOUR = 19
+
+export type CashSessionSemaphore = 'green' | 'orange' | 'red'
+
+export function getCashSessionSemaphore(
+  openedAt: string,
+  now: Date = new Date()
+): CashSessionSemaphore {
+  if (isCashSessionFromPreviousDay(openedAt, now)) return 'red'
+  if (getBogotaHour(now) >= CASH_CLOSING_REMINDER_HOUR) return 'orange'
+  return 'green'
+}
+
+export type CashOpenSessionStatus = {
   sessionId: string
   storeId: string
   storeName: string
   openedAt: string
   openedByName: string
+  status: CashSessionSemaphore
 }
+
+/** @deprecated Use CashOpenSessionStatus */
+export type CashStaleOpenAlert = CashOpenSessionStatus
 
 export type CashCloseBlocker = {
   kind: 'draft' | 'empty_items'
@@ -223,10 +251,10 @@ export class CashSessionsService {
     return Boolean(open)
   }
 
-  /** Turnos abiertos de días anteriores (Colombia), opcionalmente filtrados por tienda. */
-  static async listStaleOpenSessions(
+  /** Turnos abiertos con semáforo (verde / naranja / rojo), opcionalmente filtrados por tienda. */
+  static async listOpenSessionStatuses(
     storeId?: string | null
-  ): Promise<CashStaleOpenAlert[]> {
+  ): Promise<CashOpenSessionStatus[]> {
     const { data, error } = await supabaseAdmin
       .from('cash_sessions')
       .select('id, store_id, opened_at, opened_by_name')
@@ -234,14 +262,12 @@ export class CashSessionsService {
       .order('opened_at', { ascending: true })
 
     if (error) {
-      console.error('listStaleOpenSessions:', error)
+      console.error('listOpenSessionStatuses:', error)
       return []
     }
 
     const scopedId = storeId || MAIN_STORE_ID
-    const staleRows = (data || []).filter((row) => {
-      if (!isCashSessionFromPreviousDay(String(row.opened_at))) return false
-
+    const openRows = (data || []).filter((row) => {
       const rowStoreId = String(row.store_id || MAIN_STORE_ID)
       if (!storeId) return true
 
@@ -251,7 +277,7 @@ export class CashSessionsService {
       )
     })
 
-    const storeIds = [...new Set(staleRows.map((row) => String(row.store_id || MAIN_STORE_ID)))]
+    const storeIds = [...new Set(openRows.map((row) => String(row.store_id || MAIN_STORE_ID)))]
     const storeNameById = new Map<string, string>()
 
     if (storeIds.length > 0) {
@@ -261,7 +287,7 @@ export class CashSessionsService {
         .in('id', storeIds)
 
       if (storesError) {
-        console.error('listStaleOpenSessions stores:', storesError)
+        console.error('listOpenSessionStatuses stores:', storesError)
       } else {
         for (const store of stores || []) {
           const id = String(store.id)
@@ -273,18 +299,32 @@ export class CashSessionsService {
       }
     }
 
-    return staleRows.map((row) => {
-      const rowStoreId = String(row.store_id || MAIN_STORE_ID)
-      return {
-        sessionId: String(row.id),
-        storeId: rowStoreId,
-        storeName:
-          storeNameById.get(rowStoreId) ||
-          (rowStoreId === MAIN_STORE_ID ? 'Tienda principal' : 'Sede'),
-        openedAt: String(row.opened_at),
-        openedByName: String(row.opened_by_name || ''),
-      }
-    })
+    const statusRank: Record<CashSessionSemaphore, number> = { red: 0, orange: 1, green: 2 }
+
+    return openRows
+      .map((row) => {
+        const rowStoreId = String(row.store_id || MAIN_STORE_ID)
+        const openedAt = String(row.opened_at)
+        return {
+          sessionId: String(row.id),
+          storeId: rowStoreId,
+          storeName:
+            storeNameById.get(rowStoreId) ||
+            (rowStoreId === MAIN_STORE_ID ? 'Tienda principal' : 'Sede'),
+          openedAt,
+          openedByName: String(row.opened_by_name || ''),
+          status: getCashSessionSemaphore(openedAt),
+        }
+      })
+      .sort((a, b) => statusRank[a.status] - statusRank[b.status])
+  }
+
+  /** @deprecated Use listOpenSessionStatuses and filter status === 'red' */
+  static async listStaleOpenSessions(
+    storeId?: string | null
+  ): Promise<CashOpenSessionStatus[]> {
+    const sessions = await this.listOpenSessionStatuses(storeId)
+    return sessions.filter((session) => session.status === 'red')
   }
 
   /**
