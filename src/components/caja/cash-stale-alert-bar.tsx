@@ -71,7 +71,7 @@ export function CashStaleAlertBar() {
       role="status"
       aria-live="polite"
       className={cn(
-        'fixed left-0 right-0 z-[46] border-t border-red-800/30 bg-red-600 text-white shadow-[0_-4px_20px_rgba(220,38,38,0.35)]',
+        'fixed left-0 right-0 z-[55] border-t border-red-800/30 bg-red-600 text-white shadow-[0_-4px_20px_rgba(220,38,38,0.35)]',
         'bottom-11 md:bottom-12 xl:bottom-0'
       )}
     >

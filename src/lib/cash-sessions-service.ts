@@ -229,7 +229,7 @@ export class CashSessionsService {
   ): Promise<CashStaleOpenAlert[]> {
     const { data, error } = await supabaseAdmin
       .from('cash_sessions')
-      .select('id, store_id, opened_at, opened_by_name, stores(name, city)')
+      .select('id, store_id, opened_at, opened_by_name')
       .eq('status', 'open')
       .order('opened_at', { ascending: true })
 
@@ -238,42 +238,53 @@ export class CashSessionsService {
       return []
     }
 
-    const alerts: CashStaleOpenAlert[] = []
-    for (const row of data || []) {
-      if (!isCashSessionFromPreviousDay(String(row.opened_at))) continue
+    const scopedId = storeId || MAIN_STORE_ID
+    const staleRows = (data || []).filter((row) => {
+      if (!isCashSessionFromPreviousDay(String(row.opened_at))) return false
 
       const rowStoreId = String(row.store_id || MAIN_STORE_ID)
-      if (storeId) {
-        const scopedId = storeId || MAIN_STORE_ID
-        const matchesScope =
-          rowStoreId === scopedId ||
-          (scopedId === MAIN_STORE_ID && (row.store_id == null || rowStoreId === MAIN_STORE_ID))
-        if (!matchesScope) continue
+      if (!storeId) return true
+
+      return (
+        rowStoreId === scopedId ||
+        (scopedId === MAIN_STORE_ID && (row.store_id == null || rowStoreId === MAIN_STORE_ID))
+      )
+    })
+
+    const storeIds = [...new Set(staleRows.map((row) => String(row.store_id || MAIN_STORE_ID)))]
+    const storeNameById = new Map<string, string>()
+
+    if (storeIds.length > 0) {
+      const { data: stores, error: storesError } = await supabaseAdmin
+        .from('stores')
+        .select('id, name, city')
+        .in('id', storeIds)
+
+      if (storesError) {
+        console.error('listStaleOpenSessions stores:', storesError)
+      } else {
+        for (const store of stores || []) {
+          const id = String(store.id)
+          storeNameById.set(
+            id,
+            store.city ? `${store.name} — ${store.city}` : String(store.name)
+          )
+        }
       }
-
-      const storeRaw = row.stores as
-        | { name?: string; city?: string | null }
-        | { name?: string; city?: string | null }[]
-        | null
-      const store = Array.isArray(storeRaw) ? storeRaw[0] : storeRaw
-      const storeName = store?.name
-        ? store.city
-          ? `${store.name} — ${store.city}`
-          : store.name
-        : rowStoreId === MAIN_STORE_ID
-          ? 'Tienda principal'
-          : 'Sede'
-
-      alerts.push({
-        sessionId: String(row.id),
-        storeId: rowStoreId,
-        storeName,
-        openedAt: String(row.opened_at),
-        openedByName: String(row.opened_by_name || ''),
-      })
     }
 
-    return alerts
+    return staleRows.map((row) => {
+      const rowStoreId = String(row.store_id || MAIN_STORE_ID)
+      return {
+        sessionId: String(row.id),
+        storeId: rowStoreId,
+        storeName:
+          storeNameById.get(rowStoreId) ||
+          (rowStoreId === MAIN_STORE_ID ? 'Tienda principal' : 'Sede'),
+        openedAt: String(row.opened_at),
+        openedByName: String(row.opened_by_name || ''),
+      }
+    })
   }
 
   /**
