@@ -215,7 +215,7 @@ export function AppTopNav() {
 
   return (
     <header className="sticky top-0 z-30 h-14 shrink-0 border-b border-zinc-200 bg-white dark:border-white/[0.07] dark:bg-zinc-950 xl:h-16">
-      <div className="relative flex h-14 w-full items-center gap-2 px-3 md:gap-4 md:px-5 xl:h-16 2xl:px-6">
+      <div className="relative flex h-14 w-full items-center gap-2 px-[13px] md:gap-4 md:px-[25px] xl:h-16 xl:px-[33px] 2xl:px-[41px]">
         <Link
           href="/dashboard"
           aria-label={APP_NAME}
