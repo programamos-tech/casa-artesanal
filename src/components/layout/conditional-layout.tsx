@@ -11,7 +11,6 @@ import { TransferAlertModal } from '@/components/layout/transfer-alert-modal'
 import { AppTopNav } from '@/components/layout/app-top-nav'
 import { OwnerAssistantBubble } from '@/components/assistant/owner-assistant-bubble'
 import { CashOperationGateProvider } from '@/components/caja/cash-operation-gate-provider'
-import { CashStaleAlertBar } from '@/components/caja/cash-stale-alert-bar'
 import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
 interface ConditionalLayoutProps {
@@ -56,9 +55,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
             className={cn(
               'min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain bg-white dark:bg-zinc-950',
               showMobileBottomNavInset &&
-                'pb-[calc(var(--cash-stale-alert-h,0px)+max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom))))] scroll-pb-[calc(var(--cash-stale-alert-h,0px)+max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom))))] xl:pb-[var(--cash-stale-alert-h,0px)] xl:scroll-pb-[var(--cash-stale-alert-h,0px)]',
-              !showMobileBottomNavInset &&
-                'pb-[var(--cash-stale-alert-h,0px)] scroll-pb-[var(--cash-stale-alert-h,0px)]',
+                'pb-[max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom)))] scroll-pb-[max(3.5rem,calc(2.875rem+env(safe-area-inset-bottom)))] xl:pb-0 xl:scroll-pb-0',
               hideMainScrollbar && 'scrollbar-hide'
             )}
           >
@@ -72,7 +69,6 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
       <ReleaseNotesModal />
       {isTransfersAndReceptionsEnabled() ? <TransferAlertModal /> : null}
       <OwnerAssistantBubble />
-      <CashStaleAlertBar />
     </CashOperationGateProvider>
     </ProtectedRoute>
   )

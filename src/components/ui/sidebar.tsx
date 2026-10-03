@@ -97,10 +97,17 @@ function isPathActive(pathname: string | null, href: string): boolean {
 }
 
 /** "La Casa Artesanal Parque" → "Tienda El Parque"; "La Casa Artesanal 2 Piso" → "Tienda 2 Piso". */
-function storeLabel(name: string): string {
+export function storeLabel(name: string): string {
   const short = name.replace(/^\s*la\s+casa\s+artesanal\s*/i, '').trim()
   if (!short) return name
   return `Tienda ${/^parque$/i.test(short) ? 'El Parque' : short}`
+}
+
+/** Detalles y formularios (/sales/new, /sales/[id]…) pertenecen a la tienda anterior: al cambiar de tienda se vuelve al listado del módulo. */
+export function storeSwitchHref(pathname: string | null, store: Pick<Store, 'name'>): string {
+  const moduleHref =
+    navigation.flatMap((g) => g.items).find((item) => isPathActive(pathname, item.href))?.href ?? '/dashboard'
+  return `${moduleHref}?store=${storeSlug(store.name)}`
 }
 
 function storeSlug(name: string): string {
@@ -236,10 +243,7 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     if (!store || !switchStore) return
     switchStore(store.id)
     setIsMobileMenuOpen(false)
-    // Detalles y formularios (/sales/new, /sales/[id]…) pertenecen a la tienda anterior: se vuelve al listado del módulo.
-    const moduleHref =
-      navigation.flatMap((g) => g.items).find((item) => isPathActive(pathname, item.href))?.href ?? '/dashboard'
-    router.replace(`${moduleHref}?store=${storeSlug(store.name)}`, { scroll: false })
+    router.replace(storeSwitchHref(pathname, store), { scroll: false })
   }
 
   const activeStoreId = currentStore?.id ?? MAIN_STORE_ID

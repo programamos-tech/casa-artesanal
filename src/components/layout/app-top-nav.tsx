@@ -7,7 +7,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Activity,
   Bell,
+  Check,
   ChevronDown,
+  Store as StoreIcon,
   Truck,
   CircleHelp,
   Clock,
@@ -29,6 +31,11 @@ import { useTheme } from '@/components/theme-provider'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { GlobalSearchService, type GlobalSearchHit } from '@/lib/global-search-service'
 import { GlobalSearchDropdown } from '@/components/layout/global-search-dropdown'
+import { CashStatusPill } from '@/components/caja/cash-status-pill'
+import { storeLabel, storeSwitchHref } from '@/components/ui/sidebar'
+import { canAccessAllStores } from '@/lib/store-helper'
+import { StoresService } from '@/lib/stores-service'
+import type { Store } from '@/types/store'
 import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
 import {
   loadTransferAlerts,
@@ -50,6 +57,39 @@ const menuItem =
 
 const menuIcon = 'h-4 w-4 shrink-0 text-zinc-400 dark:text-white/40'
 
+const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
+function StoreMenuItems({
+  stores,
+  activeStoreId,
+  onSelect,
+}: {
+  stores: Store[]
+  activeStoreId: string
+  onSelect: (store: Store) => void
+}) {
+  return (
+    <>
+      {stores.map((store) => {
+        const active = store.id === activeStoreId
+        return (
+          <button
+            key={store.id}
+            type="button"
+            onClick={() => onSelect(store)}
+            className={cn(menuItem, active && 'font-semibold text-zinc-900 dark:text-white')}
+            aria-current={active ? 'true' : undefined}
+          >
+            <StoreIcon className={menuIcon} strokeWidth={1.5} />
+            <span className="min-w-0 flex-1 truncate">{storeLabel(store.name)}</span>
+            {active ? <Check className="h-3.5 w-3.5 shrink-0 text-zinc-900 dark:text-white" strokeWidth={2} /> : null}
+          </button>
+        )
+      })}
+    </>
+  )
+}
+
 function TopNavThemeButton({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -70,7 +110,7 @@ function TopNavThemeButton({ className }: { className?: string }) {
 export function AppTopNav() {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, switchStore } = useAuth()
   const { canView, canCreate } = usePermissions()
   const { ensureCashReady } = useCashOperationGate()
   const [query, setQuery] = useState('')
@@ -88,7 +128,40 @@ export function AppTopNav() {
   const plusRef = useRef<HTMLDivElement>(null)
   const userRef = useRef<HTMLDivElement>(null)
   const bellRef = useRef<HTMLDivElement>(null)
+  const storeRef = useRef<HTMLDivElement>(null)
   const searchSeqRef = useRef(0)
+  const [stores, setStores] = useState<Store[]>([])
+  const [storeOpen, setStoreOpen] = useState(false)
+  const canSwitchStores = canAccessAllStores(user)
+  const showStoreSwitcher = canSwitchStores && stores.length > 1 && !pathname?.startsWith('/fabrica')
+  const activeStoreId = user?.storeId || MAIN_STORE_ID
+  const activeStore = stores.find((store) => store.id === activeStoreId)
+
+  useEffect(() => {
+    if (!canSwitchStores) {
+      setStores([])
+      return
+    }
+    let cancelled = false
+    StoresService.getAllStores()
+      .then((list) => {
+        if (!cancelled) setStores(list)
+      })
+      .catch(() => {
+        if (!cancelled) setStores([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canSwitchStores])
+
+  const handleStoreSelect = (store: Store) => {
+    setStoreOpen(false)
+    setUserOpen(false)
+    if (store.id === activeStoreId) return
+    switchStore(store.id)
+    router.replace(storeSwitchHref(pathname, store), { scroll: false })
+  }
 
   // Campana de traslados/recepciones (módulo apagado → no mostrar)
   const showBell = Boolean(user) && isTransfersAndReceptionsEnabled()
@@ -148,6 +221,7 @@ export function AppTopNav() {
       if (plusRef.current && !plusRef.current.contains(t)) setPlusOpen(false)
       if (userRef.current && !userRef.current.contains(t)) setUserOpen(false)
       if (bellRef.current && !bellRef.current.contains(t)) setBellOpen(false)
+      if (storeRef.current && !storeRef.current.contains(t)) setStoreOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
@@ -224,6 +298,31 @@ export function AppTopNav() {
           <Image src={APP_SIDEBAR_LOGO} alt={APP_NAME} width={480} height={300} className="h-8 w-auto" priority unoptimized />
         </Link>
 
+        {showStoreSwitcher ? (
+          <div ref={storeRef} className="relative hidden shrink-0 md:block xl:hidden">
+            <button
+              type="button"
+              onClick={() => setStoreOpen((v) => !v)}
+              className="casa-artesanal-preserve-surface inline-flex h-8 items-center gap-2 rounded-md border border-zinc-200 px-2.5 text-[13px] font-medium text-zinc-800 transition-colors hover:bg-zinc-50 dark:border-white/[0.1] dark:text-white/85 dark:hover:bg-white/[0.05]"
+              aria-label="Cambiar de tienda"
+              aria-expanded={storeOpen}
+              aria-haspopup="menu"
+            >
+              <StoreIcon className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} />
+              <span className="max-w-[10rem] truncate">{activeStore ? storeLabel(activeStore.name) : 'Tienda'}</span>
+              <ChevronDown
+                className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', storeOpen && 'rotate-180')}
+                strokeWidth={2}
+              />
+            </button>
+            {storeOpen && (
+              <div className={cn(menuPanel, 'left-0 top-[calc(100%+6px)] min-w-[13rem]')}>
+                <StoreMenuItems stores={stores} activeStoreId={activeStoreId} onSelect={handleStoreSelect} />
+              </div>
+            )}
+          </div>
+        ) : null}
+
         <div
           ref={searchRef}
           className="relative min-w-0 max-w-xs flex-1 xl:max-w-sm"
@@ -274,6 +373,7 @@ export function AppTopNav() {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
+          <CashStatusPill />
           {quickActions.length > 0 && (
             <div ref={plusRef} className="relative mx-1 shrink-0 md:ml-0 md:mr-2">
               <button
@@ -322,7 +422,7 @@ export function AppTopNav() {
           <TopNavThemeButton />
           <button
             type="button"
-            className={cn(iconBtn, 'hidden md:flex')}
+            className={cn(iconBtn, 'hidden lg:flex')}
             title="Novedades y ayuda"
             aria-label="Novedades y ayuda"
             onClick={() => window.dispatchEvent(new CustomEvent('casa-artesanal:open-release-notes'))}
@@ -330,7 +430,7 @@ export function AppTopNav() {
             <CircleHelp className="h-4 w-4" strokeWidth={1.5} />
           </button>
           {canView('logs') ? (
-            <Link href="/logs" className={cn(iconBtn, 'hidden md:flex')} title="Actividades" aria-label="Actividades">
+            <Link href="/logs" className={cn(iconBtn, 'hidden lg:flex')} title="Actividades" aria-label="Actividades">
               <Activity className="h-4 w-4" strokeWidth={1.5} />
             </Link>
           ) : null}
@@ -421,7 +521,7 @@ export function AppTopNav() {
             </div>
           ) : null}
 
-          <span className="mx-2 hidden h-5 w-px bg-zinc-200 dark:bg-white/[0.1] md:block" aria-hidden />
+          <span className="mx-2 hidden h-5 w-px bg-zinc-200 dark:bg-white/[0.1] lg:block" aria-hidden />
 
           <div ref={userRef} className="relative shrink-0">
             <button
@@ -448,6 +548,14 @@ export function AppTopNav() {
                     <p className="truncate text-xs text-zinc-500 dark:text-white/50">{user.email}</p>
                   ) : null}
                 </div>
+                {showStoreSwitcher ? (
+                  <div className="border-b border-zinc-100 py-1 dark:border-white/[0.06] md:hidden">
+                    <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-white/40">
+                      Tienda
+                    </p>
+                    <StoreMenuItems stores={stores} activeStoreId={activeStoreId} onSelect={handleStoreSelect} />
+                  </div>
+                ) : null}
                 <div className="py-1">
                   <Link href="/profile" onClick={() => setUserOpen(false)} className={menuItem}>
                     <UserCircle className={menuIcon} strokeWidth={1.5} />
