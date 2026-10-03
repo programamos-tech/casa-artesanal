@@ -511,7 +511,7 @@ export default function ClientCreditsPage() {
             ) : null}
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
             <button type="button" onClick={() => router.push('/payments')} className={detailGhostClass}>
               <ArrowLeft strokeWidth={1.75} />
               Volver

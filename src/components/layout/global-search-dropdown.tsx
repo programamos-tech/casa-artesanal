@@ -87,7 +87,7 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
   return (
     <div
       className={cn(
-        'casa-artesanal-preserve-surface absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(26rem,70vh)] overflow-y-auto rounded-lg border border-zinc-200 bg-white py-1.5 shadow-lg dark:border-white/[0.08] dark:bg-[#111113] dark:shadow-black/50',
+        'casa-artesanal-preserve-surface fixed inset-x-3 top-[calc(3.5rem+6px)] z-50 md:absolute md:inset-x-auto md:left-0 md:top-[calc(100%+6px)] md:w-[min(28rem,calc(100vw-2rem))] max-h-[min(26rem,70vh)] overflow-y-auto rounded-lg border border-zinc-200 bg-white py-1.5 shadow-lg dark:border-white/[0.08] dark:bg-[#111113] dark:shadow-black/50',
         className
       )}
     >

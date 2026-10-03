@@ -171,13 +171,13 @@ export function LogsTable({
 
   return (
     <div>
-      <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-white/[0.07] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-white/[0.07] sm:items-center sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">Actividades</h1>
           <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">Historial de operaciones del sistema.</p>
         </div>
         {onRefresh && (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center justify-end gap-1.5">
             <button
               type="button"
               onClick={onRefresh}

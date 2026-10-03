@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -36,6 +37,7 @@ import {
 } from '@/lib/transfer-alerts'
 import { cn } from '@/lib/utils'
 import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
+import { APP_NAME, APP_SIDEBAR_LOGO } from '@/config/app-meta'
 
 const iconBtn =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10 dark:text-white/45 dark:hover:text-white dark:focus-visible:ring-white/15'
@@ -212,16 +214,27 @@ export function AppTopNav() {
   const displayName = user?.name?.trim() || 'Usuario'
 
   return (
-    <header className="sticky top-0 z-30 hidden h-16 shrink-0 border-b border-zinc-200 bg-white xl:block dark:border-white/[0.07] dark:bg-zinc-950">
-      <div className="flex h-16 w-full items-center gap-4 px-5 2xl:px-6">
-        <div ref={searchRef} className="relative min-w-0 max-w-xl flex-1">
+    <header className="sticky top-0 z-30 h-14 shrink-0 border-b border-zinc-200 bg-white dark:border-white/[0.07] dark:bg-zinc-950 xl:h-16">
+      <div className="relative flex h-14 w-full items-center gap-2 px-3 md:gap-4 md:px-5 xl:h-16 2xl:px-6">
+        <Link
+          href="/dashboard"
+          aria-label={APP_NAME}
+          className="shrink-0 transition-opacity hover:opacity-80 xl:hidden"
+        >
+          <Image src={APP_SIDEBAR_LOGO} alt={APP_NAME} width={480} height={300} className="h-8 w-auto" priority unoptimized />
+        </Link>
+
+        <div
+          ref={searchRef}
+          className="relative min-w-0 max-w-xs flex-1 xl:max-w-sm"
+        >
           <div
             className={cn(
-              'casa-artesanal-preserve-surface flex h-9 w-full items-center gap-2.5 rounded-lg border border-zinc-200 px-3 transition-colors',
+              'casa-artesanal-preserve-surface flex h-8 w-full items-center gap-2 rounded-md border border-zinc-200 px-2.5 transition-colors',
               'focus-within:border-zinc-300 dark:border-white/[0.1] dark:focus-within:border-white/20'
             )}
           >
-            <Search className="h-4 w-4 shrink-0 text-zinc-400 dark:text-white/35" strokeWidth={1.5} aria-hidden />
+            <Search className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/35" strokeWidth={1.75} aria-hidden />
             <input
               type="search"
               value={query}
@@ -229,8 +242,8 @@ export function AppTopNav() {
               onFocus={() => {
                 if (query.trim().length >= minSearchLength(query)) setSearchOpen(true)
               }}
-              placeholder="Buscar ref., productos, clientes, facturas…"
-              className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
+              placeholder="Buscar…"
+              className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
               aria-label="Buscar en el sistema"
               autoComplete="off"
             />
@@ -260,20 +273,20 @@ export function AppTopNav() {
           )}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
           {quickActions.length > 0 && (
-            <div ref={plusRef} className="relative mr-2 shrink-0">
+            <div ref={plusRef} className="relative mx-1 shrink-0 md:ml-0 md:mr-2">
               <button
                 type="button"
                 onClick={() => setPlusOpen(v => !v)}
-                className="casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-3 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="casa-artesanal-preserve-surface inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md bg-zinc-900 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 md:w-auto md:px-3"
                 aria-label="Acciones rápidas"
                 aria-expanded={plusOpen}
               >
-                <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-                Nuevo
+                <Plus className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={2} />
+                <span className="hidden md:inline">Nuevo</span>
                 <ChevronDown
-                  className={cn('h-3.5 w-3.5 opacity-60 transition-transform', plusOpen && 'rotate-180')}
+                  className={cn('hidden h-3.5 w-3.5 opacity-60 transition-transform md:block', plusOpen && 'rotate-180')}
                   strokeWidth={2}
                 />
               </button>
@@ -309,7 +322,7 @@ export function AppTopNav() {
           <TopNavThemeButton />
           <button
             type="button"
-            className={iconBtn}
+            className={cn(iconBtn, 'hidden md:flex')}
             title="Novedades y ayuda"
             aria-label="Novedades y ayuda"
             onClick={() => window.dispatchEvent(new CustomEvent('casa-artesanal:open-release-notes'))}
@@ -317,7 +330,7 @@ export function AppTopNav() {
             <CircleHelp className="h-4 w-4" strokeWidth={1.5} />
           </button>
           {canView('logs') ? (
-            <Link href="/logs" className={iconBtn} title="Actividades" aria-label="Actividades">
+            <Link href="/logs" className={cn(iconBtn, 'hidden md:flex')} title="Actividades" aria-label="Actividades">
               <Activity className="h-4 w-4" strokeWidth={1.5} />
             </Link>
           ) : null}
@@ -408,7 +421,7 @@ export function AppTopNav() {
             </div>
           ) : null}
 
-          <span className="mx-2 h-5 w-px bg-zinc-200 dark:bg-white/[0.1]" aria-hidden />
+          <span className="mx-2 hidden h-5 w-px bg-zinc-200 dark:bg-white/[0.1] md:block" aria-hidden />
 
           <div ref={userRef} className="relative shrink-0">
             <button
@@ -419,11 +432,11 @@ export function AppTopNav() {
               aria-haspopup="menu"
             >
               <UserAvatar name={displayName} seed={user?.id} size="xs" />
-              <span className="max-w-[12rem] truncate text-[13px] font-medium text-zinc-900 dark:text-white">
+              <span className="hidden max-w-[12rem] truncate text-[13px] font-medium text-zinc-900 dark:text-white lg:inline">
                 {displayName}
               </span>
               <ChevronDown
-                className={cn('h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform dark:text-white/40', userOpen && 'rotate-180')}
+                className={cn('hidden h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform dark:text-white/40 md:block', userOpen && 'rotate-180')}
                 strokeWidth={2}
               />
             </button>

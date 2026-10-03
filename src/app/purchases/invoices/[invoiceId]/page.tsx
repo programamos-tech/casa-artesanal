@@ -122,7 +122,7 @@ export default function SupplierInvoiceDetailPage() {
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                 <Link href={supplierHref} className={detailGhostClass}>
                   <ArrowLeft strokeWidth={1.75} />
                   Volver

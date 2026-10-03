@@ -1099,7 +1099,7 @@ export function FabricaDemo({ screen, orderCode }: { screen: FabricaScreen; orde
           </div>
           <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">{head.subtitle}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center justify-end gap-2">
           {screen === 'detalle' ? (
             <Link href="/fabrica/ordenes" className={ghostBtnClass}>
               <ArrowLeft />

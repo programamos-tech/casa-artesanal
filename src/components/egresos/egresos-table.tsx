@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { Plus, Search, RefreshCw, Pencil, Ban, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Egreso, EgresoKind } from '@/types'
 import {
@@ -204,20 +203,14 @@ export function EgresosTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:items-center sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">Egresos</h1>
           <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-            Gastos de la caja del turno o de cuenta (arriendo, nómina, servicios).{' '}
-            <Link
-              href="/resultado-mensual"
-              className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-            >
-              Ver resultado del mes
-            </Link>
+            Gastos de la caja del turno o de cuenta (arriendo, nómina, servicios).
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center justify-end gap-1.5">
           {onRefresh && (
             <button
               type="button"

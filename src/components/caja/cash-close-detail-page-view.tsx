@@ -191,7 +191,7 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
   ]
 
   return (
-    <div className="py-4 max-xl:pb-1 md:py-6 lg:flex lg:h-[calc(100dvh-7.5rem-var(--cash-stale-alert-h,0px))] lg:min-h-[34rem] lg:flex-col xl:h-[calc(100dvh-4rem-var(--cash-stale-alert-h,0px))]">
+    <div className="py-4 max-xl:pb-1 md:py-6 lg:flex lg:h-[calc(100dvh-11rem-var(--cash-stale-alert-h,0px))] lg:min-h-[34rem] lg:flex-col xl:h-[calc(100dvh-4rem-var(--cash-stale-alert-h,0px))]">
       <div className="flex shrink-0 flex-col gap-3 border-b border-zinc-200 pb-4 dark:border-white/[0.07] sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">
@@ -222,7 +222,7 @@ export function CashCloseDetailPageView({ session, report }: CashCloseDetailPage
             </p>
           ) : null}
         </div>
-        <Link href="/caja" className={detailGhostClass}>
+        <Link href="/caja" className={cn(detailGhostClass, 'self-end sm:self-auto')}>
           <ArrowLeft strokeWidth={1.75} />
           Volver
         </Link>

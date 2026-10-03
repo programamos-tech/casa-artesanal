@@ -301,9 +301,9 @@ export function UserDetailView({ userId, variant = 'admin', actions, extra }: Us
           </div>
         </div>
         {isSelf ? (
-          actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null
+          actions ? <div className="flex shrink-0 items-center justify-end gap-1.5">{actions}</div> : null
         ) : (
-          <button type="button" onClick={() => router.push('/roles')} className={detailGhostClass}>
+          <button type="button" onClick={() => router.push('/roles')} className={cn(detailGhostClass, 'self-end sm:self-auto')}>
             <ArrowLeft strokeWidth={1.75} />
             Volver
           </button>
