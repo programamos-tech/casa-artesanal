@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import { LogsTable } from '@/components/logs/logs-table'
 import { LogDetailModal } from '@/components/logs/log-detail-modal'
 import { LogsService, LogEntry } from '@/lib/logs-service'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function LogsPage() {
+  const { user } = useAuth()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null)
@@ -19,7 +21,7 @@ export default function LogsPage() {
   // Cargar logs iniciales al montar el componente y cuando cambie el filtro
   useEffect(() => {
     loadLogs(1)
-  }, [moduleFilter])
+  }, [moduleFilter, user?.storeId])
 
   const loadLogs = async (page: number = 1) => {
     setLoading(true)
@@ -91,9 +93,9 @@ export default function LogsPage() {
       JSON.stringify(log.details).toLowerCase().includes(searchTerm.toLowerCase())
   })
 
-  if (loading) {
+  if (loading && logs.length === 0) {
     return (
-      <div className="bg-zinc-50 py-4 dark:bg-zinc-950 max-xl:pb-1 md:py-6">
+      <div className="py-4 max-xl:pb-1 md:py-6">
         <div className="flex h-64 items-center justify-center">
           <div
             className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300"
@@ -105,7 +107,7 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="bg-zinc-50 py-4 dark:bg-zinc-950 max-xl:pb-1 md:py-6">
+    <div className="py-4 max-xl:pb-1 md:py-6">
       <LogsTable
         logs={filteredLogs as any}
         searchTerm={searchTerm}
@@ -120,13 +122,6 @@ export default function LogsPage() {
         onPageChange={handlePageChange}
         onLogClick={handleLogClick}
       />
-
-      {/* Mensaje cuando no hay más logs */}
-      {!hasMore && logs.length > 0 && (
-        <div className="flex items-center justify-center py-8">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No hay más actividades para mostrar</p>
-        </div>
-      )}
 
       <LogDetailModal
         isOpen={isDetailModalOpen}

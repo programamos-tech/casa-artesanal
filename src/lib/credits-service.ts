@@ -227,6 +227,47 @@ export class CreditsService {
   }
 
   // Obtener todos los créditos
+  static async getClientCreditBalances(): Promise<
+    Array<{ clientId: string; pending: number; hasCredit: boolean }>
+  > {
+    const storeId = getCurrentUserStoreId()
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+    const pageSize = 1000
+    const rows: Array<{ client_id: string; pending_amount: number | null; total_amount: number | null; status: string | null }> = []
+
+    for (let from = 0; ; from += pageSize) {
+      let query = supabase
+        .from('credits')
+        .select('client_id, pending_amount, total_amount, status')
+        .range(from, from + pageSize - 1)
+
+      if (!storeId || storeId === MAIN_STORE_ID) {
+        query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
+      } else {
+        query = query.eq('store_id', storeId)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      rows.push(...(data || []))
+      if (!data || data.length < pageSize) break
+    }
+
+    const grouped = new Map<string, { pending: number; hasCredit: boolean }>()
+    for (const row of rows) {
+      const pendingAmount = Number(row.pending_amount) || 0
+      const totalAmount = Number(row.total_amount) || 0
+      const cancelled = row.status === 'cancelled' || (totalAmount === 0 && pendingAmount === 0)
+      if (cancelled || !row.client_id) continue
+      const current = grouped.get(row.client_id) ?? { pending: 0, hasCredit: false }
+      current.hasCredit = true
+      if (pendingAmount > 0) current.pending += pendingAmount
+      grouped.set(row.client_id, current)
+    }
+
+    return [...grouped.entries()].map(([clientId, value]) => ({ clientId, ...value }))
+  }
+
   static async getAllCredits(): Promise<Credit[]> {
     try {
       const user = getCurrentUser()
@@ -876,6 +917,44 @@ export class CreditsService {
       storeId: firstRecord.store_id || credit.storeId || undefined,
       createdAt: firstRecord.created_at
     }
+  }
+
+  static async getPaymentRecordsByClientId(clientId: string): Promise<
+    Array<{ id: string; amount: number; paymentDate: string }>
+  > {
+    const storeId = getCurrentUserStoreId()
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
+    const { data: payments, error: paymentsError } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('client_id', clientId)
+
+    if (paymentsError) throw paymentsError
+    const paymentIds = (payments || []).map(payment => payment.id)
+    if (paymentIds.length === 0) return []
+
+    let query = supabase
+      .from('payment_records')
+      .select('id, amount, payment_date, status')
+      .in('payment_id', paymentIds)
+
+    if (!storeId || storeId === MAIN_STORE_ID) {
+      query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
+    } else {
+      query = query.eq('store_id', storeId)
+    }
+
+    const { data, error } = await query.order('payment_date', { ascending: false })
+    if (error) throw error
+
+    return (data || [])
+      .filter(row => row.status !== 'cancelled')
+      .map(row => ({
+        id: row.id,
+        amount: Number(row.amount) || 0,
+        paymentDate: row.payment_date,
+      }))
   }
 
   // Obtener historial de pagos de un crédito

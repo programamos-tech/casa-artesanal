@@ -15,49 +15,37 @@ import { cn } from '@/lib/utils'
 
 const KIND_META: Record<
   GlobalSearchKind,
-  { section: string; tag: string; icon: LucideIcon; sectionClass: string; tagClass: string }
+  { section: string; tag: string; icon: LucideIcon }
 > = {
   client: {
     section: 'Clientes',
     tag: 'Cliente',
     icon: Users,
-    sectionClass: 'text-blue-600 dark:text-blue-400',
-    tagClass: 'text-blue-600 dark:text-blue-400',
   },
   product: {
     section: 'Productos',
     tag: 'Producto',
     icon: Package,
-    sectionClass: 'text-emerald-600 dark:text-emerald-400',
-    tagClass: 'text-emerald-600 dark:text-emerald-400',
   },
   sale: {
     section: 'Ventas',
     tag: 'Venta',
     icon: Receipt,
-    sectionClass: 'text-violet-600 dark:text-violet-400',
-    tagClass: 'text-violet-600 dark:text-violet-400',
   },
   credit: {
     section: 'Créditos',
     tag: 'Crédito',
     icon: CreditCard,
-    sectionClass: 'text-orange-600 dark:text-orange-400',
-    tagClass: 'text-orange-600 dark:text-orange-400',
   },
   supplier_invoice: {
     section: 'Facturas proveedor',
     tag: 'Factura',
     icon: FileText,
-    sectionClass: 'text-fuchsia-600 dark:text-fuchsia-400',
-    tagClass: 'text-fuchsia-600 dark:text-fuchsia-400',
   },
   transfer: {
     section: 'Traslados',
     tag: 'Traslado',
     icon: Truck,
-    sectionClass: 'text-teal-600 dark:text-teal-400',
-    tagClass: 'text-teal-600 dark:text-teal-400',
   },
 }
 
@@ -99,24 +87,19 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
   return (
     <div
       className={cn(
-        'absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-[min(24rem,70vh)] overflow-y-auto rounded-xl border border-zinc-200/90 bg-white py-2 shadow-[0_8px_30px_rgba(0,0,0,0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40',
+        'casa-artesanal-preserve-surface absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(26rem,70vh)] overflow-y-auto rounded-lg border border-zinc-200 bg-white py-1.5 shadow-lg dark:border-white/[0.08] dark:bg-[#111113] dark:shadow-black/50',
         className
       )}
     >
       {searching ? (
-        <p className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">Buscando…</p>
+        <p className="px-3.5 py-3 text-[13px] text-zinc-500 dark:text-white/50">Buscando…</p>
       ) : hits.length === 0 && query.trim().length >= minLen ? (
-        <p className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">Sin resultados</p>
+        <p className="px-3.5 py-3 text-[13px] text-zinc-500 dark:text-white/50">Sin resultados</p>
       ) : (
         grouped.map((group, gi) => (
           <div key={group.kind}>
-            {gi > 0 ? <div className="mx-3 my-1 border-t border-zinc-100 dark:border-zinc-800" /> : null}
-            <p
-              className={cn(
-                'px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide',
-                group.meta.sectionClass
-              )}
-            >
+            {gi > 0 ? <div className="my-1 border-t border-zinc-100 dark:border-white/[0.06]" /> : null}
+            <p className="px-3.5 pb-1 pt-2 text-[11px] font-medium text-zinc-400 dark:text-white/40">
               {group.meta.section}
             </p>
             <ul>
@@ -129,44 +112,33 @@ export function GlobalSearchDropdown({ hits, searching, query, onSelect, classNa
                     <button
                       type="button"
                       onClick={() => onSelect(hit)}
-                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
+                      className="casa-artesanal-preserve-surface flex w-full items-center gap-3 px-3.5 py-2 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-white/[0.05]"
                     >
-                      <span
-                        className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-50 dark:bg-zinc-800/80',
-                          group.meta.sectionClass
-                        )}
-                      >
-                        <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
-                      </span>
+                      <Icon
+                        className="h-4 w-4 shrink-0 text-zinc-400 dark:text-white/40"
+                        strokeWidth={1.5}
+                        aria-hidden
+                      />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <span className="block truncate text-[13px] font-medium text-zinc-900 dark:text-white">
                           {hit.title}
                         </span>
                         {productParts ? (
                           <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                            <span className="truncate text-xs text-zinc-500 dark:text-white/50">
                               {productParts.meta}
                             </span>
                             {productParts.stock ? (
-                              <span className="inline-flex shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              <span className="shrink-0 text-xs font-medium tabular-nums text-zinc-700 dark:text-white/75">
                                 {productParts.stock}
                               </span>
                             ) : null}
                           </span>
                         ) : (
-                          <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                          <span className="block truncate text-xs text-zinc-500 dark:text-white/50">
                             {hit.subtitle}
                           </span>
                         )}
-                      </span>
-                      <span
-                        className={cn(
-                          'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
-                          group.meta.tagClass
-                        )}
-                      >
-                        {group.meta.tag}
                       </span>
                     </button>
                   </li>

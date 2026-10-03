@@ -2,21 +2,25 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@/components/ui/button'
-import { X, Package, AlertTriangle, Store, TrendingUp, TrendingDown, FileText, Loader2 } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import { Product } from '@/types'
 import { cn } from '@/lib/utils'
 import {
-  appModalBodyClass,
-  appModalErrorClass,
-  appModalFooterClass,
-  appModalHeaderClass,
-  appModalHintClass,
-  appModalInputClass,
-  appModalLabelClass,
-  appModalOverlayClass,
-  appModalPanelClass,
-  modalCardShellClass,
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalErrorClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalHintClass,
+  modalInputClass,
+  modalInputErrorClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
 } from '@/lib/app-modal'
 
 interface StockAdjustmentModalProps {
@@ -166,199 +170,130 @@ export function StockAdjustmentModal({ isOpen, onClose, onAdjust, product }: Sto
     return null
   }
 
+  const difference = getStockDifference()
+
   return createPortal(
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+    <div className={modalOverlayClass} role="presentation" onClick={onClose}>
       <div
-        className={cn(appModalPanelClass, 'max-w-5xl')}
+        className={cn(modalPanelClass, 'max-w-lg')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="stock-adjust-title"
         onClick={event => event.stopPropagation()}
       >
-        <div className={appModalHeaderClass}>
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Package className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} />
-            <div className="min-w-0">
-              <h2 id="stock-adjust-title" className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                Ajustar stock
-              </h2>
-              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                Modifica el inventario disponible del producto
-              </p>
-            </div>
+        <header className={modalHeaderClass}>
+          <div className="min-w-0">
+            <h2 id="stock-adjust-title" className={modalTitleClass}>
+              Ajustar stock
+            </h2>
+            <p className={modalSubtitleClass}>
+              {product.name}
+              <span className="text-zinc-400 dark:text-white/35"> · Ref. {product.reference}</span>
+            </p>
           </div>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0"
             onClick={onClose}
             disabled={isSubmitting}
+            className={modalCloseButtonClass}
             aria-label="Cerrar"
           >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        </header>
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className={appModalBodyClass}>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <section className={modalCardShellClass}>
-                <div className="mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} />
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Información del producto
-                  </h3>
-                </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className={appModalLabelClass}>Producto</span>
-                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{product.name}</div>
-                    </div>
-                    <div>
-                      <span className={appModalLabelClass}>Referencia</span>
-                      <div className="font-mono text-sm text-zinc-900 dark:text-zinc-50">{product.reference}</div>
-                    </div>
-                  </div>
-                  <div>
-                    <span className={appModalLabelClass}>Stock actual · Local</span>
-                    <div className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-                      {formatNumber(product.stock.store)} unidades
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className={modalCardShellClass}>
-                <div className="mb-3 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Configuración del ajuste
-                  </h3>
-                </div>
-                <div className="space-y-3">
+          <div className={cn(modalBodyClass, 'space-y-5')}>
+            <div>
+              <div className="grid grid-cols-3 items-start gap-4">
                 <div>
-                  <span className={appModalLabelClass}>Ubicación a ajustar</span>
-                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-700 dark:bg-zinc-800/60">
-                    <div className="flex items-center gap-2.5">
-                      <Store className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} />
-                      <div>
-                        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Local</div>
-                        <div className={appModalHintClass}>
-                          Stock actual: {formatNumber(product.stock.store)}
-                        </div>
-                      </div>
-                    </div>
+                  <span className={modalLabelClass}>Stock actual</span>
+                  <div className="flex h-9 items-center text-[15px] font-semibold tabular-nums text-zinc-900 dark:text-white">
+                    {formatNumber(getCurrentStock())}
+                    <span className="ml-1 text-xs font-normal text-zinc-400 dark:text-white/40">und.</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className={appModalLabelClass}>Nueva cantidad *</label>
+                  <label htmlFor="stock-adjust-qty" className={modalLabelClass}>
+                    Nueva cantidad <span className="text-zinc-400 dark:text-white/30">*</span>
+                  </label>
                   <input
+                    id="stock-adjust-qty"
                     type="text"
+                    inputMode="numeric"
+                    autoFocus
                     value={formData.newQuantity === null ? '' : formatNumber(formData.newQuantity)}
-                    onChange={(e) => {
-                      handleInputChange('newQuantity', parseFormattedNumber(e.target.value))
-                    }}
+                    onChange={e => handleInputChange('newQuantity', parseFormattedNumber(e.target.value))}
                     disabled={isSubmitting}
-                    className={cn(
-                      appModalInputClass,
-                      errors.newQuantity && 'border-red-500 focus:border-red-500 focus:ring-red-500/25',
-                    )}
-                    placeholder="0"
+                    className={cn(modalInputClass, 'tabular-nums', errors.newQuantity && modalInputErrorClass)}
+                    placeholder={formatNumber(getCurrentStock())}
                   />
-                  {errors.newQuantity && <p className={appModalErrorClass}>{errors.newQuantity}</p>}
                 </div>
 
                 <div>
-                  <label className={appModalLabelClass}>Razón del ajuste</label>
-                  <textarea
-                    value={formData.reason}
-                    onChange={(e) => handleInputChange('reason', e.target.value)}
-                    disabled={isSubmitting}
+                  <span className={modalLabelClass}>Diferencia</span>
+                  <div
                     className={cn(
-                      appModalInputClass,
-                      'min-h-20 resize-none',
-                      errors.reason && 'border-red-500 focus:border-red-500 focus:ring-red-500/25',
+                      'flex h-9 items-center text-[15px] font-semibold tabular-nums',
+                      !hasEnteredQuantity || difference === 0
+                        ? 'text-zinc-400 dark:text-white/35'
+                        : difference > 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-rose-600 dark:text-rose-400'
                     )}
-                    placeholder="Ej: Inventario físico, producto dañado, corrección de error... (opcional)"
-                    rows={3}
-                  />
-                  <div className="mt-1 flex items-center justify-between">
-                    {errors.reason && (
-                      <p className={appModalErrorClass}>{errors.reason}</p>
-                    )}
-                    <span
-                      className={cn(
-                        'ml-auto',
-                        appModalHintClass,
-                        formData.reason.length > 0 && formData.reason.length < 10
-                          ? 'text-red-600 dark:text-red-400'
-                          : undefined
-                      )}
-                    >
-                      {formData.reason.length > 0 ? `${formData.reason.length}/10 caracteres mínimo` : 'Campo opcional'}
-                    </span>
-                  </div>
-                </div>
-                </div>
-              </section>
-            </div>
-
-            {hasEnteredQuantity && (
-              <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Diferencia</span>
-                    <p className={appModalHintClass}>
-                      {getStockDifference() === 0
-                        ? 'Sin cambio en Local'
-                        : getStockDifference() > 0
-                          ? 'Incremento en Local'
-                          : 'Reducción en Local'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStockDifference() > 0 ? (
-                      <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-                    ) : getStockDifference() < 0 ? (
-                      <TrendingDown className="h-4 w-4 text-rose-600 dark:text-rose-400" strokeWidth={1.75} />
-                    ) : null}
-                    <span
-                      className={cn(
-                        'text-base font-semibold tabular-nums',
-                        getStockDifference() > 0
-                          ? 'text-emerald-700 dark:text-emerald-300'
-                          : getStockDifference() < 0
-                            ? 'text-rose-700 dark:text-rose-300'
-                            : 'text-zinc-700 dark:text-zinc-200'
-                      )}
-                    >
-                      {getStockDifference() > 0 ? '+' : ''}
-                      {formatNumber(getStockDifference())} unidades
-                    </span>
+                  >
+                    {!hasEnteredQuantity ? '—' : `${difference > 0 ? '+' : ''}${formatNumber(difference)}`}
                   </div>
                 </div>
               </div>
-            )}
+              {errors.newQuantity ? (
+                <p className={modalErrorClass}>{errors.newQuantity}</p>
+              ) : (
+                <p className={modalHintClass}>Se ajusta el stock de la tienda seleccionada.</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="stock-adjust-reason" className={modalLabelClass}>
+                Razón del ajuste <span className="font-normal text-zinc-400 dark:text-white/30">(opcional)</span>
+              </label>
+              <textarea
+                id="stock-adjust-reason"
+                value={formData.reason}
+                onChange={e => handleInputChange('reason', e.target.value)}
+                disabled={isSubmitting}
+                className={cn(
+                  modalInputClass,
+                  'h-auto min-h-[4.5rem] resize-none py-2',
+                  errors.reason && modalInputErrorClass
+                )}
+                placeholder="Ej: inventario físico, producto dañado, corrección de error…"
+                rows={3}
+              />
+              {errors.reason ? (
+                <p className={modalErrorClass}>{errors.reason}</p>
+              ) : formData.reason.length > 0 && formData.reason.trim().length < 10 ? (
+                <p className={modalHintClass}>Mínimo 10 caracteres ({formData.reason.trim().length}/10).</p>
+              ) : null}
+            </div>
           </div>
 
-          <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={onClose} disabled={isSubmitting}>
+          <footer className={modalFooterClass}>
+            <button type="button" onClick={onClose} disabled={isSubmitting} className={modalSecondaryButtonClass}>
               Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+            </button>
+            <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting} className={modalPrimaryButtonClass}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
                   Actualizando…
                 </>
               ) : (
                 'Ajustar stock'
               )}
-            </Button>
-          </div>
+            </button>
+          </footer>
         </form>
       </div>
     </div>,

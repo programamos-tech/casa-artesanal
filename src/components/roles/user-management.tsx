@@ -5,23 +5,32 @@ import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/auth-context'
 import { User, Permission, Store } from '@/types'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Plus, Search, Edit, Trash2, Eye, UserCheck, UserX, X, User as UserIcon, Shield, Store as StoreIcon, Users, BarChart3 } from 'lucide-react'
+import { ChevronDown, Eye, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { StoresService } from '@/lib/stores-service'
 import { canAccessAllStores } from '@/lib/store-helper'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { cardShell } from '@/lib/card-shell'
-import { appModalOverlayClass, appModalPanelClass, modalCardShellClass } from '@/lib/app-modal'
+import {
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
+} from '@/lib/app-modal'
+import { StatusDot } from '@/components/dashboard/report-ui'
 import { cn } from '@/lib/utils'
 import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 import { isOwnerRole, isProductAdminAction } from '@/lib/roles'
 
-const roleOptions = [
+export const roleOptions = [
   { value: 'superadmin', label: 'Propietario' },
   { value: 'admin', label: 'Administrador' },
   { value: 'cajero', label: 'Cajero' },
@@ -31,7 +40,7 @@ const roleOptions = [
   { value: 'supervisor_tienda', label: 'Supervisor de tienda' },
 ]
 
-const moduleOptions = [
+export const moduleOptions = [
   { value: 'dashboard', label: 'Reportes' },
   { value: 'products', label: 'Productos' },
   ...(isTransfersAndReceptionsEnabled()
@@ -141,56 +150,54 @@ const rolePermissions = {
   ],
 }
 
-// Descripciones de cada rol
-const roleDescriptions = {
-  'superadmin': 'Propietario: acceso completo, único rol que administra inventario (productos, stock y precios)',
-  'admin': 'Administrador: reportes, ventas, créditos, facturador y egresos',
-  'cajero': 'Cajero: ventas, clientes, créditos, egresos (registro), garantías y reportes (productos solo lectura)',
-  'vendedor': 'Vendedor: reportes, productos (lectura), traslados, recepciones, egresos, clientes, ventas y créditos',
-  'inventario': 'Inventario: consulta de productos y facturador de proveedores (sin editar stock ni precios)',
-  'contador': 'Contador: reportes (lectura), créditos, facturador y egresos',
-  'supervisor_tienda': 'Supervisor: reportes, productos (lectura), ventas, clientes y egresos en su tienda',
+const roleDescriptions: Record<string, string> = {
+  superadmin: 'Acceso completo. Único rol que administra inventario: productos, stock y precios.',
+  admin: 'Reportes, ventas, créditos, proveedores, egresos y caja.',
+  cajero: 'Reportes, ventas, clientes, créditos, garantías, caja y registro de egresos. Productos solo lectura.',
+  vendedor: 'Reportes, ventas, clientes, créditos, egresos y caja. Productos solo lectura.',
+  inventario: 'Consulta de productos y facturas de proveedores. No edita stock ni precios.',
+  contador: 'Reportes (lectura), créditos, proveedores y egresos.',
+  supervisor_tienda: 'Reportes, ventas, clientes y egresos de su tienda. Productos solo lectura.',
 }
 
-// Estilos compartidos — alineados al formulario "Nueva venta" / "Nuevo producto"
-const formInputClass =
-  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-400 dark:focus:ring-violet-500/20'
-const formLabelClass =
-  'mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400'
-const sectionHeaderClass =
-  'space-y-0 border-b border-zinc-200/90 p-4 dark:border-zinc-800'
-const sectionTitleClass =
-  'flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50'
-const sectionIconClass = 'h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400'
-const sectionContentClass = 'space-y-3 p-4 md:p-6 md:pt-4'
+const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
-/** CTAs de acción: emerald sólido (mismo patrón ERP) */
-const headerPrimaryButtonClass = 'h-9 shrink-0 gap-2 px-4'
-const primarySubmitButtonClass = ''
-const activeUserBadgeClass =
-  'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/[0.12] dark:text-emerald-300'
-const inactiveUserBadgeClass =
-  'border-zinc-600 bg-zinc-800/60 text-zinc-400 dark:border-zinc-600'
+const headerIconBtnClass =
+  'flex h-8 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:text-white/45 dark:hover:text-white'
 
-const userModalHeaderClass =
-  'flex items-center justify-between gap-3 border-b border-white/35 bg-white/25 px-5 py-4 backdrop-blur-md dark:border-zinc-600/45 dark:bg-zinc-950/35'
-const userModalFooterClass =
-  'flex flex-col-reverse justify-end gap-2 border-t border-white/35 bg-white/25 px-5 py-3 backdrop-blur-md dark:border-zinc-600/45 dark:bg-zinc-950/35 sm:flex-row'
-const userModalBodyClass =
-  'min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide bg-white/15 px-4 py-5 backdrop-blur-sm dark:bg-zinc-950/20 md:px-6'
+const headerPrimaryBtnClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-3 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
 
-/** Mismo patrón que facturador / búsqueda unificada (select nativo + chevron) */
-const nativeSelectChevronStyle = {
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'right 0.65rem center',
-  backgroundSize: '1rem'
-} as const
+const rowIconBtnClass =
+  'flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 dark:text-white/40 dark:hover:text-white'
 
-// Helper: detecta usuarios con rol vendedor / vendedora (con o sin acentos / mayúsculas)
-const isSellerRole = (role: string | undefined | null): boolean => {
-  const r = (role || '').toString().toLowerCase()
-  return r === 'vendedor' || r === 'vendedora'
+const rowDangerIconBtnClass =
+  'flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-rose-600 dark:text-white/40 dark:hover:text-rose-400'
+
+const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
+
+const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
+
+const filterSelectWrapClass = 'relative h-8 shrink-0 border-l border-zinc-200 dark:border-white/[0.08]'
+
+const filterSelectClass =
+  'block h-full w-full cursor-pointer appearance-none truncate border-0 bg-transparent pl-3 pr-8 text-[13px] text-zinc-600 transition-colors hover:text-zinc-900 focus:outline-none dark:text-white/60 dark:hover:text-white'
+
+const filterChevronClass =
+  'pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-white/40'
+
+const selectChevronClass =
+  'pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-white/40'
+
+function formatLastLogin(value?: string | null) {
+  if (!value) return 'Nunca'
+  return new Date(value).toLocaleString('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 export function UserManagement() {
@@ -567,895 +574,494 @@ export function UserManagement() {
     )
   }
 
-  return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <Card className={cardShell}>
-        <CardHeader className="p-4 md:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <CardTitle className="flex flex-wrap items-center gap-2.5 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                <Users
-                  className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
-                <span>Gestión de usuarios</span>
-              </CardTitle>
-              <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-                Administra los usuarios y sus permisos del sistema
+  const roleLabel = (role: string) => roleOptions.find((r) => r.value === role)?.label || role
+
+  const storeLabel = (storeId?: string | null) => {
+    if (!storeId || storeId === MAIN_STORE_ID) return mainStore?.name || 'Principal'
+    return stores.find((s) => s.id === storeId)?.name || '—'
+  }
+
+  const closeUserModal = (mode: 'create' | 'edit') => {
+    if (mode === 'create') {
+      setIsCreateModalOpen(false)
+      resetForm()
+    } else {
+      setIsEditModalOpen(false)
+    }
+  }
+
+  const renderUserModal = (mode: 'create' | 'edit') => {
+    const isCreate = mode === 'create'
+    return createPortal(
+      <div className={modalOverlayClass} role="presentation" onClick={() => closeUserModal(mode)}>
+        <div
+          className={cn(modalPanelClass, 'max-w-3xl')}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="user-modal-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={modalHeaderClass}>
+            <div className="min-w-0">
+              <h2 id="user-modal-title" className={modalTitleClass}>
+                {isCreate ? 'Nuevo usuario' : 'Editar usuario'}
+              </h2>
+              <p className={modalSubtitleClass}>
+                {isCreate ? 'Datos, rol y permisos' : selectedUser?.name || 'Datos, rol y permisos'}
               </p>
             </div>
-            <Button
+            <button
               type="button"
-              variant="default"
-              size="sm"
-              onClick={openCreateModal}
-              className={headerPrimaryButtonClass}
+              className={modalCloseButtonClass}
+              onClick={() => closeUserModal(mode)}
+              aria-label="Cerrar"
             >
-              <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-              <span className="hidden sm:inline">Nuevo usuario</span>
-              <span className="sm:hidden">Nuevo</span>
-            </Button>
+              <X className="h-4 w-4" strokeWidth={1.75} />
+            </button>
           </div>
-        </CardHeader>
-      </Card>
 
-      {/* Modal de creación */}
-      {isCreateModalOpen &&
-        mounted &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          (
-            <div
-              className={appModalOverlayClass}
-              style={{
-                paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-                paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-              }}
-            >
-              <div className={appModalPanelClass}>
-                <div className={userModalHeaderClass}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <UserCheck
-                      className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
-                      strokeWidth={1.5}
-                      aria-hidden
+          <div className={modalBodyClass}>
+            <div className="grid gap-x-8 gap-y-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="user-name" className={modalLabelClass}>
+                    Nombre completo{isCreate ? ' *' : ''}
+                  </label>
+                  <input
+                    id="user-name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className={modalInputClass}
+                    placeholder="Ej: Juan Pérez"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="user-email" className={modalLabelClass}>
+                    Email{isCreate ? ' *' : ''}
+                  </label>
+                  <input
+                    id="user-email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className={modalInputClass}
+                    placeholder="juan@casa-artesanal.com"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="user-password" className={modalLabelClass}>
+                    {isCreate ? 'Contraseña *' : 'Nueva contraseña'}
+                  </label>
+                  <input
+                    id="user-password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className={modalInputClass}
+                    placeholder={isCreate ? 'Mínimo 6 caracteres' : 'Dejar vacío para mantener la actual'}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div className={cn('grid gap-3', canManageStores && 'sm:grid-cols-2')}>
+                  <div>
+                    <label htmlFor="user-role" className={modalLabelClass}>
+                      Rol{isCreate ? ' *' : ''}
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="user-role"
+                        value={formData.role}
+                        onChange={(e) => applyRolePermissions(e.target.value)}
+                        className={cn(modalInputClass, 'cursor-pointer appearance-none pr-8')}
+                      >
+                        {roleOptions.map((role) => (
+                          <option key={role.value} value={role.value}>
+                            {role.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className={selectChevronClass} strokeWidth={1.75} aria-hidden />
+                    </div>
+                  </div>
+                  {canManageStores && (
+                    <div>
+                      <label htmlFor="user-store" className={modalLabelClass}>
+                        Tienda
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="user-store"
+                          value={formData.storeId || mainStore?.id || ''}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setFormData({ ...formData, storeId: value === MAIN_STORE_ID ? '' : value })
+                          }}
+                          className={cn(modalInputClass, 'cursor-pointer appearance-none pr-8')}
+                        >
+                          {mainStore && (
+                            <option value={mainStore.id}>
+                              {mainStore.name}
+                              {mainStore.city ? ` (${mainStore.city})` : ''} — Principal
+                            </option>
+                          )}
+                          {stores
+                            .filter((store) => store.id !== MAIN_STORE_ID)
+                            .map((store) => (
+                              <option key={store.id} value={store.id}>
+                                {store.name}
+                                {store.city ? ` (${store.city})` : ''}
+                                {!store.isActive ? ' (Inactiva)' : ''}
+                              </option>
+                            ))}
+                        </select>
+                        <ChevronDown className={selectChevronClass} strokeWidth={1.75} aria-hidden />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {roleDescriptions[formData.role] ? (
+                  <p className="-mt-1 text-xs leading-relaxed text-zinc-500 dark:text-white/50">
+                    <span className="font-medium text-zinc-700 dark:text-white/75">{roleLabel(formData.role)}:</span>{' '}
+                    {roleDescriptions[formData.role]}
+                  </p>
+                ) : null}
+
+                <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-white/[0.07]">
+                  <span className="text-[13px] font-medium text-zinc-900 dark:text-white">Usuario activo</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={formData.isActive}
+                    aria-label="Usuario activo"
+                    onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                    className={cn(
+                      'casa-artesanal-preserve-surface relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors',
+                      formData.isActive ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-200 dark:bg-white/15'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'casa-artesanal-preserve-surface inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform dark:bg-zinc-900',
+                        formData.isActive ? 'translate-x-[18px]' : 'translate-x-0.5',
+                        !formData.isActive && 'dark:bg-white/70'
+                      )}
                     />
-                    <div className="min-w-0">
-                      <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
-                        Nuevo usuario
-                      </h2>
-                      <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                        Datos, rol y permisos del usuario.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setIsCreateModalOpen(false)
-                      resetForm()
-                    }}
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                    aria-label="Cerrar"
-                  >
-                    <X className="h-5 w-5" strokeWidth={1.5} aria-hidden />
-                  </Button>
-                </div>
-
-                <div className={userModalBodyClass}>
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-                    {/* Columna izquierda — datos + rol/estado */}
-                    <div className="space-y-4 lg:col-span-2">
-                      <Card className={modalCardShellClass}>
-                        <CardHeader className={sectionHeaderClass}>
-                          <CardTitle className={sectionTitleClass}>
-                            <UserIcon className={sectionIconClass} strokeWidth={1.5} aria-hidden />
-                            Información
-                          </CardTitle>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Datos básicos para iniciar sesión.
-                          </p>
-                        </CardHeader>
-                        <CardContent className={sectionContentClass}>
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div>
-                              <label className={formLabelClass}>Nombre completo *</label>
-                              <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                className={formInputClass}
-                                placeholder="Ej: Juan Pérez"
-                                autoComplete="off"
-                              />
-                            </div>
-                            <div>
-                              <label className={formLabelClass}>Email *</label>
-                              <input
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className={formInputClass}
-                                placeholder="juan@casa-artesanal.com"
-                                autoComplete="off"
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className={formLabelClass}>Contraseña *</label>
-                              <input
-                                type="password"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className={formInputClass}
-                                placeholder="Mínimo 6 caracteres"
-                                autoComplete="new-password"
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className={modalCardShellClass}>
-                        <CardHeader className={sectionHeaderClass}>
-                          <CardTitle className={sectionTitleClass}>
-                            <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
-                            Rol y estado
-                          </CardTitle>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Define qué puede hacer y dónde.
-                          </p>
-                        </CardHeader>
-                        <CardContent className={sectionContentClass}>
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div>
-                              <label className={formLabelClass}>Rol *</label>
-                              <Select value={formData.role} onValueChange={applyRolePermissions}>
-                                <SelectTrigger className={cn(formInputClass, 'h-auto justify-between text-left [&>svg]:text-zinc-400')}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="z-[200]">
-                                  {roleOptions.map(role => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                      {role.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            {canManageStores && (
-                              <div>
-                                <label className={cn(formLabelClass, 'flex items-center gap-1.5')}>
-                                  <StoreIcon className="h-3 w-3" />
-                                  Tienda (opcional)
-                                </label>
-                                <Select
-                                  value={formData.storeId || (mainStore?.id || '')}
-                                  onValueChange={(value) => {
-                                    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-                                    setFormData({ ...formData, storeId: value === MAIN_STORE_ID ? '' : value })
-                                  }}
-                                >
-                                  <SelectTrigger className={cn(formInputClass, 'h-auto justify-between text-left [&>svg]:text-zinc-400')}>
-                                    <SelectValue placeholder="Seleccionar tienda" />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[200]">
-                                    {mainStore && (
-                                      <SelectItem value={mainStore.id}>
-                                        {mainStore.name} {mainStore.city && `(${mainStore.city})`} — Principal
-                                      </SelectItem>
-                                    )}
-                                    {stores.filter(store => {
-                                      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-                                      return store.id !== MAIN_STORE_ID
-                                    }).map(store => (
-                                      <SelectItem key={store.id} value={store.id}>
-                                        {store.name} {store.city && `(${store.city})`} {!store.isActive && '(Inactiva)'}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                          </div>
-
-                          <p className="rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
-                            {roleDescriptions[formData.role as keyof typeof roleDescriptions]}
-                          </p>
-
-                          <label
-                            htmlFor="createIsActive"
-                            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/40"
-                          >
-                            <div className="min-w-0">
-                              <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                                Usuario activo
-                              </span>
-                              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                                Si está apagado, no podrá iniciar sesión.
-                              </span>
-                            </div>
-                            <Switch
-                              id="createIsActive"
-                              checked={formData.isActive}
-                              onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                            />
-                          </label>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Columna derecha — permisos */}
-                    <div className="space-y-4">
-                      <Card className={modalCardShellClass}>
-                        <CardHeader className={sectionHeaderClass}>
-                          <CardTitle className={sectionTitleClass}>
-                            <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
-                            Permisos
-                          </CardTitle>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Módulos a los que tiene acceso.
-                          </p>
-                        </CardHeader>
-                        <CardContent className="p-3">
-                          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-1.5 dark:border-zinc-800 dark:bg-zinc-900/40">
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                              Rol
-                            </span>
-                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">
-                              {roleOptions.find(r => r.value === formData.role)?.label}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-1">
-                            {moduleOptions.map(module => {
-                              const checked = hasModuleAccess(module.value)
-                              return (
-                                <label
-                                  key={module.value}
-                                  className={cn(
-                                    'flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
-                                    checked
-                                      ? 'bg-zinc-100/80 text-zinc-900 dark:bg-zinc-800/60 dark:text-zinc-50'
-                                      : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900/40'
-                                  )}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModule(module.value)}
-                                    className="h-4 w-4 shrink-0 rounded border-zinc-300 accent-zinc-900 focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:accent-zinc-200"
-                                  />
-                                  <span className="truncate font-medium">{module.label}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className={userModalFooterClass}
-                  style={{
-                    paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-                  }}
-                >
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      setIsCreateModalOpen(false)
-                      resetForm()
-                    }}
-                    className="h-10 w-full sm:w-auto"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleCreateUser}
-                    className={cn('h-10 w-full sm:w-auto', primarySubmitButtonClass)}
-                  >
-                    <UserCheck className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
-                    Crear usuario
-                  </Button>
+                  </button>
                 </div>
               </div>
-            </div>
-          ),
-          document.body
-        )}
 
-      {/* Search and Filters — input nativo + selects nativos (misma línea base que facturador / logs) */}
-      <Card className={cardShell}>
-        <CardContent className="p-3 md:p-4">
-          <div className="flex flex-col gap-2 md:h-11 md:min-h-[2.75rem] md:flex-row md:gap-0 md:overflow-hidden md:rounded-xl md:border md:border-zinc-200/90 md:bg-white md:shadow-sm dark:md:border-zinc-700 dark:md:bg-zinc-950">
-            <div className="group relative min-w-0 flex-1">
-              <span className="sr-only">Buscar usuario</span>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-violet-500 transition-colors group-focus-within:text-violet-600 dark:text-violet-400 dark:group-focus-within:text-violet-300"
-                strokeWidth={1.5}
-                aria-hidden
-              />
-              <input
-                id="search"
-                type="search"
-                autoComplete="off"
-                placeholder="Buscar usuario..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-11 w-full min-w-0 rounded-lg border border-zinc-200/90 bg-white py-2 pl-10 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:rounded-none md:border-0 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-violet-500/30 dark:md:bg-transparent dark:md:focus-visible:ring-violet-500/25"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:contents">
-              <select
-                id="roleFilter"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-zinc-200/90 bg-white px-3 py-2 pr-9 text-sm text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:w-[min(18rem,32vw)] md:min-w-[14rem] md:shrink-0 md:rounded-none md:border-0 md:border-l md:border-zinc-200 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-violet-500/30 dark:md:border-zinc-700 dark:md:bg-zinc-950 dark:md:focus-visible:ring-violet-500/25"
-                style={nativeSelectChevronStyle}
-                aria-label="Filtrar por rol"
-              >
-                <option value="all">Todos los roles</option>
-                {roleOptions.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                id="statusFilter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-11 w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-zinc-200/90 bg-white px-3 py-2 pr-9 text-sm text-zinc-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 md:h-full md:w-44 md:shrink-0 md:rounded-none md:border-0 md:border-l md:border-zinc-200 md:focus-visible:ring-inset md:focus-visible:ring-2 md:focus-visible:ring-violet-500/30 dark:md:border-zinc-700 dark:md:bg-zinc-950 dark:md:focus-visible:ring-violet-500/25"
-                style={nativeSelectChevronStyle}
-                aria-label="Filtrar por estado"
-              >
-                <option value="all">Todos</option>
-                <option value="active">Activos</option>
-                <option value="inactive">Inactivos</option>
-              </select>
+              <div className="md:border-l md:border-zinc-200 md:pl-8 md:dark:border-white/[0.07]">
+                <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-white/50">Permisos</p>
+                <div className="grid grid-cols-2 gap-x-3 md:grid-cols-1">
+                  {moduleOptions.map((module) => {
+                    const checked = hasModuleAccess(module.value)
+                    return (
+                      <label
+                        key={module.value}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1.5 text-[13px] transition-colors hover:bg-zinc-50 dark:hover:bg-white/[0.04]',
+                          checked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-white/50'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleModule(module.value)}
+                          className="h-4 w-4 shrink-0 cursor-pointer rounded border-zinc-300 accent-zinc-900 dark:border-zinc-600 dark:accent-zinc-200"
+                        />
+                        <span className="truncate">{module.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Users List */}
-      <Card className={cardShell}>
-        <CardContent className="p-0">
-          {filteredUsers.length === 0 ? (
-            <div className="px-4 py-14 text-center md:px-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
-                <Users className="h-6 w-6" strokeWidth={1.5} aria-hidden />
-              </div>
-              <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                No se encontraron usuarios
-              </h3>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Comienza creando un nuevo usuario
-              </p>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={openCreateModal}
-                className={cn('mt-4', headerPrimaryButtonClass)}
-              >
-                <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                Nuevo usuario
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Vista de Tarjetas para Mobile */}
-              <div className="md:hidden space-y-3 p-3">
-                {filteredUsers.map((user, index) => {
-                  const formatDateTime = (dateString: string) => {
-                    if (!dateString) return 'Nunca'
-                    const date = new Date(dateString)
-                    return date.toLocaleDateString('es-CO', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  }
-                  return (
-                    <div
-                      key={user.id}
-                      className="space-y-3 rounded-xl border border-solid border-zinc-200/90 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/50"
+          <div className={modalFooterClass}>
+            <button type="button" className={modalSecondaryButtonClass} onClick={() => closeUserModal(mode)}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={modalPrimaryButtonClass}
+              onClick={isCreate ? handleCreateUser : handleUpdateUser}
+            >
+              {isCreate ? 'Crear usuario' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
+  }
+
+  return (
+    <div>
+      <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-white/[0.07] sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">Roles</h1>
+          <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">Usuarios, roles y permisos.</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => void loadUsers()}
+            className={headerIconBtnClass}
+            title="Actualizar"
+            aria-label="Actualizar"
+          >
+            <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+          <button type="button" onClick={openCreateModal} className={headerPrimaryBtnClass}>
+            <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+            Nuevo usuario
+          </button>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          'casa-artesanal-preserve-surface relative mt-5 flex flex-wrap items-center rounded-xl border border-zinc-200 p-1 transition-colors md:flex-nowrap',
+          'focus-within:border-zinc-300 dark:border-white/[0.1] dark:focus-within:border-white/20'
+        )}
+      >
+        <div className="relative flex min-w-[12rem] flex-1 items-center">
+          <Search
+            className="pointer-events-none absolute left-2 h-4 w-4 text-zinc-400 dark:text-white/35"
+            strokeWidth={1.5}
+            aria-hidden
+          />
+          <input
+            type="search"
+            autoComplete="off"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nombre o email…"
+            aria-label="Buscar usuario"
+            className="h-8 w-full min-w-0 border-0 bg-transparent pl-8 pr-8 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {searchTerm ? (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-1.5 p-1 text-zinc-400 hover:text-zinc-800 dark:text-white/40 dark:hover:text-white"
+              title="Limpiar búsqueda"
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          ) : null}
+        </div>
+        <div className={cn(filterSelectWrapClass, 'w-44')}>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            aria-label="Filtrar por rol"
+            className={filterSelectClass}
+          >
+            <option value="all">Todos los roles</option>
+            {roleOptions.map((role) => (
+              <option key={role.value} value={role.value}>
+                {role.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className={filterChevronClass} strokeWidth={1.75} aria-hidden />
+        </div>
+        <div className={cn(filterSelectWrapClass, 'w-32')}>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filtrar por estado"
+            className={filterSelectClass}
+          >
+            <option value="all">Todos</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+          </select>
+          <ChevronDown className={filterChevronClass} strokeWidth={1.75} aria-hidden />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        {filteredUsers.length === 0 ? (
+          <div className="casa-artesanal-card-surface rounded-xl border border-zinc-200 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No se encontraron usuarios</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+              Ajusta la búsqueda o crea un usuario nuevo.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="casa-artesanal-card-surface divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800/80 dark:border-zinc-800 dark:bg-zinc-900/40 lg:hidden">
+              {filteredUsers.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('button')) return
+                    router.push(`/roles/${user.id}`)
+                  }}
+                  className="casa-artesanal-preserve-surface flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                >
+                  <UserAvatar name={user.name} seed={user.id} size="sm" className="mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">{user.name}</p>
+                    <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="inline-flex items-center gap-1.5">
+                        <StatusDot tone={user.isActive ? 'success' : 'neutral'} />
+                        {user.isActive ? 'Activo' : 'Inactivo'}
+                      </span>
+                      <span className="text-zinc-300 dark:text-white/20">·</span>
+                      <span className="text-zinc-700 dark:text-zinc-200">{roleLabel(user.role)}</span>
+                      {canManageStores && (
+                        <>
+                          <span className="text-zinc-300 dark:text-white/20">·</span>
+                          <span>{storeLabel(user.storeId)}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(user)}
+                      className={rowIconBtnClass}
+                      title="Editar"
+                      aria-label={`Editar ${user.name}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <UserAvatar
-                            name={user.name}
-                            seed={user.id}
-                            size="md"
-                            className="shrink-0 ring-1 ring-zinc-200/80 dark:ring-zinc-700"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">#{index + 1}</span>
-                              <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50" title={user.name}>
-                                {user.name}
-                              </h3>
-                            </div>
-                            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400" title={user.email}>
-                              {user.email}
+                      <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+                    {user.id !== currentUser?.id && (
+                      <button
+                        type="button"
+                        onClick={() => openDeleteModal(user)}
+                        className={rowDangerIconBtnClass}
+                        title="Eliminar"
+                        aria-label={`Eliminar ${user.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="casa-artesanal-card-surface hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40 lg:block">
+              <table className="w-full min-w-[820px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/70">
+                    <th className={thClass}>Usuario</th>
+                    <th className={thClass}>Rol</th>
+                    {canManageStores && <th className={thClass}>Tienda</th>}
+                    <th className={thClass}>Último acceso</th>
+                    <th className={thClass}>Estado</th>
+                    <th className="w-24 px-2 py-2.5">
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr
+                      key={user.id}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('button')) return
+                        router.push(`/roles/${user.id}`)
+                      }}
+                      className="casa-artesanal-preserve-surface cursor-pointer border-b border-zinc-100 transition-colors last:border-b-0 hover:bg-zinc-50 dark:border-zinc-800/80 dark:hover:bg-zinc-800/40"
+                    >
+                      <td className={tdClass}>
+                        <div className="flex items-center gap-3">
+                          <UserAvatar name={user.name} seed={user.id} size="sm" className="shrink-0" />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
+                              {user.name}
+                              {user.id === currentUser?.id && (
+                                <span className="ml-1.5 text-xs font-normal text-zinc-400 dark:text-white/40">(tú)</span>
+                              )}
                             </p>
-                            <p
-                              className="truncate text-xs text-zinc-500 dark:text-zinc-400"
-                              title={roleOptions.find(r => r.value === user.role)?.label || user.role}
-                            >
-                              {roleOptions.find(r => r.value === user.role)?.label || user.role}
-                            </p>
+                            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p>
                           </div>
                         </div>
-                        <span
-                          className={cn(
-                            'inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium',
-                            user.isActive ? activeUserBadgeClass : inactiveUserBadgeClass
-                          )}
-                        >
-                          <UserCheck className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+                      </td>
+                      <td className={cn(tdClass, 'whitespace-nowrap')}>{roleLabel(user.role)}</td>
+                      {canManageStores && (
+                        <td className={cn(tdClass, 'whitespace-nowrap text-zinc-600 dark:text-zinc-300')}>
+                          {storeLabel(user.storeId)}
+                        </td>
+                      )}
+                      <td className={cn(tdClass, 'whitespace-nowrap tabular-nums text-zinc-600 dark:text-zinc-300')}>
+                        {formatLastLogin(user.lastLogin)}
+                      </td>
+                      <td className={cn(tdClass, 'whitespace-nowrap')}>
+                        <span className="inline-flex items-center gap-1.5 text-[13px]">
+                          <StatusDot tone={user.isActive ? 'success' : 'neutral'} />
                           {user.isActive ? 'Activo' : 'Inactivo'}
                         </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 border-t border-zinc-200/80 pt-2 dark:border-zinc-800">
-                        <div className="text-center">
-                          <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            Rol
-                          </div>
-                          <div
-                            className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                            title={roleOptions.find(r => r.value === user.role)?.label || user.role}
-                          >
-                            {roleOptions.find(r => r.value === user.role)?.label || user.role}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            Último acceso
-                          </div>
-                          <div
-                            className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                            title={formatDateTime(user.lastLogin || '')}
-                          >
-                            {formatDateTime(user.lastLogin || '').split(',')[0]}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2 border-t border-zinc-200/80 pt-2 dark:border-zinc-800">
-                        <p
-                          className="min-w-0 flex-1 truncate text-xs text-zinc-500 dark:text-zinc-400"
-                          title={user.lastLogin ? formatDateTime(user.lastLogin) : undefined}
-                        >
-                          {user.lastLogin ? formatDateTime(user.lastLogin) : 'Nunca ha iniciado sesión'}
-                        </p>
-                        <div className="flex shrink-0 items-center gap-0.5">
-                          {isSellerRole(user.role) && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => router.push(`/sellers/${user.id}`)}
-                              className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-blue-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-blue-400"
-                              title="Ver ventas del vendedor"
-                            >
-                              <BarChart3 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                            </Button>
-                          )}
-                          <Button
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <div className="flex items-center justify-end">
+                          <button
                             type="button"
-                            size="sm"
-                            variant="ghost"
+                            onClick={() => router.push(`/roles/${user.id}`)}
+                            className={rowIconBtnClass}
+                            title="Ver detalle"
+                            aria-label={`Ver detalle de ${user.name}`}
+                          >
+                            <Eye className="h-4 w-4" strokeWidth={1.5} />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => openEditModal(user)}
-                            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                            className={rowIconBtnClass}
+                            title="Editar"
+                            aria-label={`Editar ${user.name}`}
                           >
-                            <Edit className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                          </Button>
+                            <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                          </button>
                           {user.id !== currentUser?.id && (
-                            <Button
+                            <button
                               type="button"
-                              size="sm"
-                              variant="ghost"
                               onClick={() => openDeleteModal(user)}
-                              className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-red-500/10 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
+                              className={rowDangerIconBtnClass}
+                              title="Eliminar"
+                              aria-label={`Eliminar ${user.name}`}
                             >
-                              <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                            </Button>
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
                           )}
                         </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Vista de Lista para Desktop */}
-              <div className="hidden md:block divide-y divide-zinc-200/80 dark:divide-zinc-800">
-                {filteredUsers.map(user => (
-                  <div
-                    key={user.id}
-                    className="p-4 transition-colors hover:bg-zinc-50/90 md:p-5 dark:hover:bg-zinc-800/40"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <UserAvatar
-                          name={user.name}
-                          seed={user.id}
-                          size="md"
-                          className="shrink-0 ring-1 ring-zinc-200/80 dark:ring-zinc-700"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">{user.name}</h3>
-                            <span
-                              className={cn(
-                                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium',
-                                user.isActive ? activeUserBadgeClass : inactiveUserBadgeClass
-                              )}
-                            >
-                              {user.isActive ? (
-                                <UserCheck className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                              ) : (
-                                <UserX className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                              )}
-                              {user.isActive ? 'Activo' : 'Inactivo'}
-                            </span>
-                            <span className="inline-flex items-center rounded-md border border-zinc-300/90 bg-transparent px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200">
-                              {roleOptions.find(r => r.value === user.role)?.label || user.role}
-                            </span>
-                          </div>
-                          <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">{user.email}</p>
-                          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                            Último acceso:{' '}
-                            {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Nunca'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-0.5">
-                        {isSellerRole(user.role) && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/sellers/${user.id}`)}
-                            className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-zinc-600 hover:bg-zinc-100 hover:text-blue-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-blue-400"
-                            title="Ver ventas del vendedor"
-                          >
-                            <BarChart3 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                            <span className="hidden text-xs lg:inline">Ver ventas</span>
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditModal(user)}
-                          className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                        >
-                          <Edit className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                        </Button>
-
-                        {user.id !== currentUser?.id && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDeleteModal(user)}
-                            className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-600 hover:bg-red-500/10 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal de edición */}
-      {isEditModalOpen &&
-        mounted &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          (
-            <div
-              className={appModalOverlayClass}
-              style={{
-                paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-                paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-              }}
-            >
-              <div className={appModalPanelClass}>
-                <div className={userModalHeaderClass}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Edit
-                      className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400"
-                      strokeWidth={1.5}
-                      aria-hidden
-                    />
-                    <div className="min-w-0">
-                      <h2 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-lg">
-                        Editar usuario
-                      </h2>
-                      <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                        {selectedUser?.name || 'Datos, rol y permisos.'}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 shrink-0 rounded-lg p-0 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                    aria-label="Cerrar"
-                  >
-                    <X className="h-5 w-5" strokeWidth={1.5} aria-hidden />
-                  </Button>
-                </div>
-
-                <div className={userModalBodyClass}>
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-                    {/* Columna izquierda — datos + rol/estado */}
-                    <div className="space-y-4 lg:col-span-2">
-                      <Card className={modalCardShellClass}>
-                        <CardHeader className={sectionHeaderClass}>
-                          <CardTitle className={sectionTitleClass}>
-                            <UserIcon className={sectionIconClass} strokeWidth={1.5} aria-hidden />
-                            Información
-                          </CardTitle>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Edita nombre, correo y, opcionalmente, contraseña.
-                          </p>
-                        </CardHeader>
-                        <CardContent className={sectionContentClass}>
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div>
-                              <label className={formLabelClass}>Nombre completo</label>
-                              <input
-                                type="text"
-                                id="editName"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                className={formInputClass}
-                                autoComplete="off"
-                              />
-                            </div>
-                            <div>
-                              <label className={formLabelClass}>Email</label>
-                              <input
-                                type="email"
-                                id="editEmail"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className={formInputClass}
-                                autoComplete="off"
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className={formLabelClass}>
-                                Nueva contraseña (opcional)
-                              </label>
-                              <input
-                                type="password"
-                                id="editPassword"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className={formInputClass}
-                                placeholder="Dejar vacío para mantener la actual"
-                                autoComplete="new-password"
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className={modalCardShellClass}>
-                        <CardHeader className={sectionHeaderClass}>
-                          <CardTitle className={sectionTitleClass}>
-                            <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
-                            Rol y estado
-                          </CardTitle>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Define qué puede hacer y dónde.
-                          </p>
-                        </CardHeader>
-                        <CardContent className={sectionContentClass}>
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <div>
-                              <label className={formLabelClass}>Rol</label>
-                              <Select value={formData.role} onValueChange={applyRolePermissions}>
-                                <SelectTrigger
-                                  id="editRole"
-                                  className={cn(formInputClass, 'h-auto justify-between text-left [&>svg]:text-zinc-400')}
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="z-[200]">
-                                  {roleOptions.map(role => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                      {role.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            {canManageStores && (
-                              <div>
-                                <label className={cn(formLabelClass, 'flex items-center gap-1.5')}>
-                                  <StoreIcon className="h-3 w-3" />
-                                  Tienda
-                                </label>
-                                <Select
-                                  value={formData.storeId || (mainStore?.id || '')}
-                                  onValueChange={(value) => {
-                                    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-                                    setFormData({ ...formData, storeId: value === MAIN_STORE_ID ? '' : value })
-                                  }}
-                                >
-                                  <SelectTrigger
-                                    id="editStore"
-                                    className={cn(formInputClass, 'h-auto justify-between text-left [&>svg]:text-zinc-400')}
-                                  >
-                                    <SelectValue placeholder="Seleccionar tienda" />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[200]">
-                                    {mainStore && (
-                                      <SelectItem value={mainStore.id}>
-                                        {mainStore.name} {mainStore.city && `(${mainStore.city})`} — Principal
-                                      </SelectItem>
-                                    )}
-                                    {stores.filter(store => {
-                                      const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-                                      return store.id !== MAIN_STORE_ID
-                                    }).map(store => (
-                                      <SelectItem key={store.id} value={store.id}>
-                                        {store.name} {store.city && `(${store.city})`} {!store.isActive && '(Inactiva)'}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                          </div>
-
-                          <p className="rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
-                            {roleDescriptions[formData.role as keyof typeof roleDescriptions]}
-                          </p>
-
-                          <label
-                            htmlFor="editIsActive"
-                            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/40"
-                          >
-                            <div className="min-w-0">
-                              <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                                Usuario activo
-                              </span>
-                              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                                Si está apagado, no podrá iniciar sesión.
-                              </span>
-                            </div>
-                            <Switch
-                              id="editIsActive"
-                              checked={formData.isActive}
-                              onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                            />
-                          </label>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Columna derecha — permisos */}
-                    <div className="space-y-4">
-                      <Card className={modalCardShellClass}>
-                        <CardHeader className={sectionHeaderClass}>
-                          <CardTitle className={sectionTitleClass}>
-                            <Shield className={sectionIconClass} strokeWidth={1.5} aria-hidden />
-                            Permisos
-                          </CardTitle>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Módulos a los que tiene acceso.
-                          </p>
-                        </CardHeader>
-                        <CardContent className="p-3">
-                          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-1.5 dark:border-zinc-800 dark:bg-zinc-900/40">
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                              Rol
-                            </span>
-                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">
-                              {roleOptions.find(r => r.value === formData.role)?.label}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-1">
-                            {moduleOptions.map(module => {
-                              const checked = hasModuleAccess(module.value)
-                              return (
-                                <label
-                                  key={module.value}
-                                  className={cn(
-                                    'flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
-                                    checked
-                                      ? 'bg-zinc-100/80 text-zinc-900 dark:bg-zinc-800/60 dark:text-zinc-50'
-                                      : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900/40'
-                                  )}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModule(module.value)}
-                                    className="h-4 w-4 shrink-0 rounded border-zinc-300 accent-zinc-900 focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:accent-zinc-200"
-                                  />
-                                  <span className="truncate font-medium">{module.label}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className={userModalFooterClass}
-                  style={{
-                    paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
-                  }}
-                >
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="h-10 w-full sm:w-auto"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleUpdateUser}
-                    className={cn('h-10 w-full sm:w-auto', primarySubmitButtonClass)}
-                  >
-                    <Edit className="mr-2 h-4 w-4" strokeWidth={1.5} aria-hidden />
-                    Guardar cambios
-                  </Button>
-                </div>
-              </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ),
-          document.body
+          </>
         )}
+      </div>
 
-      {/* Modal de confirmación de eliminación */}
-      <ConfirmationModal
+      {isCreateModalOpen && mounted && typeof document !== 'undefined' && renderUserModal('create')}
+      {isEditModalOpen && mounted && typeof document !== 'undefined' && renderUserModal('edit')}
+
+      <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={cancelDelete}
-        onConfirm={confirmDelete}
-        title="Eliminar Usuario"
-        description={`¿Estás seguro de que quieres eliminar a ${userToDelete?.name}? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar Usuario"
+        onConfirm={() => {
+          if (!isDeleting) void confirmDelete()
+        }}
+        title="Eliminar usuario"
+        message={`¿Seguro que quieres eliminar a ${userToDelete?.name ?? 'este usuario'}? Esta acción no se puede deshacer.`}
+        confirmText={isDeleting ? 'Eliminando…' : 'Eliminar'}
         cancelText="Cancelar"
-        variant="destructive"
-        isLoading={isDeleting}
+        type="danger"
       />
     </div>
   )

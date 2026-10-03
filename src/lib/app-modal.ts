@@ -28,3 +28,45 @@ export const appModalHintClass =
 
 export const appModalErrorClass =
   'mt-1 text-xs text-red-600 dark:text-red-400'
+
+/** Estilo limpio (canvas): sin tarjetas internas, mismos botones que los encabezados de página. */
+export const modalOverlayClass =
+  'casa-artesanal-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/30 p-3 backdrop-blur-[2px] dark:bg-black/60 sm:p-5 xl:left-60'
+
+export const modalPanelClass =
+  'casa-artesanal-preserve-surface relative flex max-h-[min(94dvh,860px)] w-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-white/[0.08] dark:bg-[#111113]'
+
+export const modalHeaderClass =
+  'flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200 px-6 py-4 dark:border-white/[0.07]'
+
+export const modalTitleClass = 'text-base font-semibold tracking-tight text-zinc-900 dark:text-white'
+
+export const modalSubtitleClass = 'mt-0.5 truncate text-[13px] text-zinc-500 dark:text-white/50'
+
+export const modalCloseButtonClass =
+  '-mr-1 flex h-8 w-8 shrink-0 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:text-white/45 dark:hover:text-white'
+
+export const modalBodyClass = 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5'
+
+export const modalFooterClass =
+  'flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200 px-6 py-3.5 dark:border-white/[0.07]'
+
+export const modalInputClass =
+  'casa-artesanal-preserve-surface block h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-[13px] text-zinc-900 placeholder:text-zinc-400 transition-colors hover:border-zinc-300 focus:border-zinc-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.1] dark:bg-white/[0.03] dark:text-white dark:placeholder:text-white/30 dark:hover:border-white/20 dark:focus:border-white/35'
+
+export const modalInputErrorClass = 'border-rose-400 dark:border-rose-500/60'
+
+export const modalLabelClass = 'mb-1.5 block text-xs font-medium text-zinc-500 dark:text-white/50'
+
+export const modalErrorClass = 'mt-1 text-xs text-rose-600 dark:text-rose-400'
+
+export const modalHintClass = 'mt-1 text-xs text-zinc-400 dark:text-white/40'
+
+export const modalSecondaryButtonClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 items-center rounded-md border border-zinc-200 px-3 text-[13px] font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:border-white/[0.14] dark:text-white/80 dark:hover:border-white/25 dark:hover:text-white'
+
+export const modalDangerButtonClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md bg-rose-600 px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-60 dark:bg-rose-600 dark:hover:bg-rose-500'
+
+export const modalPrimaryButtonClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'

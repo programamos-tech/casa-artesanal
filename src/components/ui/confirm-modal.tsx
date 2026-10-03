@@ -1,14 +1,15 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { AlertTriangle, Info, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  appModalBodyClass,
-  appModalFooterClass,
-  appModalHeaderClass,
-  appModalOverlayClass,
-  appModalPanelClass,
+  modalCloseButtonClass,
+  modalDangerButtonClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalTitleClass,
 } from '@/lib/app-modal'
 
 interface ConfirmModalProps {
@@ -34,70 +35,43 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   if (!isOpen) return null
 
-  const Icon = type === 'info' ? Info : AlertTriangle
-  const iconClass =
+  const confirmClass =
     type === 'danger'
-      ? 'text-rose-600 dark:text-rose-400'
+      ? modalDangerButtonClass
       : type === 'warning'
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-zinc-500 dark:text-zinc-400'
+        ? cn(modalPrimaryButtonClass, 'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-zinc-950 dark:hover:bg-amber-400')
+        : modalPrimaryButtonClass
 
   return (
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+    <div className={modalOverlayClass} role="presentation" onClick={onClose}>
       <div
-        className={cn(appModalPanelClass, 'max-w-xl')}
-        role="dialog"
+        className={cn(modalPanelClass, 'max-w-md')}
+        role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
         aria-describedby="confirm-modal-desc"
         onClick={event => event.stopPropagation()}
       >
-        <div className={appModalHeaderClass}>
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Icon className={cn('h-5 w-5 shrink-0', iconClass)} strokeWidth={1.75} />
-            <h2
-              id="confirm-modal-title"
-              className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50"
-            >
-              {title}
-            </h2>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 min-h-0 w-8 shrink-0 rounded-md p-0"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        <div className="flex items-start justify-between gap-3 px-6 pt-5">
+          <h2 id="confirm-modal-title" className={modalTitleClass}>
+            {title}
+          </h2>
+          <button type="button" onClick={onClose} className={cn(modalCloseButtonClass, '-mt-1.5')} aria-label="Cerrar">
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </button>
         </div>
 
-        <div className={cn(appModalBodyClass, 'sm:overflow-y-auto')}>
-          <p
-            id="confirm-modal-desc"
-            className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400"
-          >
-            {message}
-          </p>
-        </div>
+        <p id="confirm-modal-desc" className="px-6 pt-2 text-[13px] leading-relaxed text-zinc-600 dark:text-white/60">
+          {message}
+        </p>
 
-        <div className={appModalFooterClass}>
-          <Button type="button" variant="destructive" onClick={onClose}>
+        <div className="flex items-center justify-end gap-2 px-6 pb-5 pt-6">
+          <button type="button" onClick={onClose} className={modalSecondaryButtonClass} autoFocus>
             {cancelText}
-          </Button>
-          <Button
-            type="button"
-            variant={type === 'danger' ? 'destructive' : 'default'}
-            onClick={onConfirm}
-            className={cn(
-              type === 'warning' &&
-                'border-amber-600/90 bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700'
-            )}
-          >
+          </button>
+          <button type="button" onClick={onConfirm} className={confirmClass}>
             {confirmText}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

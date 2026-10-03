@@ -1,74 +1,46 @@
 'use client'
 
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-import type { LucideIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  ArrowLeft,
-  Building2,
-  CreditCard,
-  Edit,
-  Mail,
-  MapPin,
-  Phone,
-  Trash2,
-  User,
-  UserRound,
-  FileText,
-  Calendar,
-  Hash,
-  Store,
-  Copy,
-  Receipt,
-  Wallet,
-  TrendingDown,
-  X,
-  Check,
-  CheckCircle,
-  Pause,
-} from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, Calendar, Check, CreditCard, Eye, MapPin, Pencil, Phone, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { UserAvatar } from '@/components/ui/user-avatar'
-import { Client, Credit } from '@/types'
+import { Client, Credit, Sale } from '@/types'
+import { creditStatusLabel, getEffectiveCreditStatus, isCreditCancelled } from '@/lib/credit-status-ui'
+import { StatusDot, type ReportTone } from '@/components/dashboard/report-ui'
+import { REPORT_CHART_COLORS, ReportBarChart } from '@/components/dashboard/report-bar-chart'
 import {
-  creditStatusBadgeClass,
-  creditStatusLabel,
-  getEffectiveCreditStatus,
-} from '@/lib/credit-status-ui'
+  modalErrorClass,
+  modalInputClass,
+  modalInputErrorClass,
+  modalLabelClass,
+  modalSecondaryButtonClass,
+} from '@/lib/app-modal'
 
-const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+const detailActionClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium leading-none transition-colors disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0'
 
-const badgeTint = 'casa-artesanal-preserve-surface'
-
-const panel =
-  'casa-artesanal-preserve-surface rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50'
-
-const pageContainerClass =
-  'mx-auto w-full max-w-[min(100%,96rem)] min-w-0 px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16'
-
-const linkOutlineSm = cn(
-  'inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-800 shadow-none transition-colors duration-150 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 dark:border-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-900/70 sm:flex-none'
+const detailGhostClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white'
 )
 
-const inputClass =
-  'mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20'
+const detailPrimaryClass = cn(
+  detailActionClass,
+  'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+)
+
+const detailDangerClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:border-white/[0.12] dark:text-rose-300 dark:hover:border-rose-400/40 dark:hover:bg-rose-500/10'
+)
+
+const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
+const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
 
 export type ClientDetailEditDraft = Pick<
   Client,
   'name' | 'email' | 'phone' | 'document' | 'address' | 'city' | 'state' | 'type' | 'status'
 >
-
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={className}>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{label}</dt>
-      <dd className="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">{children}</dd>
-    </div>
-  )
-}
 
 function getTypeLabel(type: Client['type']) {
   switch (type) {
@@ -83,68 +55,143 @@ function getTypeLabel(type: Client['type']) {
   }
 }
 
-/** Misma paleta que lista de clientes / reportes */
-function getTypeBadgeClass(type: Client['type']) {
+function typeTone(type: Client['type']): ReportTone {
   switch (type) {
     case 'mayorista':
-      return 'border-0 bg-violet-100/90 text-violet-950 dark:bg-violet-950/35 dark:text-violet-300/90'
+      return 'warning'
     case 'minorista':
-      return 'border-0 bg-amber-100/85 text-amber-950 dark:bg-amber-950/25 dark:text-amber-200/90'
+      return 'neutral'
     case 'consumidor_final':
-      return 'border-0 bg-sky-100/85 text-sky-950 dark:bg-sky-950/30 dark:text-sky-300/85'
+      return 'info'
     default:
-      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
+      return 'neutral'
   }
 }
 
-function getStatusBadgeClass(status: Client['status']) {
-  return status === 'active'
-    ? 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
-    : 'border-0 bg-zinc-100/95 text-zinc-600 dark:bg-zinc-900/55 dark:text-zinc-400'
-}
-
-function TypeBadgeIcon({ type }: { type: Client['type'] }) {
-  switch (type) {
-    case 'mayorista':
-      return <Building2 className="h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400" strokeWidth={2} aria-hidden />
-    case 'minorista':
-      return <Building2 className="h-3 w-3 shrink-0 text-amber-700 dark:text-amber-400" strokeWidth={2} aria-hidden />
+function creditTone(status: Credit['status']): ReportTone {
+  switch (status) {
+    case 'completed':
+      return 'success'
+    case 'partial':
+      return 'info'
+    case 'pending':
+      return 'warning'
+    case 'overdue':
+    case 'cancelled':
+      return 'danger'
     default:
-      return <UserRound className="h-3 w-3 shrink-0 text-sky-700 dark:text-sky-400" strokeWidth={2} aria-hidden />
+      return 'neutral'
   }
 }
 
-function StatusBadgeIcon({ status }: { status: Client['status'] }) {
-  return status === 'active' ? (
-    <CheckCircle className="h-3 w-3 shrink-0 text-green-600 dark:text-green-400" strokeWidth={2} aria-hidden />
-  ) : (
-    <Pause className="h-3 w-3 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={2} aria-hidden />
+function SegmentedChoice<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: { value: T; label: string; tone: ReportTone }[]
+  onChange: (value: T) => void
+}) {
+  return (
+    <div className="min-w-0">
+      <span className={modalLabelClass}>{label}</span>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="casa-artesanal-preserve-surface grid gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-white/[0.06]"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
+        {options.map(option => {
+          const selected = value === option.value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                'casa-artesanal-preserve-surface inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 text-[13px] transition-colors',
+                selected
+                  ? 'border-zinc-200 bg-white font-semibold text-zinc-900 shadow-sm dark:border-white/[0.12] dark:bg-[#0a0a0b] dark:text-white'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-white/55 dark:hover:text-white'
+              )}
+            >
+              <StatusDot tone={option.tone} className={cn(!selected && 'opacity-60')} />
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
-function headerTypeIconClass(type: Client['type']) {
-  switch (type) {
-    case 'mayorista':
-      return 'text-violet-600 dark:text-violet-400'
-    case 'minorista':
-      return 'text-amber-600 dark:text-amber-500'
-    case 'consumidor_final':
-      return 'text-sky-600 dark:text-sky-400'
-    default:
-      return 'text-zinc-500 dark:text-zinc-400'
+const typeOptions: { value: Client['type']; label: string; tone: ReportTone }[] = [
+  { value: 'consumidor_final', label: 'Cliente final', tone: 'info' },
+  { value: 'mayorista', label: 'Mayorista', tone: 'warning' },
+  { value: 'minorista', label: 'Minorista', tone: 'neutral' },
+]
+
+const statusOptions: { value: Client['status']; label: string; tone: ReportTone }[] = [
+  { value: 'active', label: 'Activo', tone: 'success' },
+  { value: 'inactive', label: 'Inactivo', tone: 'neutral' },
+]
+
+function chartCompact(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 1_000_000) {
+    const millions = value / 1_000_000
+    const digits = abs >= 100_000_000 ? 0 : 1
+    return `$${millions.toFixed(digits).replace('.', ',')}M`
   }
+  if (abs >= 1_000) return `$${Math.round(value / 1_000)}k`
+  return `$${Math.round(value)}`
 }
 
-function storeLabel(storeId?: string) {
-  if (!storeId || storeId === MAIN_STORE_ID) return 'Tienda principal'
-  return 'Microtienda'
-}
+function creditMonthSeries(
+  entries: { createdAt: string; saldoTotal: number; pagado: number; abonos: number }[]
+) {
+  const map = new Map<string, { saldoTotal: number; pagado: number; abonos: number; start: Date }>()
+  for (const entry of entries) {
+    const date = new Date(entry.createdAt)
+    if (Number.isNaN(date.getTime())) continue
+    const start = new Date(date.getFullYear(), date.getMonth(), 1)
+    const key = `${start.getFullYear()}-${String(start.getMonth()).padStart(2, '0')}`
+    const current = map.get(key) ?? { saldoTotal: 0, pagado: 0, abonos: 0, start }
+    current.saldoTotal += entry.saldoTotal || 0
+    current.pagado += entry.pagado || 0
+    current.abonos += entry.abonos || 0
+    map.set(key, current)
+  }
 
-function storeSublabel(storeId?: string) {
-  if (!storeId || storeId === MAIN_STORE_ID) return null
-  return storeId
-}
+  const keys = [...map.keys()].sort()
+  if (keys.length === 0) return []
 
+  const first = map.get(keys[0])!.start
+  const last = map.get(keys[keys.length - 1])!.start
+  const spansYears = first.getFullYear() !== last.getFullYear()
+  const points: { label: string; saldoTotal: number; pagado: number; abonos: number }[] = []
+  const cursor = new Date(first)
+
+  for (let i = 0; i < 24 && cursor <= last; i++) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth()).padStart(2, '0')}`
+    const bucket = map.get(key)
+    const month = cursor.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '')
+    points.push({
+      label: spansYears ? `${month} ${String(cursor.getFullYear()).slice(2)}` : month,
+      saldoTotal: bucket?.saldoTotal ?? 0,
+      pagado: bucket?.pagado ?? 0,
+      abonos: bucket?.abonos ?? 0,
+    })
+    cursor.setMonth(cursor.getMonth() + 1)
+  }
+
+  return points
+}
 
 export interface ClientDetailPageViewProps {
   client: Client
@@ -154,7 +201,10 @@ export interface ClientDetailPageViewProps {
   canMutate: boolean
   credits?: Credit[]
   creditsLoading?: boolean
-  /** Edición en la misma vista */
+  sales?: Array<Pick<Sale, 'id' | 'invoiceNumber' | 'total' | 'status' | 'paymentMethod' | 'createdAt'>>
+  salesLoading?: boolean
+  abonos?: Array<{ id: string; amount: number; paymentDate: string }>
+  abonosLoading?: boolean
   editing: boolean
   draft: ClientDetailEditDraft | null
   onDraftChange: (patch: Partial<ClientDetailEditDraft>) => void
@@ -164,53 +214,6 @@ export interface ClientDetailPageViewProps {
   editErrors?: Record<string, string>
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  accent,
-  className,
-}: {
-  icon: LucideIcon
-  label: string
-  value: string
-  accent: 'limit' | 'debt' | 'available'
-  className?: string
-}) {
-  const accentBg = {
-    limit: 'bg-indigo-50/50 dark:bg-indigo-950/25',
-    debt: 'bg-rose-50/50 dark:bg-rose-950/25',
-    available: 'bg-emerald-50/50 dark:bg-emerald-950/25',
-  } as const
-  const iconTone = {
-    limit: 'text-indigo-600 dark:text-indigo-400',
-    debt: 'text-rose-600 dark:text-rose-400',
-    available: 'text-emerald-600 dark:text-emerald-400',
-  } as const
-
-  return (
-    <div
-      className={cn(
-        'rounded-xl border border-zinc-200/80 px-4 py-4 shadow-sm dark:border-zinc-800',
-        accentBg[accent],
-        className
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <Icon className={cn('h-4 w-4 shrink-0', iconTone[accent])} strokeWidth={1.75} />
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{label}</span>
-      </div>
-      <p className="mt-2.5 text-lg font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">{value}</p>
-    </div>
-  )
-}
-
-const typeOptions: { value: Client['type']; label: string }[] = [
-  { value: 'mayorista', label: 'Mayorista' },
-  { value: 'minorista', label: 'Minorista' },
-  { value: 'consumidor_final', label: 'Cliente final' },
-]
-
 export function ClientDetailPageView({
   client,
   onBack,
@@ -219,6 +222,10 @@ export function ClientDetailPageView({
   canMutate,
   credits = [],
   creditsLoading = false,
+  sales = [],
+  salesLoading = false,
+  abonos = [],
+  abonosLoading = false,
   editing,
   draft,
   onDraftChange,
@@ -230,584 +237,493 @@ export function ClientDetailPageView({
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amount)
 
-  const formatDateTime = (iso: string) =>
-    new Date(iso).toLocaleString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-
-  const displayType = editing && draft ? draft.type : client.type
-  const TypeIcon = displayType === 'consumidor_final' ? User : Building2
-  const displayName = editing && draft ? draft.name : client.name
-
-  // Saldo real desde créditos abiertos (clients.current_debt no se actualiza al vender/pagar).
   const totalPendingCredits = credits.reduce(
     (sum, c) => sum + (c.pendingAmount > 0 && c.status !== 'cancelled' ? c.pendingAmount : 0),
     0
   )
-  const activeCreditsCount = credits.filter((c) => c.pendingAmount > 0 && c.status !== 'cancelled').length
-  const availableCredit = Math.max(0, client.creditLimit - totalPendingCredits)
-  const usagePct =
-    client.creditLimit > 0
-      ? Math.min(100, Math.round((totalPendingCredits / client.creditLimit) * 100))
-      : 0
+  const activityLoading = creditsLoading || salesLoading || abonosLoading
+  const creditBySaleId = useMemo(() => new Map(credits.map(credit => [credit.saleId, credit])), [credits])
+  const invoiceRows = useMemo(() => {
+    const usedCreditIds = new Set<string>()
+    const rows = sales
+      .filter(sale => sale.status !== 'draft')
+      .map(sale => {
+        const credit = creditBySaleId.get(sale.id)
+        if (credit) usedCreditIds.add(credit.id)
+        const displayStatus = credit ? getEffectiveCreditStatus(credit) : null
+        const cancelled = sale.status === 'cancelled' || (credit ? isCreditCancelled(credit) || credit.status === 'cancelled' : false)
+        const paid = cancelled
+          ? 0
+          : credit
+            ? credit.paidAmount || 0
+            : sale.paymentMethod === 'credit' || sale.status !== 'completed'
+              ? 0
+              : sale.total
+        const settled = !credit && !cancelled && sale.status === 'completed' && sale.paymentMethod !== 'credit'
+        return {
+          key: sale.id,
+          invoiceNumber: sale.invoiceNumber || '—',
+          total: sale.total,
+          pending: credit && !cancelled ? credit.pendingAmount : 0,
+          paid,
+          createdAt: sale.createdAt,
+          tone: (credit && displayStatus ? creditTone(displayStatus) : cancelled ? 'danger' : settled ? 'success' : 'warning') as ReportTone,
+          label: credit && displayStatus
+            ? creditStatusLabel(displayStatus, credit, { completedLabel: 'Pagado' })
+            : cancelled
+              ? 'Anulada'
+              : settled
+                ? 'Pagada'
+                : 'Pendiente',
+          href: credit ? `/payments/${client.id}/credit/${credit.id}` : `/sales/${sale.id}`,
+          includeInChart: !cancelled,
+          isCredit: Boolean(credit),
+        }
+      })
 
-  const copyId = async () => {
-    try {
-      await navigator.clipboard.writeText(client.id)
-      toast.success('ID del cliente copiado')
-    } catch {
-      toast.error('No se pudo copiar')
+    for (const credit of credits) {
+      if (usedCreditIds.has(credit.id) || isCreditCancelled(credit) || credit.status === 'cancelled') continue
+      const displayStatus = getEffectiveCreditStatus(credit)
+      rows.push({
+        key: credit.id,
+        invoiceNumber: credit.invoiceNumber || '—',
+        total: credit.totalAmount,
+        pending: credit.pendingAmount,
+        paid: credit.paidAmount || 0,
+        createdAt: credit.createdAt,
+        tone: creditTone(displayStatus),
+        label: creditStatusLabel(displayStatus, credit, { completedLabel: 'Pagado' }),
+        href: `/payments/${client.id}/credit/${credit.id}`,
+        includeInChart: true,
+        isCredit: true,
+      })
     }
-  }
 
-  const recentCredits = credits.slice(0, 8)
+    return rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [sales, credits, creditBySaleId, client.id])
+
+  const totalContado = invoiceRows.reduce((sum, row) => sum + (row.isCredit ? 0 : row.paid), 0)
+  const totalCreditPaid = invoiceRows.reduce((sum, row) => sum + (row.isCredit ? row.paid : 0), 0)
+  const totalSaldo = invoiceRows.reduce((sum, row) => sum + (row.includeInChart ? row.total : 0), 0)
+  const totalAbonos = useMemo(() => {
+    const fromRecords = abonos.reduce((sum, row) => sum + (row.amount || 0), 0)
+    if (fromRecords > 0 || abonosLoading) return fromRecords
+    return totalCreditPaid
+  }, [abonos, abonosLoading, totalCreditPaid])
+  const saldoPagado = totalCreditPaid + totalContado
+  const recentInvoices = invoiceRows.slice(0, 8)
+  const monthSeries = useMemo(() => {
+    const entries = invoiceRows
+      .filter(row => row.includeInChart)
+      .map(row => ({
+        createdAt: row.createdAt,
+        saldoTotal: row.isCredit ? row.total : 0,
+        pagado: row.paid,
+        abonos: 0,
+      }))
+
+    if (abonos.length > 0) {
+      for (const abono of abonos) {
+        entries.push({
+          createdAt: abono.paymentDate,
+          saldoTotal: 0,
+          pagado: 0,
+          abonos: abono.amount || 0,
+        })
+      }
+    } else if (!abonosLoading) {
+      for (const credit of credits) {
+        if (isCreditCancelled(credit) || credit.status === 'cancelled' || !(credit.paidAmount > 0)) continue
+        entries.push({
+          createdAt: credit.lastPaymentDate || credit.createdAt,
+          saldoTotal: 0,
+          pagado: 0,
+          abonos: credit.paidAmount || 0,
+        })
+      }
+    }
+
+    return creditMonthSeries(entries)
+  }, [invoiceRows, abonos, abonosLoading, credits])
+  const hasSaldoTotal = monthSeries.some(point => point.saldoTotal > 0)
+  const hasPagado = monthSeries.some(point => point.pagado > 0)
+  const hasAbonos = monthSeries.some(point => point.abonos > 0)
+  const chartSeries = [
+    hasSaldoTotal ? { key: 'saldoTotal', name: 'Saldo total', color: REPORT_CHART_COLORS.secondary } : null,
+    hasPagado ? { key: 'pagado', name: 'Pagado', color: REPORT_CHART_COLORS.tertiary } : null,
+    hasAbonos ? { key: 'abonos', name: 'Abonos', color: REPORT_CHART_COLORS.abono } : null,
+  ].filter((series): series is { key: string; name: string; color: string } => series !== null)
+  const chartTitle = hasSaldoTotal || hasAbonos ? 'Créditos por mes' : 'Facturas por mes'
+  const chartParts = [
+    hasSaldoTotal ? 'saldo total' : null,
+    hasPagado ? 'pagado' : null,
+    hasAbonos ? 'abonos registrados' : null,
+  ].filter((part): part is string => Boolean(part))
+  const chartCaption =
+    chartParts.length <= 1
+      ? chartParts[0] || ''
+      : chartParts.length === 2
+        ? `${chartParts[0]} y ${chartParts[1]}`
+        : `${chartParts.slice(0, -1).join(', ')} y ${chartParts[chartParts.length - 1]}`
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  useEffect(() => {
+    const read = () => setIsDarkMode(document.documentElement.classList.contains('dark'))
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
-      <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
-        <div
-          className={cn(
-            'flex w-full min-w-0 flex-col gap-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:py-5',
-            pageContainerClass
-          )}
-        >
-          <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-            <UserAvatar name={displayName || client.name} seed={client.id} size="lg" className="ring-2 ring-zinc-200/80 dark:ring-zinc-700" />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
-                Ficha del cliente
-              </p>
-              {editing && draft ? (
-                <>
-                  <div className="mt-2 space-y-2">
-                    <label htmlFor="detail-client-name" className="sr-only">
-                      Nombre
-                    </label>
-                    <input
-                      id="detail-client-name"
-                      type="text"
-                      value={draft.name}
-                      onChange={(e) => onDraftChange({ name: e.target.value })}
-                      className={cn(inputClass, 'mt-0 text-lg font-semibold', editErrors.name && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50')}
-                      placeholder="Nombre del cliente"
-                    />
-                    {editErrors.name && <p className="text-xs text-red-600 dark:text-red-400">{editErrors.name}</p>}
-                    <label htmlFor="detail-client-document" className="sr-only">
-                      Documento
-                    </label>
-                    <input
-                      id="detail-client-document"
-                      type="text"
-                      value={draft.document}
-                      onChange={(e) => onDraftChange({ document: e.target.value })}
-                      className={cn(inputClass, 'font-mono text-sm', editErrors.document && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50')}
-                      placeholder="Cédula / NIT"
-                    />
-                    {editErrors.document && <p className="text-xs text-red-600 dark:text-red-400">{editErrors.document}</p>}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <div className="flex min-w-0 flex-1 rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-900/80 sm:max-w-md">
-                      {typeOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => onDraftChange({ type: opt.value })}
-                          className={cn(
-                            'flex-1 rounded-md px-2 py-1.5 text-center text-xs font-medium transition-colors sm:text-sm',
-                            draft.type === opt.value
-                              ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
-                              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-4">
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                      <input
-                        type="radio"
-                        name="detail-status"
-                        checked={draft.status === 'active'}
-                        onChange={() => onDraftChange({ status: 'active' })}
-                        className="h-4 w-4 border-zinc-400 text-zinc-900 focus:ring-zinc-400"
-                      />
-                      Activo
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                      <input
-                        type="radio"
-                        name="detail-status"
-                        checked={draft.status === 'inactive'}
-                        onChange={() => onDraftChange({ status: 'inactive' })}
-                        className="h-4 w-4 border-zinc-400 text-zinc-900 focus:ring-zinc-400"
-                      />
-                      Inactivo
-                    </label>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <TypeIcon className={cn('h-4 w-4 shrink-0', headerTypeIconClass(displayType))} strokeWidth={1.5} aria-hidden />
-                    <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                      {client.name}
-                    </h1>
-                  </div>
-                  <p className="mt-0.5 font-mono text-sm text-zinc-600 dark:text-zinc-300">{client.document}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        badgeTint,
-                        'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
-                        getTypeBadgeClass(client.type)
-                      )}
-                    >
-                      <TypeBadgeIcon type={client.type} />
-                      {getTypeLabel(client.type)}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        badgeTint,
-                        'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
-                        getStatusBadgeClass(client.status)
-                      )}
-                    >
-                      <StatusBadgeIcon status={client.status} />
-                      {client.status === 'active' ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={onBack} className="flex-1 sm:flex-none" disabled={saving}>
-              <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-              Volver
-            </Button>
-            <Link href={`/payments/${client.id}`} className={cn(linkOutlineSm, saving && 'pointer-events-none opacity-50')}>
-              <CreditCard className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-              Créditos
-            </Link>
-            {canMutate && !editing && (
-              <>
-                <Button type="button" size="sm" variant="secondary" onClick={onEdit} className="flex-1 sm:flex-none">
-                  <Edit className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  Editar
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={onDelete}
-                  className="flex-1 border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40 sm:flex-none"
-                >
-                  <Trash2 className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  Eliminar
-                </Button>
-              </>
-            )}
-            {canMutate && editing && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onCancelEdit}
-                  disabled={saving}
-                  className="flex-1 sm:flex-none"
-                >
-                  <X className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  Cancelar
-                </Button>
-                <Button type="button" size="sm" onClick={onSaveEdit} disabled={saving} className="flex-1 sm:flex-none">
-                  <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  {saving ? 'Guardando…' : 'Guardar cambios'}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className={cn('min-w-0 space-y-4 py-6 md:space-y-5', pageContainerClass)}>
-        <section className="grid gap-3 sm:grid-cols-3">
-          <StatCard icon={Wallet} label="Cupo de crédito" value={formatCurrency(client.creditLimit)} accent="limit" />
-          <StatCard
-            icon={TrendingDown}
-            label="Saldo adeudado"
-            value={creditsLoading ? '…' : formatCurrency(totalPendingCredits)}
-            accent="debt"
-          />
-          <StatCard
-            icon={Receipt}
-            label="Cupo disponible"
-            value={creditsLoading ? '…' : formatCurrency(availableCredit)}
-            accent="available"
-          />
-        </section>
-
-        {client.creditLimit > 0 && (
-          <section className={cn(panel, 'p-4 md:px-6 md:py-5')}>
-            <div className="flex flex-wrap items-end justify-between gap-2">
+    <div className="py-4 max-xl:pb-1 md:py-6">
+      <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-white/[0.07] sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          {editing && draft ? (
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Uso del cupo</h2>
-                <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
-                  {usagePct}% del cupo en uso frente al límite configurado
-                </p>
+                <label htmlFor="detail-client-name" className={modalLabelClass}>
+                  Nombre
+                </label>
+                <input
+                  id="detail-client-name"
+                  type="text"
+                  value={draft.name}
+                  onChange={e => onDraftChange({ name: e.target.value })}
+                  className={cn(modalInputClass, editErrors.name && modalInputErrorClass)}
+                  placeholder="Nombre del cliente"
+                />
+                {editErrors.name ? <p className={modalErrorClass}>{editErrors.name}</p> : null}
               </div>
-              <span
-                className={cn(
-                  'text-sm font-bold tabular-nums',
-                  usagePct === 0 && 'text-emerald-600 dark:text-emerald-400',
-                  usagePct > 0 && usagePct < 50 && 'text-emerald-700 dark:text-emerald-300',
-                  usagePct >= 50 && usagePct < 85 && 'text-amber-600 dark:text-amber-400',
-                  usagePct >= 85 && 'text-rose-600 dark:text-rose-400'
-                )}
-              >
-                {usagePct}%
-              </span>
-            </div>
-            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-zinc-200/90 dark:bg-zinc-800">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-[width]',
-                  usagePct === 0 && 'bg-zinc-400 dark:bg-zinc-600',
-                  usagePct > 0 && usagePct < 50 && 'bg-emerald-500',
-                  usagePct >= 50 && usagePct < 85 && 'bg-amber-500',
-                  usagePct >= 85 && 'bg-rose-500'
-                )}
-                style={{ width: `${usagePct}%` }}
+              <div>
+                <label htmlFor="detail-client-document" className={modalLabelClass}>
+                  Documento
+                </label>
+                <input
+                  id="detail-client-document"
+                  type="text"
+                  value={draft.document}
+                  onChange={e => onDraftChange({ document: e.target.value })}
+                  className={cn(modalInputClass, 'tabular-nums', editErrors.document && modalInputErrorClass)}
+                  placeholder="Cédula / NIT"
+                />
+                {editErrors.document ? <p className={modalErrorClass}>{editErrors.document}</p> : null}
+              </div>
+              <SegmentedChoice
+                label="Tipo"
+                value={draft.type}
+                options={typeOptions}
+                onChange={type => onDraftChange({ type })}
+              />
+              <SegmentedChoice
+                label="Estado"
+                value={draft.status}
+                options={statusOptions}
+                onChange={status => onDraftChange({ status })}
               />
             </div>
-          </section>
-        )}
-
-        <section className={cn(panel, 'p-4 md:p-6')}>
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            <Hash className="h-4 w-4 text-slate-600 dark:text-slate-400" strokeWidth={1.75} aria-hidden />
-            Identificación
-          </h2>
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {!editing && (
-              <>
-                <Field label="Documento">
-                  <span className="font-mono text-sm">{client.document}</span>
-                </Field>
-                <Field label="Tipo">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      badgeTint,
-                      'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
-                      getTypeBadgeClass(client.type)
-                    )}
-                  >
-                    <TypeBadgeIcon type={client.type} />
-                    {getTypeLabel(client.type)}
-                  </Badge>
-                </Field>
-                <Field label="Estado en sistema">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      badgeTint,
-                      'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-semibold',
-                      getStatusBadgeClass(client.status)
-                    )}
-                  >
-                    <StatusBadgeIcon status={client.status} />
-                    {client.status === 'active' ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </Field>
-              </>
-            )}
-            {editing && (
-              <p className="col-span-full text-xs text-zinc-500 dark:text-zinc-400 sm:col-span-2 lg:col-span-3">
-                Nombre, documento, tipo y estado se editan arriba en la cabecera.
-              </p>
-            )}
-            <Field label="Tienda asignada">
-              <span className="inline-flex items-center gap-1.5">
-                <Store className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" strokeWidth={1.5} aria-hidden />
-                <span>{storeLabel(client.storeId)}</span>
-              </span>
-              {storeSublabel(client.storeId) && (
-                <p className="mt-1 break-all font-mono text-xs text-zinc-500 dark:text-zinc-400">{storeSublabel(client.storeId)}</p>
-              )}
-            </Field>
-            <Field label="Alta en el sistema">
-              <span className="inline-flex items-center gap-1.5 tabular-nums">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={1.5} aria-hidden />
-                {formatDateTime(client.createdAt)}
-              </span>
-            </Field>
-            <Field label="ID interno">
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="break-all rounded-md bg-zinc-100 px-2 py-1 font-mono text-xs text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                  {client.id}
-                </code>
-                <Button type="button" variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs" onClick={() => void copyId()}>
-                  <Copy className="h-3 w-3" strokeWidth={1.5} />
-                  Copiar
-                </Button>
-              </div>
-            </Field>
-            {client.nit ? <Field label="NIT / complemento">{client.nit}</Field> : null}
-          </dl>
-        </section>
-
-        <section className={cn(panel, 'p-4 md:p-6')}>
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            <Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" strokeWidth={1.75} aria-hidden />
-            Contacto
-          </h2>
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Correo">
-              {editing && draft ? (
-                <>
-                  <input
-                    type="email"
-                    value={draft.email}
-                    onChange={(e) => onDraftChange({ email: e.target.value })}
-                    className={cn(inputClass, editErrors.email && 'border-red-500 ring-1 ring-red-200 dark:ring-red-900/50')}
-                    placeholder="correo@ejemplo.com (opcional)"
-                  />
-                  {editErrors.email && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editErrors.email}</p>}
-                  <p className="mt-1 text-xs text-zinc-500">Vacío o N/A si no aplica.</p>
-                </>
-              ) : (
+          ) : (
+            <>
+              <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">
+                {client.name}
+              </h1>
+              <p className="mt-0.5 text-[13px] tabular-nums text-zinc-500 dark:text-white/50">{client.document || 'Sin documento'}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-zinc-700 dark:text-white/80">
                 <span className="inline-flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" strokeWidth={1.5} aria-hidden />
-                  {client.email ? (
-                    <a href={`mailto:${client.email}`} className="text-zinc-700 underline-offset-2 hover:underline dark:text-zinc-200">
-                      {client.email}
-                    </a>
-                  ) : (
-                    <span className="text-zinc-500">Sin correo</span>
-                  )}
+                  <StatusDot tone={typeTone(client.type)} />
+                  {getTypeLabel(client.type)}
                 </span>
-              )}
-            </Field>
-            <Field label="Teléfono">
-              {editing && draft ? (
-                <input
-                  type="tel"
-                  value={draft.phone}
-                  onChange={(e) => onDraftChange({ phone: e.target.value })}
-                  className={inputClass}
-                  placeholder="Teléfono"
-                />
-              ) : (
                 <span className="inline-flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400" strokeWidth={1.5} aria-hidden />
+                  <StatusDot tone={client.status === 'active' ? 'success' : 'neutral'} />
+                  {client.status === 'active' ? 'Activo' : 'Inactivo'}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} aria-hidden />
+                  {client.city?.trim() ? client.city : <span className="text-zinc-500 dark:text-white/45">Sin ciudad</span>}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} aria-hidden />
                   {client.phone ? (
-                    <a href={`tel:${client.phone.replace(/\s/g, '')}`} className="text-zinc-700 underline-offset-2 hover:underline dark:text-zinc-200">
+                    <a href={`tel:${client.phone.replace(/\s/g, '')}`} className="tabular-nums underline-offset-2 hover:underline">
                       {client.phone}
                     </a>
                   ) : (
-                    <span className="text-zinc-500">Sin teléfono</span>
+                    <span className="text-zinc-500 dark:text-white/45">Sin teléfono</span>
                   )}
                 </span>
-              )}
-            </Field>
-          </dl>
-        </section>
-
-        <section className={cn(panel, 'p-4 md:p-6')}>
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400" strokeWidth={1.75} aria-hidden />
-            Ubicación
-          </h2>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <Field label="Dirección" className="sm:col-span-2">
-              {editing && draft ? (
-                <input
-                  type="text"
-                  value={draft.address}
-                  onChange={(e) => onDraftChange({ address: e.target.value })}
-                  className={inputClass}
-                  placeholder="Dirección"
-                />
-              ) : client.address?.trim() ? (
-                client.address
-              ) : (
-                <span className="text-zinc-500">Sin dirección</span>
-              )}
-            </Field>
-            <Field label="Ciudad">
-              {editing && draft ? (
-                <input
-                  type="text"
-                  value={draft.city}
-                  onChange={(e) => onDraftChange({ city: e.target.value })}
-                  className={inputClass}
-                  placeholder="Ciudad"
-                />
-              ) : client.city?.trim() ? (
-                client.city
-              ) : (
-                <span className="text-zinc-500">—</span>
-              )}
-            </Field>
-            <Field label="Departamento / estado">
-              {editing && draft ? (
-                <input
-                  type="text"
-                  value={draft.state}
-                  onChange={(e) => onDraftChange({ state: e.target.value })}
-                  className={inputClass}
-                  placeholder="Departamento o estado"
-                />
-              ) : client.state?.trim() ? (
-                client.state
-              ) : (
-                <span className="text-zinc-500">—</span>
-              )}
-            </Field>
-          </dl>
-        </section>
-
-        <section className={cn(panel, 'overflow-hidden p-0')}>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/90 bg-zinc-50/50 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/30 md:px-6">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} aria-hidden />
-              Créditos y facturas
-            </h2>
-            {!creditsLoading && credits.length > 0 && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                {activeCreditsCount} con saldo pendiente · Total pendiente{' '}
-                <span className="font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">
-                  {formatCurrency(totalPendingCredits)}
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} aria-hidden />
+                  <time dateTime={client.createdAt}>
+                    {new Date(client.createdAt).toLocaleDateString('es-CO', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </time>
                 </span>
-              </p>
-            )}
-          </div>
-          <div className="p-4 md:p-6 md:pt-4">
-            {creditsLoading ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-10">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando créditos…</p>
               </div>
-            ) : credits.length === 0 ? (
-              <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                No hay registros de crédito para este cliente en tu tienda.
-              </p>
-            ) : (
-              <>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[640px] border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                        <th className="bg-zinc-50/80 px-3 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50">
-                          Factura
-                        </th>
-                        <th className="bg-zinc-50/80 px-3 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50">
-                          Total
-                        </th>
-                        <th className="bg-zinc-50/80 px-3 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50">
-                          Pendiente
-                        </th>
-                        <th className="bg-zinc-50/80 px-3 py-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-900/50">
-                          Estado
-                        </th>
-                        <th className="w-24 bg-zinc-50/80 px-2 py-2.5 dark:bg-zinc-900/50" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                      {recentCredits.map((credit) => {
-                        const displayStatus = getEffectiveCreditStatus(credit)
-                        return (
-                        <tr key={credit.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/20">
-                          <td className="px-3 py-3 font-mono text-xs text-zinc-800 dark:text-zinc-200">{credit.invoiceNumber}</td>
-                          <td className="px-3 py-3 text-right tabular-nums text-zinc-700 dark:text-zinc-300">
-                            {formatCurrency(credit.totalAmount)}
-                          </td>
-                          <td className="px-3 py-3 text-right tabular-nums font-medium text-zinc-900 dark:text-zinc-100">
-                            {formatCurrency(credit.pendingAmount)}
-                          </td>
-                          <td className="px-3 py-3 text-center">
-                            <Badge
-                              className={cn(
-                                'px-2 py-0.5 text-[11px] font-medium',
-                                creditStatusBadgeClass(displayStatus, credit)
-                              )}
-                            >
-                              {creditStatusLabel(displayStatus, credit, { completedLabel: 'Pagado' })}
-                            </Badge>
-                          </td>
-                          <td className="px-2 py-2">
-                            <Link
-                              href={`/payments/${client.id}/credit/${credit.id}`}
-                              className="inline-flex h-8 w-full items-center justify-center rounded-lg text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                            >
-                              Ver
-                            </Link>
-                          </td>
-                        </tr>
-                      )})}
-                    </tbody>
-                  </table>
-                </div>
-                <ul className="space-y-2 md:hidden">
-                  {recentCredits.map((credit) => {
-                    const displayStatus = getEffectiveCreditStatus(credit)
-                    return (
-                    <li key={credit.id}>
-                      <Link
-                        href={`/payments/${client.id}/credit/${credit.id}`}
-                        className="block rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-4 transition-colors hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-800/40"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-mono text-xs text-zinc-500">{credit.invoiceNumber}</p>
-                            <p className="mt-1 text-sm font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
-                              Pendiente {formatCurrency(credit.pendingAmount)}
-                            </p>
-                          </div>
-                          <Badge
-                            className={cn(
-                              'shrink-0 px-2 py-0.5 text-[11px] font-medium',
-                              creditStatusBadgeClass(displayStatus, credit)
-                            )}
-                          >
-                            {creditStatusLabel(displayStatus, credit, { completedLabel: 'Pagado' })}
-                          </Badge>
-                        </div>
-                      </Link>
-                    </li>
-                  )})}
-                </ul>
-                {credits.length > recentCredits.length && (
-                  <div className="mt-4 text-center">
-                    <Link
-                      href={`/payments/${client.id}`}
-                      className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-800 shadow-none transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-900/70"
-                    >
-                      Ver todos los créditos ({credits.length})
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
+            </>
+          )}
+        </div>
 
-        {!canMutate && (
-          <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-            Este perfil corresponde a una tienda del sistema. Los datos se gestionan desde{' '}
-            <span className="font-medium text-zinc-700 dark:text-zinc-300">Microtiendas</span>.
-          </p>
-        )}
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+          <button type="button" onClick={onBack} disabled={saving} className={detailGhostClass}>
+            <ArrowLeft strokeWidth={1.75} />
+            Volver
+          </button>
+          <Link href={`/payments/${client.id}`} className={cn(detailGhostClass, saving && 'pointer-events-none')}>
+            <CreditCard strokeWidth={1.75} />
+            Créditos
+          </Link>
+          {canMutate && !editing && (
+            <>
+              <button type="button" onClick={onEdit} className={detailPrimaryClass}>
+                <Pencil strokeWidth={1.75} />
+                Editar
+              </button>
+              <button type="button" onClick={onDelete} className={detailDangerClass}>
+                <Trash2 strokeWidth={1.75} />
+                Eliminar
+              </button>
+            </>
+          )}
+          {canMutate && editing && (
+            <>
+              <button type="button" onClick={onCancelEdit} disabled={saving} className={detailGhostClass}>
+                <X strokeWidth={1.75} />
+                Cancelar
+              </button>
+              <button type="button" onClick={onSaveEdit} disabled={saving} className={detailPrimaryClass}>
+                <Check strokeWidth={1.75} />
+                {saving ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {editing && draft ? (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className={modalLabelClass} htmlFor="detail-client-email">
+              Correo
+            </label>
+            <input
+              id="detail-client-email"
+              type="email"
+              value={draft.email}
+              onChange={e => onDraftChange({ email: e.target.value })}
+              className={cn(modalInputClass, editErrors.email && modalInputErrorClass)}
+              placeholder="correo@ejemplo.com"
+            />
+            {editErrors.email ? <p className={modalErrorClass}>{editErrors.email}</p> : null}
+          </div>
+          <div>
+            <label className={modalLabelClass} htmlFor="detail-client-phone">
+              Teléfono
+            </label>
+            <input
+              id="detail-client-phone"
+              type="tel"
+              value={draft.phone}
+              onChange={e => onDraftChange({ phone: e.target.value })}
+              className={modalInputClass}
+              placeholder="Teléfono"
+            />
+          </div>
+          <div>
+            <label className={modalLabelClass} htmlFor="detail-client-city">
+              Ciudad
+            </label>
+            <input
+              id="detail-client-city"
+              type="text"
+              value={draft.city}
+              onChange={e => onDraftChange({ city: e.target.value })}
+              className={modalInputClass}
+              placeholder="Ciudad"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={modalLabelClass} htmlFor="detail-client-address">
+              Dirección
+            </label>
+            <input
+              id="detail-client-address"
+              type="text"
+              value={draft.address}
+              onChange={e => onDraftChange({ address: e.target.value })}
+              className={modalInputClass}
+              placeholder="Dirección"
+            />
+          </div>
+          <div>
+            <label className={modalLabelClass} htmlFor="detail-client-state">
+              Departamento
+            </label>
+            <input
+              id="detail-client-state"
+              type="text"
+              value={draft.state}
+              onChange={e => onDraftChange({ state: e.target.value })}
+              className={modalInputClass}
+              placeholder="Departamento"
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-b border-zinc-200 pb-5 dark:border-white/[0.07] sm:grid-cols-4">
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Saldo total</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+            {activityLoading ? '…' : formatCurrency(totalSaldo)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Saldo adeudado</p>
+          <p
+            className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+            style={!activityLoading && totalPendingCredits > 0 ? { color: REPORT_CHART_COLORS.primary } : undefined}
+          >
+            {activityLoading ? '…' : formatCurrency(totalPendingCredits)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Saldo pagado</p>
+          <p
+            className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+            style={!activityLoading && saldoPagado > 0 ? { color: REPORT_CHART_COLORS.tertiary } : undefined}
+          >
+            {activityLoading ? '…' : formatCurrency(saldoPagado)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Abonos registrados</p>
+          <p
+            className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+            style={!activityLoading && totalAbonos > 0 ? { color: REPORT_CHART_COLORS.abono } : undefined}
+          >
+            {activityLoading ? '…' : formatCurrency(totalAbonos)}
+          </p>
+          {!activityLoading && abonos.length > 0 ? (
+            <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-white/45">
+              {abonos.length} {abonos.length === 1 ? 'abono' : 'abonos'}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <section className="mt-8">
+        <h2 className="text-[13px] font-semibold text-zinc-900 dark:text-white">{chartTitle}</h2>
+        <p className="mt-0.5 text-xs text-zinc-500 dark:text-white/50">
+          {chartCaption
+            ? `${chartCaption.charAt(0).toUpperCase()}${chartCaption.slice(1)} en esta tienda`
+            : 'En esta tienda'}
+        </p>
+        <div className="mt-3">
+          {activityLoading ? (
+            <p className="py-10 text-center text-[13px] text-zinc-500 dark:text-white/50">Cargando gráfica…</p>
+          ) : monthSeries.length === 0 ? (
+            <p className="py-10 text-center text-[13px] text-zinc-500 dark:text-white/50">Sin facturas para graficar.</p>
+          ) : (
+            <ReportBarChart
+              data={monthSeries}
+              categoryKey="label"
+              series={chartSeries}
+              isDarkMode={isDarkMode}
+              height={240}
+              formatCompact={chartCompact}
+              showValues
+            />
+          )}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-[13px] font-semibold text-zinc-900 dark:text-white">Créditos y facturas</h2>
+
+        {activityLoading ? (
+          <p className="py-8 text-center text-[13px] text-zinc-500 dark:text-white/50">Cargando facturas…</p>
+        ) : invoiceRows.length === 0 ? (
+          <p className="py-8 text-center text-[13px] text-zinc-500 dark:text-white/50">
+            No hay facturas para este cliente.
+          </p>
+        ) : (
+          <>
+            <div className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-white/[0.08] md:block">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-white/[0.07] dark:bg-white/[0.03]">
+                    <th className={thClass}>Factura</th>
+                    <th className={cn(thClass, 'text-right')}>Total</th>
+                    <th className={cn(thClass, 'text-right')}>Pendiente</th>
+                    <th className={thClass}>Estado</th>
+                    <th className="w-16 px-2 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentInvoices.map(row => (
+                      <tr key={row.key} className="border-b border-zinc-100 last:border-0 dark:border-white/[0.05]">
+                        <td className={cn(tdClass, 'font-mono text-xs')}>{row.invoiceNumber}</td>
+                        <td className={cn(tdClass, 'text-right tabular-nums')}>{formatCurrency(row.total)}</td>
+                        <td className={cn(tdClass, 'text-right font-medium tabular-nums')}>{formatCurrency(row.pending)}</td>
+                        <td className={tdClass}>
+                          <span className="inline-flex items-center gap-1.5">
+                            <StatusDot tone={row.tone} />
+                            {row.label}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <Link
+                            href={row.href}
+                            aria-label={`Ver factura ${row.invoiceNumber}`}
+                            className="ml-auto flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 dark:text-white/40 dark:hover:text-white"
+                          >
+                            <Eye className="h-3.5 w-3.5" strokeWidth={1.75} />
+                          </Link>
+                        </td>
+                      </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="divide-y divide-zinc-200 dark:divide-white/[0.07] md:hidden">
+              {recentInvoices.map(row => (
+                  <li key={row.key}>
+                    <Link href={row.href} className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs text-zinc-500 dark:text-white/50">{row.invoiceNumber}</p>
+                        <p className="mt-0.5 text-[13px] font-medium tabular-nums text-zinc-900 dark:text-white">
+                          {formatCurrency(row.pending > 0 ? row.pending : row.total)}
+                        </p>
+                      </div>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 text-[13px] text-zinc-700 dark:text-white/80">
+                        <StatusDot tone={row.tone} />
+                        {row.label}
+                      </span>
+                    </Link>
+                  </li>
+              ))}
+            </ul>
+
+            {invoiceRows.length > recentInvoices.length && (
+              <div className="mt-3">
+                <Link href={`/payments/${client.id}`} className={modalSecondaryButtonClass}>
+                  Ver todos ({invoiceRows.length})
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {!canMutate && (
+        <p className="mt-8 text-center text-[13px] text-zinc-500 dark:text-white/50">
+          Este perfil corresponde a una tienda del sistema. Los datos se gestionan desde Microtiendas.
+        </p>
+      )}
     </div>
   )
 }

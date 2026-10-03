@@ -2,39 +2,44 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  CreditCard,
-  Calendar,
-  DollarSign,
-  FileText,
-  ArrowLeft,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Landmark,
-  Wallet,
-} from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, Calendar, CalendarClock, HandCoins, Receipt, User } from 'lucide-react'
+import { StatusDot } from '@/components/dashboard/report-ui'
+import { REPORT_CHART_COLORS } from '@/components/dashboard/report-bar-chart'
+import { PaymentMethodLabel } from '@/components/sales/payment-method-label'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { Credit, PaymentRecord } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
 import { PaymentModal } from '@/components/credits/payment-modal'
 import { PaymentReceiptThumb } from '@/components/credits/payment-receipt-field'
-import { UserAvatar } from '@/components/ui/user-avatar'
 import { cn } from '@/lib/utils'
-import { cardShell } from '@/lib/card-shell'
 import { isCashOperationBlockedError } from '@/lib/cash-operation-gate'
 import {
-  creditStatusBadgeClass,
-  creditStatusIconClass,
   creditStatusLabel,
+  creditStatusTone,
   getEffectiveCreditStatus,
   isCreditCancelled,
+  parseCreditDueDateLocal,
 } from '@/lib/credit-status-ui'
 import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
+
+const detailActionClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium leading-none transition-colors disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0'
+
+const detailGhostClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white'
+)
+
+const detailPrimaryClass = cn(
+  detailActionClass,
+  'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+)
+
+const metaIconClass = 'h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40'
+
+const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
+const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
 
 function getCreditDescription(credit: Credit): string {
   const clientInitials = credit.clientName
@@ -68,10 +73,10 @@ export default function CreditDetailPage() {
     }).format(amount)
 
   const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('es-CO', {
+    (parseCreditDueDateLocal(dateString) ?? new Date(dateString)).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: '2-digit',
-      day: '2-digit'
+      day: '2-digit',
     })
 
   const formatDateTime = (dateString: string) =>
@@ -84,53 +89,15 @@ export default function CreditDetailPage() {
     })
 
   const getDueDateClass = (dueDate: string) => {
+    const due = parseCreditDueDateLocal(dueDate)
+    if (!due) return 'tabular-nums'
     const today = new Date()
-    const due = new Date(dueDate)
-    const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays < 0) return 'font-medium tabular-nums text-zinc-800 dark:text-zinc-200'
-    if (diffDays <= 7) return 'font-medium tabular-nums text-zinc-700 dark:text-zinc-300'
-    return 'tabular-nums text-zinc-600 dark:text-zinc-400'
+    today.setHours(0, 0, 0, 0)
+    const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000)
+    if (diffDays < 0) return 'tabular-nums text-rose-600 dark:text-rose-400'
+    if (diffDays <= 7) return 'tabular-nums text-amber-600 dark:text-amber-400'
+    return 'tabular-nums'
   }
-
-  const getStatusIcon = (status: string, c?: Credit) => {
-    const ic = creditStatusIconClass(status, c)
-    if (c && isCreditCancelled(c)) {
-      return <XCircle className={ic} />
-    }
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className={ic} />
-      case 'partial':
-        return <Clock className={ic} />
-      case 'pending':
-        return <AlertCircle className={ic} />
-      case 'overdue':
-        return <XCircle className={ic} />
-      case 'cancelled':
-        return <XCircle className={ic} />
-      default:
-        return <AlertCircle className={ic} />
-    }
-  }
-
-  const getPaymentMethodIcon = (method: string) => {
-    const ic = 'h-3.5 w-3.5 shrink-0'
-    switch (method) {
-      case 'cash':
-        return <DollarSign className={ic} strokeWidth={1.5} />
-      case 'transfer':
-        return <Landmark className={ic} strokeWidth={1.5} />
-      case 'card':
-        return <Wallet className={ic} strokeWidth={1.5} />
-      case 'mixed':
-        return <CreditCard className={ic} strokeWidth={1.5} />
-      default:
-        return <CreditCard className={ic} strokeWidth={1.5} />
-    }
-  }
-
-  const getPaymentMethodBadgeClass = () =>
-    'border-zinc-200/90 bg-zinc-50/90 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300'
 
   const loadCredit = useCallback(async () => {
     try {
@@ -200,340 +167,264 @@ export default function CreditDetailPage() {
   }
 
   const creditDisplayStatus = credit ? getEffectiveCreditStatus(credit) : 'pending'
+  const canPay = Boolean(
+    credit && credit.pendingAmount > 0 && !isCreditCancelled(credit) && credit.status !== 'cancelled'
+  )
+  const paidPercent = credit && credit.totalAmount > 0 ? Math.min(100, (credit.paidAmount / credit.totalAmount) * 100) : 0
+  const pendingPercent =
+    credit && credit.totalAmount > 0 ? Math.min(100, (Math.max(0, credit.pendingAmount) / credit.totalAmount) * 100) : 0
+  const formatPercent = (value: number) =>
+    `${value > 0 && value < 1 ? '<1' : value > 99 && value < 100 ? '>99' : Math.round(value)}%`
+
+  const openPaymentModal = () => {
+    void (async () => {
+      if (!(await ensureCashReady('payment'))) return
+      setIsPaymentModalOpen(true)
+    })()
+  }
 
   return (
     <RoleProtectedRoute module="payments" requiredAction="view">
-      <div className="min-h-screen space-y-6 bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-4 pb-24 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 md:py-6 xl:pb-8">
-        {isLoading && (
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              title="Volver al cliente"
-              aria-label="Volver al cliente"
-              onClick={() => router.push(`/payments/${clientId}`)}
-            >
-              <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-            </Button>
-          </div>
-        )}
-
+      <div className="py-4 max-xl:pb-1 md:py-6">
         {isLoading ? (
-          <Card className={cardShell}>
-            <CardContent className="p-12">
-              <div className="flex flex-col items-center justify-center gap-3">
-                <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando crédito…</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center gap-3 py-24">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+            <p className="text-[13px] text-zinc-500 dark:text-white/50">Cargando crédito…</p>
+          </div>
         ) : notFound || !credit ? (
-          <Card className={cardShell}>
-            <CardContent className="p-12 text-center">
-              <p className="text-sm text-zinc-600 dark:text-zinc-300">No se encontró este crédito.</p>
-              <Button variant="outline" className="mt-4" onClick={() => router.push(`/payments/${clientId}`)}>
-                Volver al cliente
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="py-16 text-center">
+            <p className="text-base font-semibold text-zinc-900 dark:text-white">No se encontró este crédito</p>
+            <button type="button" className={cn(detailGhostClass, 'mt-5')} onClick={() => router.push(`/payments/${clientId}`)}>
+              <ArrowLeft strokeWidth={1.75} />
+              Volver al cliente
+            </button>
+          </div>
         ) : (
           <>
-            <Card className={cardShell}>
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-3 sm:gap-x-6 md:gap-8">
-                      <div className="flex min-w-0 max-w-full items-center gap-2.5 sm:gap-3">
-                        <UserAvatar
-                          name={credit.clientName}
-                          seed={clientId}
-                          size="sm"
-                          className="shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                            Cliente
-                          </div>
-                          <p
-                            className="truncate text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50 sm:text-lg"
-                            title={credit.clientName}
-                          >
-                            {credit.clientName}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className="hidden h-9 w-px shrink-0 bg-zinc-200 dark:bg-zinc-700 sm:block"
-                        aria-hidden
-                      />
-                      <div className="min-w-0">
-                        <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          ID crédito
-                        </div>
-                        <h1 className="font-mono text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-xl">
-                          #{getCreditDescription(credit)}
-                        </h1>
-                      </div>
-                      <span
-                        className="hidden h-9 w-px shrink-0 bg-zinc-200 dark:bg-zinc-700 sm:block"
-                        aria-hidden
-                      />
-                      <div className="min-w-0">
-                        <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Factura
-                        </div>
-                        <p className="font-mono text-sm font-medium text-zinc-600 dark:text-zinc-400 sm:text-base">
-                          {credit.invoiceNumber}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-                      <div>
-                        <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Total
-                        </div>
-                        <div className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-                          {formatCurrency(credit.totalAmount)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Pagado
-                        </div>
-                        <div className="text-sm font-semibold tabular-nums text-zinc-600 dark:text-zinc-400">
-                          {formatCurrency(credit.paidAmount)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Pendiente
-                        </div>
-                        <div
-                          className={cn(
-                            'text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100',
-                            credit.pendingAmount === 0 && 'text-zinc-500 dark:text-zinc-500'
-                          )}
-                        >
-                          {formatCurrency(credit.pendingAmount)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Estado
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'flex w-fit items-center gap-1 border px-2 py-0.5 text-[11px] font-normal',
-                            creditStatusBadgeClass(creditDisplayStatus, credit)
-                          )}
-                        >
-                          {getStatusIcon(creditDisplayStatus, credit)}
-                          {creditStatusLabel(creditDisplayStatus, credit)}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {credit.dueDate && (
-                      <div className="mt-4 border-t border-zinc-200/90 pt-4 dark:border-zinc-800">
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-400" strokeWidth={1.5} />
-                          <span className="text-zinc-500">Vencimiento:</span>
-                          <span className={getDueDateClass(credit.dueDate)}>{formatDate(credit.dueDate)}</span>
-                        </div>
-                      </div>
+            <div className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-white/[0.07] sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">
+                  Crédito <span className="font-mono">#{getCreditDescription(credit)}</span>
+                </h1>
+                <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">
+                  <Link
+                    href={`/clients/${clientId}`}
+                    className="underline-offset-2 hover:text-zinc-900 hover:underline dark:hover:text-white"
+                  >
+                    {credit.clientName}
+                  </Link>
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-zinc-700 dark:text-white/80">
+                  <span className="inline-flex items-center gap-1.5">
+                    <StatusDot tone={creditStatusTone(creditDisplayStatus, credit)} />
+                    {creditStatusLabel(creditDisplayStatus, credit)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Receipt className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                    {credit.saleId ? (
+                      <Link href={`/sales/${credit.saleId}`} className="font-mono text-xs underline-offset-2 hover:underline">
+                        {credit.invoiceNumber}
+                      </Link>
+                    ) : (
+                      <span className="font-mono text-xs">{credit.invoiceNumber}</span>
                     )}
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9"
-                      title="Volver al cliente"
-                      aria-label="Volver al cliente"
-                      onClick={() => router.push(`/payments/${clientId}`)}
-                    >
-                      <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-                    </Button>
-                    {credit.pendingAmount > 0 &&
-                      !isCreditCancelled(credit) &&
-                      credit.status !== 'cancelled' && (
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="h-9 w-9 shrink-0"
-                          title="Abonar"
-                          aria-label="Abonar"
-                          onClick={() => {
-                            void (async () => {
-                              if (!(await ensureCashReady('payment'))) return
-                              setIsPaymentModalOpen(true)
-                            })()
-                          }}
-                        >
-                          <DollarSign className="h-4 w-4" strokeWidth={1.5} />
-                        </Button>
-                      )}
-                  </div>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                    <time dateTime={credit.createdAt}>{formatDate(credit.createdAt)}</time>
+                  </span>
+                  {credit.dueDate && creditDisplayStatus !== 'completed' ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarClock className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                      Vence <span className={getDueDateClass(credit.dueDate)}>{formatDate(credit.dueDate)}</span>
+                    </span>
+                  ) : null}
+                  {credit.createdByName ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <User className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                      {credit.createdByName}
+                    </span>
+                  ) : null}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card className={cardShell}>
-              <CardContent className="p-4 md:p-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                      Fecha de creación
-                    </div>
-                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {formatDateTime(credit.createdAt)}
-                    </div>
-                  </div>
-                  {credit.createdByName && (
-                    <div>
-                      <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                        Registrado por
-                      </div>
-                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        {credit.createdByName}
-                      </div>
-                    </div>
-                  )}
-                  {credit.lastPaymentDate && (
-                    <div>
-                      <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                        Último abono
-                      </div>
-                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        {formatDateTime(credit.lastPaymentDate)}
-                      </div>
-                    </div>
-                  )}
-                  {credit.lastPaymentAmount != null && credit.lastPaymentAmount > 0 && (
-                    <div>
-                      <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                        Monto último abono
-                      </div>
-                      <div className="text-sm font-medium tabular-nums text-zinc-800 dark:text-zinc-200">
-                        {formatCurrency(credit.lastPaymentAmount)}
-                      </div>
-                    </div>
-                  )}
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+                <button type="button" onClick={() => router.push(`/payments/${clientId}`)} className={detailGhostClass}>
+                  <ArrowLeft strokeWidth={1.75} />
+                  Volver
+                </button>
+                {credit.saleId ? (
+                  <Link href={`/sales/${credit.saleId}`} className={detailGhostClass}>
+                    <Receipt strokeWidth={1.75} />
+                    Factura
+                  </Link>
+                ) : null}
+                {canPay ? (
+                  <button type="button" onClick={openPaymentModal} className={detailPrimaryClass}>
+                    <HandCoins strokeWidth={1.75} />
+                    Abonar
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mt-5 border-b border-zinc-200 pb-5 dark:border-white/[0.07]">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Total</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+                    {formatCurrency(credit.totalAmount)}
+                  </p>
                 </div>
-
-                <div className="mt-8">
-                  <div className="mb-3">
-                    <h2 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                      <span className="inline-flex items-center gap-2">
-                        <FileText className="h-4 w-4 shrink-0 text-zinc-400" strokeWidth={1.5} />
-                        Historial de abonos ({paymentHistory.length})
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Pagado</p>
+                  <p
+                    className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+                    style={credit.paidAmount > 0 ? { color: REPORT_CHART_COLORS.tertiary } : undefined}
+                  >
+                    {formatCurrency(credit.paidAmount)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Pendiente</p>
+                  <p
+                    className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+                    style={credit.pendingAmount > 0 ? { color: REPORT_CHART_COLORS.primary } : undefined}
+                  >
+                    {formatCurrency(Math.max(0, credit.pendingAmount))}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Abonos</p>
+                  <p
+                    className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+                    style={paymentHistory.length > 0 ? { color: REPORT_CHART_COLORS.abono } : undefined}
+                  >
+                    {paymentHistory.length}
+                  </p>
+                </div>
+              </div>
+              {credit.totalAmount > 0 && !isCreditCancelled(credit) ? (
+                <div className="mt-4">
+                  <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/[0.06]">
+                    {paidPercent > 0 ? (
+                      <div
+                        className="casa-artesanal-preserve-surface h-full"
+                        style={{ width: `${paidPercent}%`, backgroundColor: REPORT_CHART_COLORS.tertiary }}
+                      />
+                    ) : null}
+                    {pendingPercent > 0 ? (
+                      <div
+                        className="casa-artesanal-preserve-surface h-full flex-1"
+                        style={{ backgroundColor: REPORT_CHART_COLORS.primary }}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-3 text-[11px] tabular-nums">
+                    <span style={{ color: REPORT_CHART_COLORS.tertiary }}>
+                      {formatPercent(paidPercent)} pagado · {formatCurrency(credit.paidAmount)}
+                    </span>
+                    {pendingPercent > 0 ? (
+                      <span style={{ color: REPORT_CHART_COLORS.primary }}>
+                        {formatPercent(pendingPercent)} pendiente · {formatCurrency(Math.max(0, credit.pendingAmount))}
                       </span>
-                    </h2>
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Abonos registrados para{' '}
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">{credit.clientName}</span>
-                      {' · '}
-                      crédito #{getCreditDescription(credit)}
-                    </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <section className="mt-8">
+              <h2 className="mb-3 text-[13px] font-semibold text-zinc-900 dark:text-white">Historial de abonos</h2>
+
+              {paymentHistory.length === 0 ? (
+                <p className="py-10 text-center text-[13px] text-zinc-500 dark:text-white/50">
+                  Aún no hay abonos registrados.
+                </p>
+              ) : (
+                <>
+                  <div className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-white/[0.08] md:block">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-white/[0.07] dark:bg-white/[0.03]">
+                          <th className={thClass}>Fecha</th>
+                          <th className={thClass}>Método</th>
+                          <th className={thClass}>Registrado por</th>
+                          <th className={thClass}>Nota</th>
+                          <th className={cn(thClass, 'text-right')}>Monto</th>
+                          <th className="w-14 px-2 py-2.5">
+                            <span className="sr-only">Comprobante</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paymentHistory.map(payment => (
+                          <tr key={payment.id} className="border-b border-zinc-100 last:border-0 dark:border-white/[0.05]">
+                            <td className={cn(tdClass, 'whitespace-nowrap tabular-nums')}>{formatDateTime(payment.paymentDate)}</td>
+                            <td className={cn(tdClass, 'whitespace-nowrap')}>
+                              <PaymentMethodLabel method={payment.paymentMethod} />
+                            </td>
+                            <td className={cn(tdClass, 'whitespace-nowrap text-zinc-500 dark:text-zinc-400')}>
+                              {payment.userName || '—'}
+                            </td>
+                            <td className={cn(tdClass, 'min-w-[16rem] whitespace-pre-wrap break-words text-zinc-500 dark:text-zinc-400')}>
+                              {payment.description?.trim() || '—'}
+                            </td>
+                            <td
+                              className={cn(tdClass, 'whitespace-nowrap text-right font-medium tabular-nums')}
+                              style={{ color: REPORT_CHART_COLORS.abono }}
+                            >
+                              {formatCurrency(payment.amount)}
+                            </td>
+                            <td className="px-3 py-1.5 text-right">
+                              {payment.imageUrl ? (
+                                <a
+                                  href={payment.imageUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Ver comprobante"
+                                  className="ml-auto block h-8 w-8 overflow-hidden rounded-md border border-zinc-200 transition-opacity hover:opacity-80 dark:border-white/[0.12]"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={payment.imageUrl}
+                                    alt={`Comprobante ${formatCurrency(payment.amount)}`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </a>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
-                  {paymentHistory.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 py-8 text-center dark:border-zinc-700 dark:bg-zinc-950/30">
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        No hay abonos registrados para {credit.clientName}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {paymentHistory.map(payment => (
-                        <div
-                          key={payment.id}
-                          className="rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-950/30"
-                        >
-                          <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-4">
-                            <div className="flex items-center gap-2">
-                              <DollarSign
-                                className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500"
-                                strokeWidth={1.5}
-                              />
-                              <div>
-                                <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                  Monto
-                                </div>
-                                <div className="text-base font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-                                  {formatCurrency(payment.amount)}
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                Método
-                              </div>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  getPaymentMethodBadgeClass(),
-                                  'flex w-fit items-center gap-1 border px-2 py-0.5 text-[11px] font-normal'
-                                )}
-                              >
-                                {getPaymentMethodIcon(payment.paymentMethod)}
-                                {payment.paymentMethod === 'cash'
-                                  ? 'Efectivo'
-                                  : payment.paymentMethod === 'transfer'
-                                    ? 'Transferencia (Nequi · Bancolombia)'
-                                    : payment.paymentMethod === 'card'
-                                      ? 'Tarjeta'
-                                      : payment.paymentMethod === 'mixed'
-                                        ? 'Mixto'
-                                        : payment.paymentMethod}
-                              </Badge>
-                            </div>
-                            <div>
-                              <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                Registrado por
-                              </div>
-                              <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                {payment.userName}
-                              </div>
-                            </div>
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                  Fecha
-                                </div>
-                                <div className="text-sm font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
-                                  {formatDateTime(payment.paymentDate)}
-                                </div>
-                              </div>
-                              {payment.imageUrl ? (
-                                <PaymentReceiptThumb
-                                  url={payment.imageUrl}
-                                  amountLabel={formatCurrency(payment.amount)}
-                                />
-                              ) : null}
-                            </div>
-                          </div>
-                          {payment.description && (
-                            <div className="mt-2 border-t border-zinc-200/90 pt-2 dark:border-zinc-800">
-                              <div className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                Descripción
-                              </div>
-                              <p className="text-sm text-zinc-700 dark:text-zinc-300">{payment.description}</p>
-                            </div>
-                          )}
+                  <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-white/[0.07] dark:border-white/[0.08] md:hidden">
+                    {paymentHistory.map(payment => (
+                      <li key={payment.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium tabular-nums" style={{ color: REPORT_CHART_COLORS.abono }}>
+                            {formatCurrency(payment.amount)}
+                          </p>
+                          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-zinc-600 dark:text-white/70">
+                            <PaymentMethodLabel method={payment.paymentMethod} className="gap-1.5" />
+                            <span className="text-zinc-300 dark:text-white/20">·</span>
+                            <span className="tabular-nums">{formatDateTime(payment.paymentDate)}</span>
+                          </p>
+                          {payment.description?.trim() ? (
+                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-white/45">{payment.description.trim()}</p>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                        {payment.imageUrl ? (
+                          <PaymentReceiptThumb url={payment.imageUrl} amountLabel={formatCurrency(payment.amount)} />
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
 
             <PaymentModal
               isOpen={isPaymentModalOpen}

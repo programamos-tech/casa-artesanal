@@ -88,7 +88,7 @@ export function getEgresoConceptLabel(concept: string, conceptOther?: string | n
   if (concept === 'otro') {
     return conceptOther?.trim() || 'Otro'
   }
-  return EGRESO_CONCEPTS.find((c) => c.value === concept)?.label || concept
+  return EGRESO_CONCEPTS.find((c) => c.value === concept)?.label || concept || 'Sin concepto'
 }
 
 export function getEgresoPaymentLabel(method: string): string {

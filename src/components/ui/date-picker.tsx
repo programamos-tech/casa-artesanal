@@ -12,6 +12,10 @@ const POPOVER_H_EST = 360
 const triggerClass =
   'flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-zinc-300/90 bg-white px-3 py-2.5 text-left text-sm text-zinc-800 shadow-sm transition-colors hover:border-zinc-400/90 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-100 dark:hover:border-zinc-500'
 
+/** Variante de barra de filtros: misma altura (h-8) que los controles segmentados. */
+const triggerCompactClass =
+  'flex h-8 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-zinc-200 bg-transparent px-2.5 text-left text-[13px] text-zinc-800 transition-colors hover:border-zinc-300 dark:border-white/[0.12] dark:text-zinc-100 dark:hover:border-white/25'
+
 const triggerFocusClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/35 focus-visible:ring-offset-2 dark:focus-visible:ring-zinc-500/30 dark:focus-visible:ring-offset-zinc-950'
 
@@ -23,6 +27,7 @@ interface DatePickerProps {
   minDate?: Date
   /** Accesibilidad cuando no hay etiqueta visible junto al control */
   ariaLabel?: string
+  compact?: boolean
 }
 
 export function DatePicker({
@@ -32,6 +37,7 @@ export function DatePicker({
   className = '',
   minDate,
   ariaLabel,
+  compact = false,
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -311,13 +317,23 @@ export function DatePicker({
       <button
         type="button"
         onClick={handleOpenCalendar}
-        className={cn(triggerClass, triggerFocusClass, isOpen && 'border-zinc-500 ring-2 ring-zinc-400/30 dark:border-zinc-500 dark:ring-zinc-500/25')}
+        className={cn(
+          compact ? triggerCompactClass : triggerClass,
+          triggerFocusClass,
+          isOpen &&
+            (compact
+              ? 'border-zinc-400 dark:border-white/30'
+              : 'border-zinc-500 ring-2 ring-zinc-400/30 dark:border-zinc-500 dark:ring-zinc-500/25')
+        )}
         aria-label={ariaLabel ?? placeholder}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Calendar className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+        <div className={cn('flex min-w-0 flex-1 items-center', compact ? 'gap-1.5' : 'gap-2')}>
+          <Calendar
+            className={cn('shrink-0 text-zinc-400 dark:text-zinc-500', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+            strokeWidth={1.5}
+          />
           <span
             className={cn(
               'truncate',
@@ -348,11 +364,13 @@ export function DatePicker({
               <X className="h-3.5 w-3.5" strokeWidth={1.5} />
             </span>
           )}
-          <ChevronDown
-            className={cn('h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500', isOpen && 'rotate-180')}
-            strokeWidth={1.5}
-            aria-hidden
-          />
+          {!compact && (
+            <ChevronDown
+              className={cn('h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500', isOpen && 'rotate-180')}
+              strokeWidth={1.5}
+              aria-hidden
+            />
+          )}
         </div>
       </button>
 

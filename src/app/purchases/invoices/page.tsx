@@ -50,16 +50,14 @@ export default function SupplierInvoicesPage() {
 
   return (
     <RoleProtectedRoute module="supplier_invoices" requiredAction="view">
-      <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 pb-24 xl:pb-8">
-        <div className="py-4 md:py-8">
-          <SupplierPayableSummaryTable
-            groups={groups}
-            onCreate={openNewInvoice}
-            canCreate={canCreate('supplier_invoices')}
-            isLoading={loading}
-            onRefresh={loadAll}
-          />
-        </div>
+      <div className="py-4 max-xl:pb-1 md:py-6">
+        <SupplierPayableSummaryTable
+          groups={groups}
+          onCreate={openNewInvoice}
+          canCreate={canCreate('supplier_invoices')}
+          isLoading={loading}
+          onRefresh={loadAll}
+        />
 
         <SupplierInvoiceModal
           isOpen={invoiceModalOpen}

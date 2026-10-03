@@ -122,15 +122,15 @@ export default function StoresPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400">No tienes permisos para acceder a esta página</p>
+          <p className="text-sm text-zinc-500 dark:text-white/50">No tienes permisos para acceder a esta página</p>
         </div>
       </div>
     )
   }
 
-  if (loading) {
+  if (loading && stores.length === 0) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400"
           aria-hidden
@@ -141,7 +141,7 @@ export default function StoresPage() {
 
   return (
     <RoleProtectedRoute module="roles" requiredAction="view">
-      <div className="min-h-screen space-y-4 bg-gradient-to-b from-zinc-50/80 via-white to-zinc-50/70 py-4 pb-20 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 md:space-y-6 md:py-6 lg:pb-6">
+      <div className="py-4 max-xl:pb-1 md:py-6">
         <StoreTable
           stores={stores}
           salesByStore={salesByStore}
@@ -149,6 +149,7 @@ export default function StoresPage() {
           onDelete={handleDelete}
           onCreate={handleCreate}
           onRefresh={loadStores}
+          isRefreshing={loading}
         />
 
         <StoreModal
@@ -168,7 +169,7 @@ export default function StoresPage() {
             setStoreToDelete(null)
           }}
           onConfirm={confirmDelete}
-          title="Eliminar Tienda"
+          title="Eliminar tienda"
           message={`¿Estás seguro de que quieres eliminar la tienda "${storeToDelete?.name}"? Esta acción desactivará la tienda y no se podrá deshacer.`}
           confirmText="Eliminar"
           cancelText="Cancelar"

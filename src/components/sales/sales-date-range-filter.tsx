@@ -3,7 +3,7 @@
 import { DatePicker } from '@/components/ui/date-picker'
 
 const inlinePickerClass =
-  'w-[8.5rem] shrink-0 sm:w-[9.25rem] [&_button]:min-h-11 [&_button]:rounded-none [&_button]:border-0 [&_button]:bg-transparent [&_button]:shadow-none [&_button]:px-2 [&_button]:text-xs sm:[&_button]:text-sm'
+  'w-[7.25rem] shrink-0 sm:w-[8rem] [&_button]:h-8 [&_button]:min-h-8 [&_button]:rounded-none [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:text-[13px] [&_button]:shadow-none'
 
 interface SalesDateRangeFilterProps {
   start: Date | null

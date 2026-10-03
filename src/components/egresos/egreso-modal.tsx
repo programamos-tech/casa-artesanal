@@ -2,26 +2,10 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
-import {
-  X,
-  Wallet,
-  Banknote,
-  Landmark,
-  Smartphone,
-  Building2,
-  CreditCard,
-  MoreHorizontal,
-  AlertTriangle,
-} from 'lucide-react'
+import { X, AlertTriangle, ChevronDown, CircleDashed } from 'lucide-react'
+import { StatusDot, type ReportTone } from '@/components/dashboard/report-ui'
+import { getPaymentMethodMeta } from '@/components/sales/payment-method-label'
 import { toast } from 'sonner'
 import { Egreso, EgresoKind } from '@/types'
 import {
@@ -39,14 +23,19 @@ import {
   type MoneyChannel,
 } from '@/lib/monthly-result-service'
 import {
-  appModalBodyClass,
-  appModalFooterClass,
-  appModalHeaderClass,
-  appModalHintClass,
-  appModalInputClass,
-  appModalLabelClass,
-  appModalOverlayClass,
-  appModalPanelClass,
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalHintClass,
+  modalInputClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
 } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
 
@@ -85,58 +74,23 @@ function parseAmountInput(value: string): number {
   return parseInt(value.replace(/[^\d]/g, ''), 10) || 0
 }
 
-const paymentOptions: {
-  value: EgresoPaymentMethod
-  label: string
-  Icon: typeof Banknote
-  selected: string
-}[] = [
-  {
-    value: 'cash',
-    label: 'Efectivo',
-    Icon: Banknote,
-    selected:
-      'border-emerald-300 bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 dark:border-emerald-700/60 dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-800/50',
-  },
-  {
-    value: 'transfer',
-    label: 'Transferencia',
-    Icon: Landmark,
-    selected:
-      'border-sky-300 bg-sky-100 text-sky-900 ring-1 ring-sky-200/80 dark:border-sky-700/60 dark:bg-sky-900/45 dark:text-sky-100 dark:ring-sky-800/50',
-  },
-  {
-    value: 'nequi',
-    label: 'Nequi',
-    Icon: Smartphone,
-    selected:
-      'border-violet-300 bg-violet-100 text-violet-900 ring-1 ring-violet-200/80 dark:border-violet-700/60 dark:bg-violet-900/50 dark:text-violet-100 dark:ring-violet-800/50',
-  },
-  {
-    value: 'bancolombia',
-    label: 'Bancolombia',
-    Icon: Building2,
-    selected:
-      'border-amber-300 bg-amber-100 text-amber-900 ring-1 ring-amber-200/80 dark:border-amber-700/60 dark:bg-amber-900/45 dark:text-amber-100 dark:ring-amber-800/50',
-  },
-  {
-    value: 'card',
-    label: 'Tarjeta',
-    Icon: CreditCard,
-    selected:
-      'border-rose-300 bg-rose-100 text-rose-900 ring-1 ring-rose-200/80 dark:border-rose-700/60 dark:bg-rose-900/45 dark:text-rose-100 dark:ring-rose-800/50',
-  },
-  {
-    value: 'other',
-    label: 'Otro',
-    Icon: MoreHorizontal,
-    selected:
-      'border-stone-300 bg-stone-100 text-stone-800 ring-1 ring-stone-200/80 dark:border-zinc-500/70 dark:bg-zinc-700/55 dark:text-zinc-100 dark:ring-zinc-600/50',
-  },
+const paymentOptions: { value: EgresoPaymentMethod; label: string }[] = [
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'nequi', label: 'Nequi' },
+  { value: 'bancolombia', label: 'Bancolombia' },
+  { value: 'card', label: 'Tarjeta' },
+  { value: 'other', label: 'Otro' },
 ]
 
-const paymentIdleClass =
-  'border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-200/80 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-800'
+const optionBaseClass =
+  'casa-artesanal-preserve-surface flex items-center gap-2 rounded-md border px-2.5 text-[13px] transition-colors'
+
+const optionIdleClass =
+  'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 dark:border-white/[0.1] dark:text-white/60 dark:hover:border-white/20 dark:hover:text-white'
+
+const optionActiveClass =
+  'border-zinc-900 font-semibold text-zinc-900 ring-1 ring-zinc-900 dark:border-white dark:text-white dark:ring-white'
 
 export function EgresoModal({
   isOpen,
@@ -373,74 +327,70 @@ export function EgresoModal({
     }
   }
 
+  const channelTone: ReportTone = channelAvail?.loading
+    ? 'neutral'
+    : exceedsChannel
+      ? 'danger'
+      : channelAvail && amountValue > 0
+        ? 'success'
+        : 'neutral'
+
   const modal = (
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+    <div className={modalOverlayClass} role="presentation" onClick={onClose}>
       <div
-        className={cn(appModalPanelClass, 'max-w-lg')}
+        className={cn(modalPanelClass, 'max-w-lg')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="egreso-modal-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className={appModalHeaderClass}>
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Wallet className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
-            <div className="min-w-0">
-              <h2
-                id="egreso-modal-title"
-                className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-              >
-                {isEdit ? 'Editar egreso' : 'Nuevo egreso'}
-              </h2>
-              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                Caja del turno o cuenta (arriendo, nómina…)
-              </p>
-            </div>
+        <div className={modalHeaderClass}>
+          <div className="min-w-0">
+            <h2 id="egreso-modal-title" className={modalTitleClass}>
+              {isEdit ? 'Editar egreso' : 'Nuevo egreso'}
+            </h2>
+            <p className={modalSubtitleClass}>Caja del turno o cuenta (arriendo, nómina…)</p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 rounded-md p-0"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
+          <button type="button" className={modalCloseButtonClass} onClick={onClose} aria-label="Cerrar">
             <X className="h-4 w-4" strokeWidth={1.75} />
-          </Button>
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className={cn(appModalBodyClass, 'space-y-4')}>
+          <div className={cn(modalBodyClass, 'space-y-5')}>
             <div>
-              <span className={appModalLabelClass}>Tipo</span>
-              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de egreso">
+              <span className={modalLabelClass}>Tipo</span>
+              <div
+                role="radiogroup"
+                aria-label="Tipo de egreso"
+                className="casa-artesanal-preserve-surface grid grid-cols-2 gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-white/[0.06]"
+              >
                 {EGRESO_KINDS.map((k) => {
                   const active = expenseKind === k.value
                   return (
                     <button
                       key={k.value}
                       type="button"
+                      role="radio"
+                      aria-checked={active}
                       onClick={() => handleKindChange(k.value)}
-                      aria-pressed={active}
                       className={cn(
-                        'rounded-lg border px-3 py-2.5 text-left transition-colors',
+                        'casa-artesanal-preserve-surface inline-flex h-8 items-center justify-center rounded-md border px-2 text-[13px] transition-colors',
                         active
-                          ? k.value === 'cuenta'
-                            ? 'border-sky-300 bg-sky-50 text-sky-950 ring-1 ring-sky-200 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-100'
-                            : 'border-emerald-300 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-100'
-                          : paymentIdleClass
+                          ? 'border-zinc-200 bg-white font-semibold text-zinc-900 shadow-sm dark:border-white/[0.12] dark:bg-[#0a0a0b] dark:text-white'
+                          : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-white/55 dark:hover:text-white'
                       )}
                     >
-                      <p className="text-xs font-bold">{k.label}</p>
-                      <p className="mt-0.5 text-[11px] leading-snug opacity-80">{k.hint}</p>
+                      {k.label}
                     </button>
                   )
                 })}
               </div>
+              <p className={modalHintClass}>{EGRESO_KINDS.find((k) => k.value === expenseKind)?.hint}</p>
             </div>
 
             <div>
-              <label htmlFor="egreso-amount" className={appModalLabelClass}>
+              <label htmlFor="egreso-amount" className={modalLabelClass}>
                 Monto
               </label>
               <input
@@ -448,41 +398,44 @@ export function EgresoModal({
                 inputMode="numeric"
                 value={amount}
                 onChange={(e) => setAmount(formatAmountInput(e.target.value))}
-                placeholder="Ej. 150.000"
+                placeholder="$ 0"
                 autoFocus={!isEdit}
-                className={cn(
-                  appModalInputClass,
-                  'h-14 text-center text-2xl font-bold tabular-nums tracking-tight'
-                )}
+                className={cn(modalInputClass, 'h-11 text-lg font-semibold tabular-nums')}
                 required
               />
-              <p className={cn(appModalHintClass, 'mt-1 text-center')}>Escribe solo números; se formatea solo</p>
             </div>
 
             <div>
-              <label htmlFor="egreso-concept" className={appModalLabelClass}>
+              <label htmlFor="egreso-concept" className={modalLabelClass}>
                 Concepto
               </label>
-              <Select value={concept} onValueChange={handleConceptChange}>
-                <SelectTrigger
+              <div className="relative">
+                <select
                   id="egreso-concept"
-                  className={cn(appModalInputClass, 'h-11 justify-between font-medium')}
+                  value={concept}
+                  onChange={(e) => handleConceptChange(e.target.value)}
+                  className={cn(modalInputClass, 'cursor-pointer appearance-none pr-8')}
                 >
-                  <SelectValue placeholder="¿En qué se gastó?" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
+                  {!EGRESO_CONCEPTS.some((c) => c.value === concept) ? (
+                    <option value={concept}>{concept || 'Sin concepto'}</option>
+                  ) : null}
                   {EGRESO_CONCEPTS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
+                    <option key={c.value} value={c.value}>
                       {c.label}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-white/40"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </div>
             </div>
 
             {showOther && (
               <div>
-                <label htmlFor="egreso-other" className={appModalLabelClass}>
+                <label htmlFor="egreso-other" className={modalLabelClass}>
                   ¿En qué se gastó?
                 </label>
                 <input
@@ -490,115 +443,103 @@ export function EgresoModal({
                   value={conceptOther}
                   onChange={(e) => setConceptOther(e.target.value)}
                   placeholder="Ej. reparación urgente de vitrina"
-                  className={cn(appModalInputClass, 'h-11')}
+                  className={modalInputClass}
                   required
                 />
               </div>
             )}
 
             <div>
-              <span className={appModalLabelClass}>
-                {isCuenta ? 'De dónde sale el dinero' : 'Medio de pago'}
-              </span>
-              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Medio de pago">
-                {visiblePaymentOptions.map(({ value, label, Icon, selected }) => {
+              <span className={modalLabelClass}>{isCuenta ? 'De dónde sale el dinero' : 'Medio de pago'}</span>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3" role="group" aria-label="Medio de pago">
+                {visiblePaymentOptions.map(({ value, label }) => {
                   const active = paymentMethod === value
+                  const meta = getPaymentMethodMeta(value)
+                  const Icon = meta?.icon ?? CircleDashed
                   return (
                     <button
                       key={value}
                       type="button"
                       onClick={() => setPaymentMethod(value)}
                       aria-pressed={active}
-                      className={cn(
-                        'flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-lg border px-1.5 py-2.5 text-center text-[11px] font-bold leading-snug transition-colors sm:text-xs',
-                        active ? selected : paymentIdleClass
-                      )}
+                      className={cn(optionBaseClass, 'h-9', active ? optionActiveClass : optionIdleClass)}
                     >
-                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                      <Icon className={cn('h-3.5 w-3.5 shrink-0', meta?.tint)} strokeWidth={1.75} aria-hidden />
                       {label}
                     </button>
                   )
                 })}
               </div>
               {isCuenta ? (
-                <div
-                  className={cn(
-                    'mt-2 rounded-lg border px-3 py-2 text-xs',
-                    exceedsChannel
-                      ? 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200'
-                      : channelAvail && !channelAvail.loading && amountValue > 0
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100'
-                        : 'border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
-                  )}
-                >
-                  {channelAvail?.loading ? (
-                    <p>Verificando si hay dinero en este canal…</p>
-                  ) : exceedsChannel && channelAvail ? (
-                    <p className="font-semibold">
-                      No hay suficiente dinero en {channelAvail.label} este mes para ese monto.
-                      Elige otro canal o baja el valor.
-                    </p>
-                  ) : channelAvail && amountValue > 0 ? (
-                    <p className="font-semibold">
-                      Sí hay dinero en {channelAvail.label} para este egreso.
-                    </p>
-                  ) : (
-                    <p>Elige el canal; el sistema valida si alcanza con lo recaudado del mes.</p>
-                  )}
-                  <p className="mt-1 opacity-80">
+                <div className="mt-2 space-y-0.5 text-xs">
+                  <p
+                    className={cn(
+                      'flex items-center gap-1.5',
+                      channelTone === 'danger'
+                        ? 'font-medium text-rose-600 dark:text-rose-400'
+                        : channelTone === 'success'
+                          ? 'font-medium text-emerald-600 dark:text-emerald-400'
+                          : 'text-zinc-500 dark:text-white/50'
+                    )}
+                  >
+                    <StatusDot tone={channelTone} />
+                    {channelAvail?.loading
+                      ? 'Verificando si hay dinero en este canal…'
+                      : exceedsChannel && channelAvail
+                        ? `No hay suficiente dinero en ${channelAvail.label} este mes para ese monto. Elige otro canal o baja el valor.`
+                        : channelAvail && amountValue > 0
+                          ? `Sí hay dinero en ${channelAvail.label} para este egreso.`
+                          : 'Elige el canal; el sistema valida si alcanza con lo recaudado del mes.'}
+                  </p>
+                  <p className="pl-3.5 text-zinc-400 dark:text-white/40">
                     Este egreso no baja el efectivo esperado del cierre diario de caja.
                   </p>
                 </div>
               ) : null}
               {cuentaCashConflict ? (
-                <p className="mt-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                  {CUENTA_NO_CASH_MESSAGE}
-                </p>
+                <p className="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">{CUENTA_NO_CASH_MESSAGE}</p>
               ) : null}
             </div>
 
             {isCuenta && (
-              <div className="space-y-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+              <div className="rounded-lg border border-zinc-200 p-3 dark:border-white/[0.08]">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                  <div className="space-y-1 text-xs text-amber-950 dark:text-amber-100">
-                    <p className="font-semibold">Diferencia: caja vs mensualidad</p>
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" strokeWidth={1.75} />
+                  <div className="space-y-1 text-xs text-zinc-600 dark:text-white/65">
+                    <p className="font-semibold text-zinc-900 dark:text-white">Diferencia: caja vs mensualidad</p>
                     <p>
-                      <span className="font-semibold">Caja del turno:</span> el dinero sale de la
-                      gaveta de hoy (efectivo). Baja el cierre de caja.
+                      <span className="font-medium text-zinc-800 dark:text-white/85">Caja del turno:</span> el dinero sale de
+                      la gaveta de hoy (efectivo). Baja el cierre de caja.
                     </p>
                     <p>
-                      <span className="font-semibold">Cuenta / mensualidad:</span> arriendo, nómina,
-                      servicios. Sale de Nequi, Bancolombia o transferencia. No toca la gaveta ni
-                      el cierre.
+                      <span className="font-medium text-zinc-800 dark:text-white/85">Cuenta / mensualidad:</span> arriendo,
+                      nómina, servicios. Sale de Nequi, Bancolombia o transferencia. No toca la gaveta ni el cierre.
                     </p>
                   </div>
                 </div>
                 {needsCuentaDoubleCheck && (
-                  <div className="space-y-2 border-t border-amber-200/80 pt-2.5 dark:border-amber-800/60">
-                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-amber-950 dark:text-amber-100">
+                  <div className="mt-3 space-y-2 border-t border-zinc-200 pt-3 dark:border-white/[0.07]">
+                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-zinc-700 dark:text-white/75">
                       <input
                         type="checkbox"
-                        className="mt-0.5 h-4 w-4 shrink-0"
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-zinc-900 dark:accent-white"
                         checked={cuentaAckNotTill}
                         onChange={(e) => setCuentaAckNotTill(e.target.checked)}
                       />
                       <span>
-                        1. Entiendo que este gasto <span className="font-semibold">no sale de la
-                        gaveta de hoy</span> y <span className="font-semibold">no baja el cierre
-                        de caja</span>.
+                        Entiendo que este gasto <span className="font-semibold">no sale de la gaveta de hoy</span> y{' '}
+                        <span className="font-semibold">no baja el cierre de caja</span>.
                       </span>
                     </label>
-                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-amber-950 dark:text-amber-100">
+                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-zinc-700 dark:text-white/75">
                       <input
                         type="checkbox"
-                        className="mt-0.5 h-4 w-4 shrink-0"
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-zinc-900 dark:accent-white"
                         checked={cuentaAckFromAccount}
                         onChange={(e) => setCuentaAckFromAccount(e.target.checked)}
                       />
                       <span>
-                        2. Confirmo que el dinero sale de{' '}
-                        <span className="font-semibold">Nequi, Bancolombia o transferencia</span>.
+                        Confirmo que el dinero sale de <span className="font-semibold">Nequi, Bancolombia o transferencia</span>.
                         Si salió en efectivo de la caja, debo elegir «Caja del turno».
                       </span>
                     </label>
@@ -607,33 +548,34 @@ export function EgresoModal({
               </div>
             )}
 
-            {isCuenta && (
+            <div className={cn('grid gap-4', isCuenta && 'sm:grid-cols-2')}>
+              {isCuenta && (
+                <div>
+                  <span className={modalLabelClass}>Mes al que aplica</span>
+                  <DatePicker
+                    selectedDate={periodMonth}
+                    onDateSelect={setPeriodMonth}
+                    placeholder="Mes del egreso"
+                    ariaLabel="Mes del egreso de cuenta"
+                    className="w-full"
+                  />
+                </div>
+              )}
               <div>
-                <span className={appModalLabelClass}>Mes al que aplica</span>
+                <span className={modalLabelClass}>Fecha de registro</span>
                 <DatePicker
-                  selectedDate={periodMonth}
-                  onDateSelect={setPeriodMonth}
-                  placeholder="Mes del egreso"
-                  ariaLabel="Mes del egreso de cuenta"
+                  selectedDate={expenseDate}
+                  onDateSelect={setExpenseDate}
+                  placeholder="Seleccionar fecha"
+                  ariaLabel="Fecha del egreso"
                   className="w-full"
                 />
               </div>
-            )}
-
-            <div>
-              <span className={appModalLabelClass}>Fecha de registro</span>
-              <DatePicker
-                selectedDate={expenseDate}
-                onDateSelect={setExpenseDate}
-                placeholder="Seleccionar fecha"
-                ariaLabel="Fecha del egreso"
-                className="w-full"
-              />
             </div>
 
             <div>
-              <label htmlFor="egreso-notes" className={appModalLabelClass}>
-                Nota <span className="font-normal text-zinc-400">(opcional)</span>
+              <label htmlFor="egreso-notes" className={modalLabelClass}>
+                Nota <span className="font-normal text-zinc-400 dark:text-white/35">(opcional)</span>
               </label>
               <textarea
                 id="egreso-notes"
@@ -641,27 +583,22 @@ export function EgresoModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Detalle adicional…"
                 rows={2}
-                className={cn(appModalInputClass, 'min-h-[4rem] resize-y py-2.5')}
+                className={cn(modalInputClass, 'h-auto min-h-[4rem] resize-y py-2')}
               />
             </div>
           </div>
 
-          <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
+          <div className={modalFooterClass}>
+            <button type="button" className={modalSecondaryButtonClass} onClick={onClose} disabled={saving}>
               Cancelar
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
-              disabled={
-                saving ||
-                amountValue <= 0 ||
-                !!exceedsChannel ||
-                cuentaCashConflict ||
-                !cuentaDoubleCheckOk
-              }
+              className={modalPrimaryButtonClass}
+              disabled={saving || amountValue <= 0 || !!exceedsChannel || cuentaCashConflict || !cuentaDoubleCheckOk}
             >
               {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar egreso'}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

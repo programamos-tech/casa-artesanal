@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClientTable } from '@/components/clients/client-table'
+import { ClientTable, type ClientCreditBalance } from '@/components/clients/client-table'
 import { ClientModal } from '@/components/clients/client-modal'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useClients } from '@/contexts/clients-context'
+import { CreditsService } from '@/lib/credits-service'
 import { Client } from '@/types'
 import { toast } from 'sonner'
 
@@ -16,6 +17,24 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
+  const [creditBalances, setCreditBalances] = useState<Map<string, ClientCreditBalance>>(new Map())
+  const [balancesLoading, setBalancesLoading] = useState(true)
+
+  const loadBalances = useCallback(async () => {
+    setBalancesLoading(true)
+    try {
+      const rows = await CreditsService.getClientCreditBalances()
+      setCreditBalances(new Map(rows.map(row => [row.clientId, { pending: row.pending, hasCredit: row.hasCredit }])))
+    } catch {
+      setCreditBalances(new Map())
+    } finally {
+      setBalancesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadBalances()
+  }, [loadBalances, clients])
 
   const handleEdit = (client: Client) => {
     setSelectedClient(client)
@@ -41,7 +60,7 @@ export default function ClientsPage() {
   }
 
   const handleRefresh = async () => {
-    await getAllClients()
+    await Promise.all([getAllClients(), loadBalances()])
     toast.success('Lista de clientes actualizada')
   }
 
@@ -82,9 +101,11 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="space-y-6 bg-gray-50 py-6 dark:bg-neutral-950">
+    <div className="py-4 max-xl:pb-1 md:py-6">
       <ClientTable
         clients={clients}
+        creditBalances={creditBalances}
+        balancesLoading={balancesLoading}
         onView={(c) => router.push(`/clients/${c.id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
@@ -109,7 +130,7 @@ export default function ClientsPage() {
           setClientToDelete(null)
         }}
         onConfirm={confirmDelete}
-        title="Eliminar Cliente"
+        title="Eliminar cliente"
         message={`¿Estás seguro de que quieres eliminar el cliente "${clientToDelete?.name}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         cancelText="Cancelar"

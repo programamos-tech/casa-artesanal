@@ -3,22 +3,33 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, FileText } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, Clock } from 'lucide-react'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 import { SupplierInvoiceDetailView } from '@/components/supplier-invoices/supplier-invoice-detail-view'
 import { SupplierInvoiceHeaderActions } from '@/components/supplier-invoices/supplier-invoice-header-actions'
 import { SupplierInvoiceModal } from '@/components/supplier-invoices/supplier-invoice-modal'
 import { SupplierPaymentModal } from '@/components/supplier-invoices/supplier-payment-modal'
+import {
+  formatSupplierDate as formatDate,
+  supplierDueDateClass,
+  supplierInvoiceStatusLabel,
+  supplierInvoiceStatusTone,
+} from '@/components/supplier-invoices/supplier-invoice-status'
+import { StatusDot } from '@/components/dashboard/report-ui'
 import { SupplierInvoice } from '@/types'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCashOperationGate } from '@/components/caja/cash-operation-gate-provider'
 import { cn } from '@/lib/utils'
 
+const detailGhostClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-[13px] font-medium leading-none text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white [&_svg]:size-3.5 [&_svg]:shrink-0'
+
+const metaIconClass = 'h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40'
+
 export default function SupplierInvoiceDetailPage() {
   const params = useParams()
   const invoiceId = typeof params?.invoiceId === 'string' ? params.invoiceId : ''
-  const shortId = invoiceId ? invoiceId.slice(-6) : ''
 
   const { canCreate, canEdit, canCancel } = usePermissions()
   const { ensureCashReady } = useCashOperationGate()
@@ -53,72 +64,88 @@ export default function SupplierInvoiceDetailPage() {
     setInvoiceModalOpen(false)
   }
 
+  const supplierHref = invoice
+    ? `/purchases/invoices/supplier/${encodeURIComponent(invoice.supplierId || '__sin_proveedor__')}`
+    : '/purchases/invoices'
+
+  const showDue = Boolean(invoice?.dueDate) && invoice?.status !== 'paid' && invoice?.status !== 'cancelled'
+
   return (
     <RoleProtectedRoute module="supplier_invoices" requiredAction="view">
-      <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
-        <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
-          <div className="flex w-full min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-5 md:px-6">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5">
-              <FileText className="h-6 w-6 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} />
+      <div className="py-4 max-xl:pb-1 md:py-6">
+        {loading && !invoice ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-24">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+            <p className="text-[13px] text-zinc-500 dark:text-white/50">Cargando factura…</p>
+          </div>
+        ) : !invoice ? (
+          <div className="py-16 text-center">
+            <p className="text-base font-semibold text-zinc-900 dark:text-white">Factura no encontrada</p>
+            <p className="mt-1 text-[13px] text-zinc-500 dark:text-white/50">No existe o no tienes acceso desde esta tienda.</p>
+            <Link href="/purchases/invoices" className={cn(detailGhostClass, 'mt-5')}>
+              <ArrowLeft strokeWidth={1.75} />
+              Volver al listado
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-white/[0.07] sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  ID de factura
-                  {shortId ? (
-                    <span className="ml-1.5 font-mono text-base font-normal text-zinc-500 dark:text-zinc-400">
-                      ·{shortId}
+                <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">
+                  Factura <span className="font-mono">{invoice.invoiceNumber}</span>
+                </h1>
+                <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">
+                  <Link href={supplierHref} className="underline-offset-2 hover:text-zinc-900 hover:underline dark:hover:text-white">
+                    {invoice.supplierName || 'Sin proveedor'}
+                  </Link>
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-zinc-700 dark:text-white/80">
+                  <span className="inline-flex items-center gap-1.5">
+                    <StatusDot tone={supplierInvoiceStatusTone(invoice.status)} />
+                    {supplierInvoiceStatusLabel(invoice.status)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                    Emitida <time dateTime={invoice.issueDate} className="tabular-nums">{formatDate(invoice.issueDate)}</time>
+                  </span>
+                  {showDue ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarClock className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                      Vence{' '}
+                      <span className={cn('tabular-nums', supplierDueDateClass(invoice.dueDate))}>{formatDate(invoice.dueDate!)}</span>
                     </span>
                   ) : null}
-                </h1>
-                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                  {invoice?.invoiceNumber
-                    ? `Folio ${invoice.invoiceNumber}`
-                    : loading
-                      ? 'Cargando…'
-                      : 'Detalle del registro'}
-                </p>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                    Registrada <span className="tabular-nums">{formatDate(invoice.createdAt)}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+                <Link href={supplierHref} className={detailGhostClass}>
+                  <ArrowLeft strokeWidth={1.75} />
+                  Volver
+                </Link>
+                <SupplierInvoiceHeaderActions
+                  invoice={invoice}
+                  invoiceLoading={false}
+                  onRefresh={loadInvoice}
+                  onOpenEdit={() => setInvoiceModalOpen(true)}
+                  onOpenAddPayment={async () => {
+                    if (!(await ensureCashReady('supplier'))) return
+                    setPaymentModalOpen(true)
+                  }}
+                  canRecordPayment={canCreate('supplier_invoices')}
+                  canEdit={canEdit('supplier_invoices')}
+                  canCancel={canCancel('supplier_invoices')}
+                />
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <SupplierInvoiceHeaderActions
-                invoice={invoice}
-                invoiceLoading={loading}
-                onRefresh={loadInvoice}
-                onOpenEdit={() => setInvoiceModalOpen(true)}
-                onOpenAddPayment={async () => {
-                  if (!(await ensureCashReady('supplier'))) return
-                  setPaymentModalOpen(true)
-                }}
-                canRecordPayment={canCreate('supplier_invoices')}
-                canEdit={canEdit('supplier_invoices')}
-                canCancel={canCancel('supplier_invoices')}
-              />
-              <Link
-                href={
-                  invoice?.supplierId
-                    ? `/purchases/invoices/supplier/${encodeURIComponent(invoice.supplierId)}`
-                    : invoice
-                      ? `/purchases/invoices/supplier/${encodeURIComponent('__sin_proveedor__')}`
-                      : '/purchases/invoices'
-                }
-                className={cn(
-                  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-800 transition-colors',
-                  'hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-900/70'
-                )}
-              >
-                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-                Volver
-              </Link>
-            </div>
-          </div>
-        </div>
 
-        <div className="w-full min-w-0 px-4 py-6 md:px-6">
-          <SupplierInvoiceDetailView
-            invoice={invoice}
-            invoiceLoading={loading}
-            canEdit={canEdit('supplier_invoices')}
-          />
-        </div>
+            <SupplierInvoiceDetailView invoice={invoice} canEdit={canEdit('supplier_invoices')} />
+          </>
+        )}
 
         <SupplierInvoiceModal
           isOpen={invoiceModalOpen}

@@ -4,9 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
@@ -22,14 +19,57 @@ import { DayCashModal } from '@/components/caja/day-cash-modal'
 import { toast } from 'sonner'
 import { Eye, LockOpen, RefreshCw, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { StoreBadge } from '@/components/ui/store-badge'
-import { cardShell } from '@/lib/card-shell'
+import { StatusDot } from '@/components/dashboard/report-ui'
 import { formatDateTimeCo } from '@/lib/cash-close-whatsapp'
 import {
   closeCashCloseWhatsAppPreviews,
   notifyCashCloseWhatsApp,
   openCashCloseWhatsAppPreviews,
 } from '@/lib/notify-cash-close'
+
+const detailActionClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium leading-none transition-colors disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0'
+
+const detailGhostClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white'
+)
+
+const detailPrimaryClass = cn(
+  detailActionClass,
+  'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+)
+
+const headerIconBtnClass =
+  'flex h-8 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:text-white/45 dark:hover:text-white'
+
+const rowIconBtnClass =
+  'flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 dark:text-white/40 dark:hover:text-white'
+
+const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
+
+const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
+
+function formatDateCo(iso?: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('es-CO', { dateStyle: 'medium', timeZone: 'America/Bogota' })
+}
+
+function formatTimeCo(iso?: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' })
+}
+
+function sessionShiftLabel(s: CashSession) {
+  const sameDay = formatDateCo(s.openedAt) === formatDateCo(s.closedAt)
+  return `${formatTimeCo(s.openedAt)} → ${sameDay ? formatTimeCo(s.closedAt) : formatDateTimeCo(s.closedAt)}`
+}
+
+function sessionPeopleLabel(s: CashSession) {
+  const opened = s.openedByName || '—'
+  const closed = s.closedByName || '—'
+  return opened === closed ? opened : `${opened} → ${closed}`
+}
 
 function money(n: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -146,123 +186,165 @@ export default function CajaPage() {
 
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
-      <div className="min-h-screen space-y-4 bg-white py-4 dark:bg-neutral-950 md:space-y-6 md:py-6">
-        <Card className={cn(cardShell)}>
-          <CardHeader className="flex flex-col gap-3 border-b border-zinc-200/80 p-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between md:p-6">
-            <div>
-              <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50 md:text-xl">
-                <Wallet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
-                Caja
-                <StoreBadge />
-              </CardTitle>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Historial de cierres. La caja del día se abre en un modal encima de la tabla.
+      <div className="py-4 max-xl:pb-1 md:py-6">
+        <div className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-white/[0.07] sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">Caja</h1>
+            <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">Turno del día e historial de cierres.</p>
+            {!loading ? (
+              <p className="mt-2 inline-flex flex-wrap items-center gap-1.5 text-[13px] text-zinc-700 dark:text-white/80">
+                <StatusDot tone={openSession ? (sessionFromPreviousDay ? 'warning' : 'success') : 'neutral'} />
+                {openSession ? (
+                  <>
+                    {sessionFromPreviousDay ? 'Caja abierta desde ayer' : 'Caja abierta'}
+                    <span className="text-zinc-400 dark:text-white/40">
+                      · {formatDateTimeCo(openSession.openedAt)} · {openSession.openedByName}
+                    </span>
+                  </>
+                ) : (
+                  'Caja cerrada'
+                )}
               </p>
-              {openSession && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge className="border-0 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    Caja abierta
-                  </Badge>
-                  <span className="text-xs text-zinc-500">
-                    Desde {formatDateTimeCo(openSession.openedAt)} · {openSession.openedByName}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-                <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-                Actualizar
-              </Button>
-              {canEgresos && (
-                <Link
-                  href="/egresos?tipo=caja&nuevo=1"
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-semibold text-zinc-800 shadow-none hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  <Wallet className="h-3.5 w-3.5" />
-                  Egreso de caja
-                </Link>
-              )}
-              {openSession && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setDayModal(true)}>
-                  <Eye className="h-3.5 w-3.5" />
-                  Ver caja del día
-                </Button>
-              )}
-              {!openSession && canOpen && (
-                <Button type="button" size="sm" onClick={() => setOpenModal(true)}>
-                  <LockOpen className="h-3.5 w-3.5" />
-                  Abrir caja
-                </Button>
-              )}
-              {/* Cerrar solo desde el modal "Caja del día" */}
-            </div>
-          </CardHeader>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className={headerIconBtnClass}
+              title="Actualizar"
+              aria-label="Actualizar"
+            >
+              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} strokeWidth={1.5} />
+            </button>
+            {canEgresos && (
+              <Link href="/egresos?tipo=caja&nuevo=1" className={detailGhostClass}>
+                <Wallet strokeWidth={1.75} />
+                Egreso de caja
+              </Link>
+            )}
+            {openSession && (
+              <button type="button" onClick={() => setDayModal(true)} className={detailPrimaryClass}>
+                <Eye strokeWidth={1.75} />
+                Ver caja del día
+              </button>
+            )}
+            {!openSession && canOpen && (
+              <button type="button" onClick={() => setOpenModal(true)} className={detailPrimaryClass}>
+                <LockOpen strokeWidth={1.75} />
+                Abrir caja
+              </button>
+            )}
+          </div>
+        </div>
 
-          <CardContent className="p-0">
-            <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 md:px-6">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                Historial de cierres
-              </h3>
+        <section className="mt-6">
+          <h2 className="mb-3 text-[13px] font-semibold text-zinc-900 dark:text-white">Historial de cierres</h2>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+              <p className="text-[13px] text-zinc-500 dark:text-white/50">Cargando caja…</p>
             </div>
-            {loading ? (
-              <p className="p-4 text-sm text-zinc-500 md:p-6">Cargando…</p>
-            ) : closedSessions.length === 0 ? (
-              <p className="p-4 text-sm text-zinc-500 md:p-6">Aún no hay cierres registrados.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
+          ) : closedSessions.length === 0 ? (
+            <div className="casa-artesanal-card-surface rounded-xl border border-zinc-200 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Aún no hay cierres registrados</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+                Cuando cierres el primer turno aparecerá aquí.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="casa-artesanal-card-surface divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800/80 dark:border-zinc-800 dark:bg-zinc-900/40 lg:hidden">
+                {closedSessions.map((s) => {
+                  const diffView = getCashSessionDifferenceView(s)
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/caja/${s.id}`}
+                      className="casa-artesanal-preserve-surface flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                          {formatDateCo(s.openedAt)}
+                          <span className="ml-1.5 text-xs font-normal tabular-nums text-zinc-500 dark:text-zinc-400">
+                            {sessionShiftLabel(s)}
+                          </span>
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                          Ingresos {money(s.totalIngresos)} · Egresos {money(s.totalEgresos)}
+                        </p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs">
+                          <span className="text-zinc-500 dark:text-zinc-400">Esperado {money(s.expectedCash)}</span>
+                          <span className="text-zinc-300 dark:text-white/20">·</span>
+                          <span className={cn('font-medium tabular-nums', cashSessionDifferenceTone(diffView.kind))}>
+                            {diffView.label} {money(diffView.amount)}
+                          </span>
+                        </p>
+                      </div>
+                      <Eye className="mt-1 h-4 w-4 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.5} />
+                    </Link>
+                  )
+                })}
+              </div>
+
+              <div className="casa-artesanal-card-surface hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40 lg:block">
+                <table className="w-full min-w-[820px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-200 bg-zinc-50/80 text-left text-[11px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
-                      <th className="px-4 py-3">Apertura</th>
-                      <th className="px-3 py-3">Cierre</th>
-                      <th className="px-3 py-3">Fondo</th>
-                      <th className="px-3 py-3">Ingresos</th>
-                      <th className="px-3 py-3">Egresos</th>
-                      <th className="px-3 py-3">Esperado</th>
-                      <th className="px-3 py-3">Contado</th>
-                      <th className="px-3 py-3">Diferencia</th>
-                      <th className="px-3 py-3 text-right">Detalle</th>
+                    <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/70">
+                      <th className={thClass}>Turno</th>
+                      <th className={cn(thClass, 'text-right')}>Fondo</th>
+                      <th className={cn(thClass, 'text-right')}>Ingresos</th>
+                      <th className={cn(thClass, 'text-right')}>Egresos</th>
+                      <th className={cn(thClass, 'text-right')}>Esperado</th>
+                      <th className={cn(thClass, 'text-right')}>Contado</th>
+                      <th className={cn(thClass, 'text-right')}>Diferencia</th>
+                      <th className="w-12 px-2 py-2.5">
+                        <span className="sr-only">Detalle</span>
+                      </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  <tbody>
                     {closedSessions.map((s) => {
                       const diffView = getCashSessionDifferenceView(s)
                       return (
                         <tr
                           key={s.id}
-                          className="cursor-pointer transition-colors hover:bg-zinc-50/90 dark:hover:bg-zinc-900/40"
+                          className="casa-artesanal-preserve-surface cursor-pointer border-b border-zinc-100 transition-colors last:border-b-0 hover:bg-zinc-50 dark:border-zinc-800/80 dark:hover:bg-zinc-800/40"
                           onClick={() => router.push(`/caja/${s.id}`)}
                         >
-                          <td className="px-4 py-3">
-                            <div>{formatDateTimeCo(s.openedAt)}</div>
-                            <div className="text-xs text-zinc-500">{s.openedByName}</div>
+                          <td className={cn(tdClass, 'whitespace-nowrap')}>
+                            <p className="font-medium text-zinc-900 dark:text-zinc-50">{formatDateCo(s.openedAt)}</p>
+                            <p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+                              {sessionShiftLabel(s)} · {sessionPeopleLabel(s)}
+                            </p>
                           </td>
-                          <td className="px-3 py-3">
-                            <div>{formatDateTimeCo(s.closedAt)}</div>
-                            <div className="text-xs text-zinc-500">{s.closedByName || '—'}</div>
+                          <td className={cn(tdClass, 'whitespace-nowrap text-right tabular-nums text-zinc-500 dark:text-zinc-400')}>
+                            {money(s.openingCash)}
                           </td>
-                          <td className="px-3 py-3 tabular-nums">{money(s.openingCash)}</td>
-                          <td className="px-3 py-3 tabular-nums">{money(s.totalIngresos)}</td>
-                          <td className="px-3 py-3 tabular-nums">{money(s.totalEgresos)}</td>
-                          <td className="px-3 py-3 tabular-nums">{money(s.expectedCash)}</td>
-                          <td className="px-3 py-3 tabular-nums">{money(s.countedCash || 0)}</td>
-                          <td
-                            className={cn(
-                              'px-3 py-3 font-medium tabular-nums',
-                              cashSessionDifferenceTone(diffView.kind)
-                            )}
-                          >
-                            {money(diffView.amount)}
+                          <td className={cn(tdClass, 'whitespace-nowrap text-right tabular-nums')}>{money(s.totalIngresos)}</td>
+                          <td className={cn(tdClass, 'whitespace-nowrap text-right tabular-nums')}>{money(s.totalEgresos)}</td>
+                          <td className={cn(tdClass, 'whitespace-nowrap text-right font-medium tabular-nums')}>
+                            {money(s.expectedCash)}
                           </td>
-                          <td className="px-3 py-3 text-right">
+                          <td className={cn(tdClass, 'whitespace-nowrap text-right tabular-nums')}>
+                            {s.countedCash ? money(s.countedCash) : <span className="text-zinc-400">—</span>}
+                          </td>
+                          <td className={cn(tdClass, 'whitespace-nowrap text-right')}>
+                            <span className={cn('font-medium tabular-nums', cashSessionDifferenceTone(diffView.kind))}>
+                              {money(diffView.amount)}
+                            </span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{diffView.label}</span>
+                          </td>
+                          <td className="px-3 py-1.5">
                             <Link
                               href={`/caja/${s.id}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                              className={rowIconBtnClass}
+                              title="Ver detalle"
                               aria-label="Ver detalle del cierre"
                             >
-                              <Eye className="h-4 w-4" strokeWidth={1.75} />
+                              <Eye className="h-4 w-4" strokeWidth={1.5} />
                             </Link>
                           </td>
                         </tr>
@@ -271,9 +353,9 @@ export default function CajaPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </>
+          )}
+        </section>
 
         <OpenCashModal
           isOpen={openModal}

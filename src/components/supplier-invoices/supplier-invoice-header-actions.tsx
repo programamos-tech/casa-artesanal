@@ -1,13 +1,44 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Plus, Pencil, Ban, AlertTriangle, X } from 'lucide-react'
+import { HandCoins, Pencil, Ban, X } from 'lucide-react'
 import { SupplierInvoice } from '@/types'
 import { SupplierInvoicesService } from '@/lib/supplier-invoices-service'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import {
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalDangerButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalHintClass,
+  modalInputClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
+} from '@/lib/app-modal'
+
+const detailActionClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium leading-none transition-colors disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0'
+
+const detailGhostClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white'
+)
+
+const detailPrimaryClass = cn(
+  detailActionClass,
+  'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+)
+
+const detailDangerClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:border-white/[0.12] dark:text-rose-300 dark:hover:border-rose-400/40 dark:hover:bg-rose-500/10'
+)
 
 interface SupplierInvoiceHeaderActionsProps {
   invoice: SupplierInvoice | null
@@ -81,83 +112,67 @@ export function SupplierInvoiceHeaderActions({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {canPay && (
-          <Button size="sm" onClick={onOpenAddPayment}>
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            Registrar abono
-          </Button>
-        )}
-        {canEditInvoice && (
-          <Button size="sm" variant="outline" onClick={onOpenEdit}>
-            <Pencil className="h-4 w-4" strokeWidth={1.5} />
-            Editar
-          </Button>
-        )}
-        {canCancelInvoice && (
-          <Button
-            size="sm"
-            variant="outline"
-            className={cn(
-              'border-red-500/40 text-red-700 hover:bg-red-500/[0.08] dark:border-red-500/35 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50'
-            )}
-            onClick={openCancelModal}
-          >
-            <Ban className="h-4 w-4" strokeWidth={1.5} />
-            Anular factura
-          </Button>
-        )}
-      </div>
+      {canEditInvoice && (
+        <button type="button" onClick={onOpenEdit} className={detailGhostClass}>
+          <Pencil strokeWidth={1.75} />
+          Editar
+        </button>
+      )}
+      {canCancelInvoice && (
+        <button type="button" onClick={openCancelModal} className={detailDangerClass}>
+          <Ban strokeWidth={1.75} />
+          Anular
+        </button>
+      )}
+      {canPay && (
+        <button type="button" onClick={onOpenAddPayment} className={detailPrimaryClass}>
+          <HandCoins strokeWidth={1.75} />
+          Abonar
+        </button>
+      )}
 
       {cancelModalOpen && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm xl:left-56"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cancel-invoice-title"
-        >
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/30">
-              <div className="flex min-w-0 items-center gap-2">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-red-600" />
-                <h2 id="cancel-invoice-title" className="truncate text-lg font-bold text-zinc-900 dark:text-zinc-100">
+        <div className={modalOverlayClass} role="dialog" aria-modal="true" aria-labelledby="cancel-invoice-title">
+          <div className={cn(modalPanelClass, 'max-w-md')}>
+            <div className={modalHeaderClass}>
+              <div className="min-w-0">
+                <h2 id="cancel-invoice-title" className={modalTitleClass}>
                   Anular factura
                 </h2>
+                <p className={modalSubtitleClass}>{invoice.invoiceNumber}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 min-h-0 w-8 shrink-0 rounded-lg p-0"
+              <button
+                type="button"
+                className={modalCloseButtonClass}
                 onClick={closeCancelModal}
                 disabled={cancelling}
+                aria-label="Cerrar"
               >
-                <X className="h-5 w-5" />
-              </Button>
+                <X className="h-4 w-4" strokeWidth={1.75} />
+              </button>
             </div>
-            <div className="space-y-4 p-4">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Los abonos registrados permanecen en el historial.
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="cancel-reason-header">¿Por qué anulas esta factura?</Label>
-                <textarea
-                  id="cancel-reason-header"
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  rows={4}
-                  disabled={cancelling}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                  placeholder="Ej. factura duplicada, error de proveedor, acuerdo comercial…"
-                />
-              </div>
+            <div className={modalBodyClass}>
+              <label htmlFor="cancel-reason-header" className={modalLabelClass}>
+                ¿Por qué anulas esta factura?
+              </label>
+              <textarea
+                id="cancel-reason-header"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={4}
+                disabled={cancelling}
+                className={cn(modalInputClass, 'h-auto resize-none py-2')}
+                placeholder="Ej. factura duplicada, error de proveedor, acuerdo comercial…"
+              />
+              <p className={modalHintClass}>Los abonos registrados permanecen en el historial.</p>
             </div>
-            <div className="flex justify-end gap-2 border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/80">
-              <Button type="button" variant="outline" onClick={closeCancelModal} disabled={cancelling}>
+            <div className={modalFooterClass}>
+              <button type="button" className={modalSecondaryButtonClass} onClick={closeCancelModal} disabled={cancelling}>
                 Volver
-              </Button>
-              <Button type="button" variant="destructive" onClick={confirmCancelInvoice} disabled={cancelling}>
+              </button>
+              <button type="button" className={modalDangerButtonClass} onClick={confirmCancelInvoice} disabled={cancelling}>
                 {cancelling ? 'Anulando…' : 'Anular factura'}
-              </Button>
+              </button>
             </div>
           </div>
         </div>

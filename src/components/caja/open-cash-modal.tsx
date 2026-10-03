@@ -1,13 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { X, LockOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { CashSessionsService } from '@/lib/cash-sessions-service'
-import { appModalOverlayClass, appModalPanelClass } from '@/lib/app-modal'
+import {
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalHintClass,
+  modalInputClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
+} from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -58,62 +69,77 @@ export function OpenCashModal({ isOpen, onClose, onOpened }: OpenCashModalProps)
   }
 
   return (
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+    <div className={modalOverlayClass} role="presentation" onClick={onClose}>
       <div
-        className={cn(appModalPanelClass, 'max-w-md')}
+        className={cn(modalPanelClass, 'max-w-md')}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="open-cash-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
-          <div className="flex items-center gap-2">
-            <LockOpen className="h-5 w-5 text-emerald-600" strokeWidth={1.75} />
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Abrir caja</h2>
+        <div className={modalHeaderClass}>
+          <div className="min-w-0">
+            <h2 id="open-cash-modal-title" className={modalTitleClass}>
+              Abrir caja
+            </h2>
+            <p className={modalSubtitleClass}>Inicia el turno del día.</p>
           </div>
-          <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <button type="button" className={modalCloseButtonClass} onClick={onClose} aria-label="Cerrar">
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </button>
         </div>
-        <div className="space-y-4 p-4">
-          <div className="space-y-2">
-            <Label>Dinero base (fondo inicial)</Label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={openingCash ? amount.toLocaleString('es-CO') : ''}
-              onChange={(e) => setOpeningCash(e.target.value.replace(/[^\d]/g, ''))}
-              onFocus={(e) => e.target.select()}
-              placeholder="0"
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-lg font-semibold tabular-nums dark:border-zinc-600 dark:bg-zinc-900"
-              autoFocus
-            />
-            <p className="text-xs text-zinc-500">
+        <div className={cn(modalBodyClass, 'space-y-4')}>
+          <div>
+            <label htmlFor="open-cash-amount" className={modalLabelClass}>
+              Dinero base (fondo inicial)
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-zinc-400 dark:text-white/35">
+                $
+              </span>
+              <input
+                id="open-cash-amount"
+                type="text"
+                inputMode="numeric"
+                value={openingCash ? amount.toLocaleString('es-CO') : ''}
+                onChange={(e) => setOpeningCash(e.target.value.replace(/[^\d]/g, ''))}
+                onFocus={(e) => e.target.select()}
+                placeholder="0"
+                className={cn(modalInputClass, 'h-11 pl-7 text-lg font-semibold tabular-nums')}
+                autoFocus
+              />
+            </div>
+            <p className={modalHintClass}>
               Efectivo con el que inicias el día en caja (opcional). Sirve para cuadrar al cierre.
             </p>
           </div>
-          <div className="space-y-2">
-            <Label>
-              Nota <span className="font-normal text-zinc-500">(opcional)</span>
-            </Label>
-            <Textarea
+          <div>
+            <label htmlFor="open-cash-notes" className={modalLabelClass}>
+              Nota <span className="font-normal text-zinc-400 dark:text-white/35">(opcional)</span>
+            </label>
+            <textarea
+              id="open-cash-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ej. turno mañana"
               rows={2}
+              className={cn(modalInputClass, 'h-auto resize-none py-2')}
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-          <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
+        <div className={modalFooterClass}>
+          <button type="button" className={modalSecondaryButtonClass} onClick={onClose} disabled={saving}>
             Cancelar
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
+            className={modalPrimaryButtonClass}
             onClick={() => void handleSubmit()}
             disabled={saving}
           >
+            <LockOpen className="h-3.5 w-3.5" strokeWidth={1.75} />
             {saving ? 'Abriendo…' : 'Abrir caja'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

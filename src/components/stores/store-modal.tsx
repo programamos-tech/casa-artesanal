@@ -2,22 +2,26 @@
 
 import { useState, useEffect, useLayoutEffect, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@/components/ui/button'
-import { X, Store as StoreIcon, Upload } from 'lucide-react'
+import { ExternalLink, Upload, X } from 'lucide-react'
 import { Store } from '@/types'
 import { cn } from '@/lib/utils'
 import {
-  appModalBodyClass,
-  appModalErrorClass,
-  appModalFooterClass,
-  appModalHeaderClass,
-  appModalHintClass,
-  appModalInputClass,
-  appModalLabelClass,
-  appModalOverlayClass,
-  appModalPanelClass,
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalErrorClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalHintClass,
+  modalInputClass,
+  modalInputErrorClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
 } from '@/lib/app-modal'
-import { cardShell } from '@/lib/card-shell'
 
 interface StoreModalProps {
   isOpen: boolean
@@ -176,128 +180,110 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
   const isEdit = Boolean(store)
 
   const modal = (
-    <div className={appModalOverlayClass} role="presentation" onClick={onClose}>
+    <div className={modalOverlayClass} role="presentation" onClick={onClose}>
       <div
-        className={cn(appModalPanelClass, 'max-w-xl')}
+        className={cn(modalPanelClass, 'max-w-lg')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="store-modal-title"
         onClick={event => event.stopPropagation()}
       >
-        <div className={appModalHeaderClass}>
-          <div className="flex min-w-0 items-center gap-2.5">
-            <StoreIcon
-              className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400"
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <div className="min-w-0">
-              <h2
-                id="store-modal-title"
-                className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-              >
-                {isEdit ? 'Editar tienda' : 'Nueva tienda'}
-              </h2>
-              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                {isEdit && store?.name
-                  ? `Editando ${store.name}`
-                  : 'Completa los datos de la ubicación'}
-              </p>
-            </div>
+        <div className={modalHeaderClass}>
+          <div className="min-w-0">
+            <h2 id="store-modal-title" className={modalTitleClass}>
+              {isEdit ? 'Editar tienda' : 'Nueva tienda'}
+            </h2>
+            <p className={modalSubtitleClass}>
+              {isEdit && store?.name ? store.name : 'Datos de la ubicación'}
+            </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 rounded-md p-0"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
+          <button type="button" className={modalCloseButtonClass} onClick={onClose} aria-label="Cerrar">
             <X className="h-4 w-4" strokeWidth={1.75} />
-          </Button>
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className={cn(appModalBodyClass, 'space-y-4')}>
-            <div className={cn(cardShell, 'space-y-2 p-3')}>
-              <span className={cn(appModalLabelClass, 'mb-0')}>Logo (opcional)</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <label
-                  className={cn(
-                    'inline-flex cursor-pointer items-center gap-2 rounded-lg border-transparent bg-emerald-500 px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-600',
-                    isUploading && 'pointer-events-none opacity-50'
+          <div className={cn(modalBodyClass, 'space-y-4')}>
+            <div>
+              <span className={modalLabelClass}>Logo</span>
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white dark:border-white/[0.1] dark:bg-white/[0.04]">
+                  {formData.logo && !errors.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={formData.logo} alt="Logo de la tienda" className="h-full w-full object-contain p-1.5" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-zinc-300 dark:text-white/25" strokeWidth={1.75} />
                   )}
-                >
-                  <Upload className="h-4 w-4" strokeWidth={1.75} />
-                  {isUploading ? 'Subiendo…' : formData.logo ? 'Cambiar logo' : 'Subir logo'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoUpload}
-                    disabled={isUploading}
-                  />
-                </label>
-                {formData.logo && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void handleRemoveLogo()}
-                      className="text-sm font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
-                    >
-                      Quitar
-                    </button>
-                    <a
-                      href={formData.logo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-semibold text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
-                    >
-                      Abrir
-                    </a>
-                  </>
-                )}
-              </div>
-              {errors.logo && <p className={appModalErrorClass}>{errors.logo}</p>}
-              <p className={appModalHintClass}>Máximo 2 MB · JPG, PNG o GIF</p>
-              {formData.logo && !errors.logo && (
-                <div className="relative mt-1 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/80">
                   {isUploading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
-                      Subiendo…
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                     </div>
                   )}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={formData.logo}
-                    alt="Vista previa del logo"
-                    className="max-h-40 w-full object-contain"
-                  />
                 </div>
-              )}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <label
+                      className={cn(
+                        modalSecondaryButtonClass,
+                        'cursor-pointer gap-1.5',
+                        isUploading && 'pointer-events-none opacity-50'
+                      )}
+                    >
+                      <Upload className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      {isUploading ? 'Subiendo…' : formData.logo ? 'Cambiar' : 'Subir logo'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLogoUpload}
+                        disabled={isUploading}
+                      />
+                    </label>
+                    {formData.logo && (
+                      <>
+                        <a
+                          href={formData.logo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={modalCloseButtonClass}
+                          title="Abrir logo"
+                          aria-label="Abrir logo"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveLogo()}
+                          className="h-8 px-1.5 text-[13px] font-medium text-rose-600 transition-colors hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+                        >
+                          Quitar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <p className={modalHintClass}>Máximo 2 MB · JPG, PNG o GIF</p>
+                </div>
+              </div>
+              {errors.logo && <p className={modalErrorClass}>{errors.logo}</p>}
             </div>
 
             <div>
-              <label htmlFor="store-name" className={appModalLabelClass}>
-                Nombre de la tienda <span className="text-zinc-400">*</span>
+              <label htmlFor="store-name" className={modalLabelClass}>
+                Nombre de la tienda <span className="text-zinc-400 dark:text-white/35">*</span>
               </label>
               <input
                 id="store-name"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ej. Casa Artesanal Parque"
-                className={cn(
-                  appModalInputClass,
-                  'h-11',
-                  errors.name && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
-                )}
+                className={cn(modalInputClass, errors.name && modalInputErrorClass)}
               />
-              {errors.name && <p className={appModalErrorClass}>{errors.name}</p>}
+              {errors.name && <p className={modalErrorClass}>{errors.name}</p>}
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor="store-nit" className={appModalLabelClass}>
+                <label htmlFor="store-nit" className={modalLabelClass}>
                   NIT
                 </label>
                 <input
@@ -305,11 +291,27 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
                   value={formData.nit}
                   onChange={e => setFormData({ ...formData, nit: e.target.value })}
                   placeholder="Ej. 900123456-7"
-                  className={cn(appModalInputClass, 'h-11')}
+                  className={modalInputClass}
                 />
               </div>
               <div>
-                <label htmlFor="store-city" className={appModalLabelClass}>
+                <label htmlFor="store-phone" className={modalLabelClass}>
+                  Teléfono
+                </label>
+                <input
+                  id="store-phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="Ej. 300 123 4567"
+                  className={modalInputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <div>
+                <label htmlFor="store-city" className={modalLabelClass}>
                   Ciudad
                 </label>
                 <input
@@ -317,47 +319,31 @@ export function StoreModal({ isOpen, onClose, onSave, store }: StoreModalProps) 
                   value={formData.city}
                   onChange={e => setFormData({ ...formData, city: e.target.value })}
                   placeholder="Ej. Bogotá"
-                  className={cn(appModalInputClass, 'h-11')}
+                  className={modalInputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="store-address" className={modalLabelClass}>
+                  Dirección
+                </label>
+                <input
+                  id="store-address"
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Calle, número, barrio o piso"
+                  className={modalInputClass}
                 />
               </div>
             </div>
-
-            <div>
-              <label htmlFor="store-phone" className={appModalLabelClass}>
-                Teléfono
-              </label>
-              <input
-                id="store-phone"
-                type="tel"
-                value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Ej. 300 123 4567"
-                className={cn(appModalInputClass, 'h-11')}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="store-address" className={appModalLabelClass}>
-                Dirección
-              </label>
-              <textarea
-                id="store-address"
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Calle, número, barrio o piso"
-                rows={2}
-                className={cn(appModalInputClass, 'min-h-[4rem] resize-y py-2.5')}
-              />
-            </div>
           </div>
 
-          <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={onClose}>
+          <div className={modalFooterClass}>
+            <button type="button" className={modalSecondaryButtonClass} onClick={onClose}>
               Cancelar
-            </Button>
-            <Button type="submit" disabled={isUploading}>
-              {isEdit ? 'Guardar cambios' : 'Registrar tienda'}
-            </Button>
+            </button>
+            <button type="submit" className={modalPrimaryButtonClass} disabled={isUploading}>
+              {isEdit ? 'Guardar cambios' : 'Crear tienda'}
+            </button>
           </div>
         </form>
       </div>

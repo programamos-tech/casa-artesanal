@@ -1,49 +1,159 @@
 'use client'
 
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  ArrowLeft,
-  Wallet,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Banknote,
-  FileText,
-  Receipt,
-} from 'lucide-react'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { cardShell } from '@/lib/card-shell'
-import { StoreBadge } from '@/components/ui/store-badge'
 import type { CashSession } from '@/types'
-import type { CashCloseReportInput } from '@/lib/cash-close-whatsapp'
+import type { CashCloseReportInput, CashCloseSaleLine } from '@/lib/cash-close-whatsapp'
 import {
   cashSessionDifferenceTone,
   getCashSessionDifferenceView,
 } from '@/lib/cash-sessions-service'
-import { moneyCop, paymentLabel, formatDateTimeCo } from '@/lib/cash-close-whatsapp'
+import { paymentLabel, formatDateTimeCo } from '@/lib/cash-close-whatsapp'
+import { StatusDot } from '@/components/dashboard/report-ui'
+import { PaymentMethodLabel, getPaymentMethodMeta } from '@/components/sales/payment-method-label'
+import { cashMoney as money } from './cash-ui'
 
-function money(n: number) {
-  return moneyCop(n)
+const detailGhostClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-[13px] font-medium leading-none text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white [&_svg]:size-3.5 [&_svg]:shrink-0'
+
+const panelClass =
+  'casa-artesanal-card-surface flex min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40'
+
+const metaSepClass = 'text-zinc-300 dark:text-white/20'
+
+function formatTimeCo(iso?: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleTimeString('es-CO', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/Bogota',
+  })
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function formatDateCo(iso?: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('es-CO', { dateStyle: 'medium', timeZone: 'America/Bogota' })
+}
+
+function MethodLabel({ method, className }: { method: string; className?: string }) {
+  if (getPaymentMethodMeta(method)) return <PaymentMethodLabel method={method} className={className} />
+  return <span className={cn('text-zinc-600 dark:text-zinc-300', className)}>{paymentLabel(method)}</span>
+}
+
+function CuadreSection({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</dt>
-      <dd className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{children}</dd>
+    <div className="border-b border-zinc-100 px-5 py-3.5 last:border-b-0 dark:border-white/[0.06]">
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-white">{title}</h3>
+        {hint ? <span className="text-xs text-zinc-400 dark:text-white/40">{hint}</span> : null}
+      </div>
+      {children}
     </div>
   )
 }
 
-function Line({ label, value }: { label: string; value: string }) {
+function CuadreLine({
+  sign,
+  label,
+  value,
+  variant = 'normal',
+  valueClassName,
+  aside,
+}: {
+  sign?: '+' | '−' | '='
+  label: ReactNode
+  value: ReactNode
+  variant?: 'normal' | 'total' | 'muted'
+  valueClassName?: string
+  aside?: ReactNode
+}) {
   return (
-    <div className="flex justify-between gap-3 text-sm">
-      <span className="text-zinc-600 dark:text-zinc-400">{label}</span>
-      <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{value}</span>
+    <div
+      className={cn(
+        'flex items-baseline gap-2 py-1 text-[13px]',
+        variant === 'total' && 'mt-1 border-t border-zinc-200 pt-2 dark:border-white/[0.1]'
+      )}
+    >
+      <span className="w-3 shrink-0 text-center tabular-nums text-zinc-400 dark:text-white/35">{sign ?? ''}</span>
+      <span
+        className={cn(
+          'min-w-0 flex-1 text-zinc-600 dark:text-white/65',
+          variant === 'total' && 'font-semibold text-zinc-900 dark:text-white',
+          variant === 'muted' && 'text-zinc-400 dark:text-white/40'
+        )}
+      >
+        {label}
+      </span>
+      {aside ? <span className="shrink-0 text-xs text-zinc-500 dark:text-white/50">{aside}</span> : null}
+      <span
+        className={cn(
+          'shrink-0 tabular-nums text-zinc-900 dark:text-white',
+          variant === 'total' ? 'text-[15px] font-semibold' : 'font-medium',
+          variant === 'muted' && 'text-zinc-400 dark:text-white/40',
+          valueClassName
+        )}
+      >
+        {value}
+      </span>
     </div>
   )
 }
+
+function SaleRow({ sale }: { sale: CashCloseSaleLine }) {
+  const [open, setOpen] = useState(false)
+  const hasItems = sale.items.length > 0
+  return (
+    <li className="border-b border-zinc-100 last:border-b-0 dark:border-white/[0.06]">
+      <button
+        type="button"
+        onClick={() => hasItems && setOpen((v) => !v)}
+        aria-expanded={hasItems ? open : undefined}
+        className={cn(
+          'casa-artesanal-preserve-surface flex w-full items-start gap-2 px-4 py-2 text-left transition-colors',
+          hasItems ? 'hover:bg-zinc-50 dark:hover:bg-white/[0.03]' : 'cursor-default'
+        )}
+      >
+        <ChevronDown
+          className={cn(
+            'mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform dark:text-white/35',
+            open && 'rotate-180',
+            !hasItems && 'invisible'
+          )}
+          strokeWidth={1.75}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-medium text-zinc-900 dark:text-white">{sale.clientName}</p>
+          <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-white/50">
+            <span className="font-mono">{sale.invoiceNumber}</span>
+            {' · '}
+            {formatTimeCo(sale.createdAt)}
+            {sale.sellerName ? ` · ${sale.sellerName}` : ''}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[13px] font-semibold tabular-nums text-zinc-900 dark:text-white">{money(sale.total)}</p>
+          <MethodLabel method={sale.paymentMethod} className="mt-0.5 text-xs" />
+        </div>
+      </button>
+      {open && hasItems ? (
+        <ul className="space-y-0.5 pb-2.5 pl-[2.375rem] pr-4 text-xs text-zinc-500 dark:text-white/50">
+          {sale.items.map((item, i) => (
+            <li key={i} className="flex justify-between gap-3">
+              <span className="min-w-0 truncate">
+                {item.productName} <span className="text-zinc-400 dark:text-white/35">×{item.quantity}</span>
+              </span>
+              <span className="shrink-0 tabular-nums">{money(item.total)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  )
+}
+
+type MovementsTab = 'sales' | 'egresos'
 
 interface CashCloseDetailPageViewProps {
   session: CashSession
@@ -51,251 +161,211 @@ interface CashCloseDetailPageViewProps {
 }
 
 export function CashCloseDetailPageView({ session, report }: CashCloseDetailPageViewProps) {
+  const [tab, setTab] = useState<MovementsTab>('sales')
   const diffView = getCashSessionDifferenceView(session)
-  const diff = diffView.amount
   const dayNet = (report.salesCash || 0) + (report.creditAbonosCash || 0) - (report.egresosCash || 0)
   const usedFromOpening = Math.min(report.openingCash || 0, Math.max(0, -dayNet))
+  const sameDay = formatDateCo(report.openedAt) === formatDateCo(report.closedAt)
+  const shiftLabel = sameDay
+    ? `${formatDateCo(report.openedAt)} · ${formatTimeCo(report.openedAt)} → ${formatTimeCo(report.closedAt)}`
+    : `${formatDateTimeCo(report.openedAt)} → ${formatDateTimeCo(report.closedAt)}`
+  const openedBy = report.openedByName || '—'
+  const closedBy = report.closedByName || '—'
+  const note = report.notes?.trim()
+  const salesTotal = report.sales.reduce((sum, sale) => sum + (sale.total || 0), 0)
+  const egresosTotal = report.egresos.reduce((sum, e) => sum + (e.amount || 0), 0)
+
+  const digitalLines = [
+    { label: 'Nequi', value: report.salesNequi },
+    { label: 'Bancolombia', value: report.salesBancolombia },
+    { label: 'Transferencia', value: report.salesTransfer },
+    { label: 'Tarjeta', value: report.salesCard },
+    { label: 'Otros medios', value: report.salesOther },
+    { label: 'Abonos', value: report.creditAbonosOther },
+  ].filter((l) => (l.value || 0) !== 0)
+  const digitalTotal = digitalLines.reduce((sum, l) => sum + (l.value || 0), 0)
+
+  const tabs: Array<{ id: MovementsTab; label: string; count: number; total: number }> = [
+    { id: 'sales', label: 'Ventas', count: report.sales.length, total: salesTotal },
+    { id: 'egresos', label: 'Egresos', count: report.egresos.length, total: egresosTotal },
+  ]
 
   return (
-    <div className="min-h-screen space-y-4 bg-white py-4 dark:bg-neutral-950 md:space-y-6 md:py-6">
-      <div className="flex flex-wrap items-start gap-3 px-1">
-        <Link
-          href="/caja"
-          aria-label="Volver a caja"
-          className="inline-flex h-10 w-10 shrink-0 -ml-1 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        >
-          <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-              Detalle de cierre de caja
-            </h1>
-            <StoreBadge />
-            <Badge className="border-0 bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+    <div className="py-4 max-xl:pb-1 md:py-6 lg:flex lg:h-[calc(100dvh-7.5rem-var(--cash-stale-alert-h,0px))] lg:min-h-[34rem] lg:flex-col xl:h-[calc(100dvh-4rem-var(--cash-stale-alert-h,0px))]">
+      <div className="flex shrink-0 flex-col gap-3 border-b border-zinc-200 pb-4 dark:border-white/[0.07] sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">
+            Cierre de caja
+          </h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-zinc-500 dark:text-white/50">
+            <span className="inline-flex items-center gap-1.5 text-zinc-700 dark:text-white/80">
+              <StatusDot tone="neutral" />
               Cerrada
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {report.storeName} · {formatDateTimeCo(report.openedAt)} → {formatDateTimeCo(report.closedAt)}
+            </span>
+            <span className={metaSepClass}>·</span>
+            <span>{report.storeName}</span>
+            <span className={metaSepClass}>·</span>
+            <span className="tabular-nums">{shiftLabel}</span>
+            <span className={metaSepClass}>·</span>
+            {openedBy === closedBy ? (
+              <span className="text-zinc-700 dark:text-white/80">{openedBy}</span>
+            ) : (
+              <span>
+                Abrió <span className="text-zinc-700 dark:text-white/80">{openedBy}</span>, cerró{' '}
+                <span className="text-zinc-700 dark:text-white/80">{closedBy}</span>
+              </span>
+            )}
           </p>
+          {note ? (
+            <p className="mt-1 truncate text-[13px] text-zinc-500 dark:text-white/50" title={note}>
+              <span className="text-zinc-400 dark:text-white/40">Nota:</span> {note}
+            </p>
+          ) : null}
         </div>
+        <Link href="/caja" className={detailGhostClass}>
+          <ArrowLeft strokeWidth={1.75} />
+          Volver
+        </Link>
       </div>
 
-      <Card className={cn(cardShell)}>
-        <CardHeader className="border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:p-6">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Wallet className="h-4 w-4 text-emerald-600" strokeWidth={1.75} />
-            Resumen del turno
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 p-4 md:p-6">
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Abrió">{report.openedByName || '—'}</Field>
-            <Field label="Cerró">{report.closedByName || '—'}</Field>
-            <Field label="Apertura">{formatDateTimeCo(report.openedAt)}</Field>
-            <Field label="Cierre">{formatDateTimeCo(report.closedAt)}</Field>
-          </dl>
+      <div className="mt-4 grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <section className={panelClass}>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <CuadreSection title="Efectivo">
+              <CuadreLine sign="+" label="Ventas en efectivo" value={money(report.salesCash)} />
+              <CuadreLine sign="+" label="Abonos en efectivo" value={money(report.creditAbonosCash)} />
+              <CuadreLine sign="−" label="Egresos en efectivo" value={money(report.egresosCash)} />
+              <CuadreLine sign="=" label="Efectivo esperado" value={money(report.expectedCash)} variant="total" />
+              <CuadreLine label="Efectivo contado" value={money(report.countedCash)} />
+              <CuadreLine
+                label={diffView.kind === 'remaining' ? 'Quedó en caja' : 'Diferencia'}
+                aside={
+                  <span className={cn('font-medium', cashSessionDifferenceTone(diffView.kind))}>{diffView.label}</span>
+                }
+                value={money(diffView.amount)}
+                valueClassName={cn('font-semibold', cashSessionDifferenceTone(diffView.kind))}
+              />
+              {usedFromOpening > 0 && (
+                <CuadreLine label="Tomado del fondo inicial" value={money(usedFromOpening)} variant="muted" />
+              )}
+              <CuadreLine label="Fondo inicial" value={money(report.openingCash)} variant="muted" />
+            </CuadreSection>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryTile icon={Banknote} label="Fondo inicial (no entra al cierre)" value={money(report.openingCash)} />
-            <SummaryTile icon={ArrowUpCircle} label="Ingresos" value={money(report.totalIngresos)} tone="income" />
-            <SummaryTile icon={ArrowDownCircle} label="Egresos" value={money(report.totalEgresos)} tone="expense" />
-            <SummaryTile icon={Wallet} label="Efectivo esperado (sin fondo)" value={money(report.expectedCash)} tone="cash" />
+            <CuadreSection title="Digital">
+              {digitalLines.length === 0 ? (
+                <p className="py-1 pl-5 text-[13px] text-zinc-400 dark:text-white/40">—</p>
+              ) : (
+                <>
+                  {digitalLines.map((l) => (
+                    <CuadreLine key={l.label} sign="+" label={l.label} value={money(l.value)} />
+                  ))}
+                  <CuadreLine sign="=" label="Total digital" value={money(digitalTotal)} variant="total" />
+                </>
+              )}
+              {(report.egresosOther || 0) > 0 && (
+                <CuadreLine sign="−" label="Egresos por otros medios" value={money(report.egresosOther)} />
+              )}
+            </CuadreSection>
+
+            <CuadreSection title="Total del turno">
+              <CuadreLine
+                label="Ingresos"
+                value={money(report.totalIngresos)}
+                valueClassName="text-emerald-600 dark:text-emerald-400"
+              />
+              <CuadreLine
+                label="Egresos"
+                value={money(report.totalEgresos)}
+                valueClassName="text-rose-600 dark:text-rose-400"
+              />
+              {(report.salesCredit || 0) > 0 && (
+                <CuadreLine
+                  label="Facturado a crédito"
+                  value={money(report.salesCredit)}
+                  variant="muted"
+                />
+              )}
+            </CuadreSection>
+          </div>
+        </section>
+
+        <section className={panelClass}>
+          <div className="shrink-0 border-b border-zinc-200 p-2 dark:border-zinc-800">
+            <div
+              role="tablist"
+              aria-label="Movimientos del turno"
+              className="casa-artesanal-preserve-surface grid grid-cols-2 gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-white/[0.06]"
+            >
+              {tabs.map((t) => {
+                const active = tab === t.id
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      'casa-artesanal-preserve-surface flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-[13px] transition-colors',
+                      active
+                        ? 'border-zinc-200 bg-white font-semibold text-zinc-900 shadow-sm dark:border-white/[0.12] dark:bg-[#0a0a0b] dark:text-white'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-white/55 dark:hover:text-white'
+                    )}
+                  >
+                    <span>
+                      {t.label} <span className="font-normal text-zinc-400 dark:text-white/40">({t.count})</span>
+                    </span>
+                    <span className="tabular-nums">{money(t.total)}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          {usedFromOpening > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-              Ese día los egresos en efectivo superaron las ventas en efectivo. Se usaron{' '}
-              <span className="font-semibold tabular-nums">{money(usedFromOpening)}</span> del
-              fondo inicial. El esperado del cierre es solo el neto del turno (sin el fondo).
-            </div>
-          )}
-
-          <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-zinc-500">Efectivo contado</p>
-              <p className="text-lg font-semibold tabular-nums">{money(report.countedCash)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">
-                {diffView.kind === 'remaining' ? 'Quedó en caja' : 'Diferencia'}
-              </p>
-              <p
-                className={cn(
-                  'text-lg font-semibold tabular-nums',
-                  cashSessionDifferenceTone(diffView.kind)
-                )}
-              >
-                {money(diff)}
-                <span className="ml-2 text-xs font-medium">{diffView.label}</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">Ventas / egresos</p>
-              <p className="text-lg font-semibold tabular-nums">
-                {report.salesCount} / {report.egresosCount}
-              </p>
-            </div>
-          </div>
-
-          {report.notes?.trim() && (
-            <div className="rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Nota</p>
-              <p className="mt-1 text-zinc-800 dark:text-zinc-200">{report.notes}</p>
-            </div>
-          )}
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Ingresos por medio (dinero que entró)
-              </p>
-              <Line label="Efectivo (ventas)" value={money(report.salesCash)} />
-              <Line label="Nequi" value={money(report.salesNequi)} />
-              <Line label="Bancolombia" value={money(report.salesBancolombia)} />
-              <Line label="Transferencia" value={money(report.salesTransfer)} />
-              <Line label="Tarjeta" value={money(report.salesCard)} />
-              <Line label="Otros" value={money(report.salesOther)} />
-              <Line label="Abonos crédito (efectivo)" value={money(report.creditAbonosCash)} />
-              <Line label="Abonos crédito (otros)" value={money(report.creditAbonosOther)} />
-              <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
-                  Aparte (no suma a ingresos)
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {tab === 'sales' ? (
+              report.sales.length === 0 ? (
+                <p className="px-4 py-10 text-center text-[13px] text-zinc-400 dark:text-white/40">
+                  Sin ventas en este turno.
                 </p>
-                <Line label="Facturado a crédito" value={money(report.salesCredit)} />
-              </div>
-            </div>
-            <div className="space-y-1.5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Egresos por medio
+              ) : (
+                <ul>
+                  {report.sales.map((sale, index) => (
+                    <SaleRow key={`${sale.invoiceNumber}-${index}`} sale={sale} />
+                  ))}
+                </ul>
+              )
+            ) : report.egresos.length === 0 ? (
+              <p className="px-4 py-10 text-center text-[13px] text-zinc-400 dark:text-white/40">
+                Sin egresos en este turno.
               </p>
-              <Line label="Efectivo" value={money(report.egresosCash)} />
-              <Line label="Otros medios" value={money(report.egresosOther)} />
-              <p className="pt-3 text-xs text-zinc-500">
-                Efectivo esperado = ventas/abonos en efectivo − egresos en efectivo (sin el fondo).
-                El fondo/base no se cuenta al cerrar.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className={cn(cardShell)}>
-        <CardHeader className="border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:px-6">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Receipt className="h-4 w-4 text-indigo-600" strokeWidth={1.75} />
-            Ventas del turno ({report.sales.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {report.sales.length === 0 ? (
-            <p className="p-4 text-sm text-zinc-500 md:p-6">Sin ventas en este turno.</p>
-          ) : (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {report.sales.map((sale, index) => (
-                <div key={`${sale.invoiceNumber}-${index}`} className="p-4 md:px-6">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                        {sale.invoiceNumber} · {sale.clientName}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-500">
-                        {formatDateTimeCo(sale.createdAt)}
-                        {sale.sellerName ? ` · ${sale.sellerName}` : ''}
-                        {' · '}
-                        {paymentLabel(sale.paymentMethod)}
+            ) : (
+              <ul>
+                {report.egresos.map((e, index) => (
+                  <li
+                    key={`${e.createdAt}-${index}`}
+                    className="flex items-start justify-between gap-3 border-b border-zinc-100 px-4 py-2 last:border-b-0 dark:border-white/[0.06]"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium text-zinc-900 dark:text-white">{e.concept}</p>
+                      <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-white/50" title={e.description || undefined}>
+                        {formatTimeCo(e.createdAt)}
+                        {e.description ? ` · ${e.description}` : ''}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-                      {money(sale.total)}
-                    </p>
-                  </div>
-                  {sale.items.length > 0 && (
-                    <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {sale.items.map((item, i) => (
-                        <li key={i} className="flex justify-between gap-3">
-                          <span>
-                            {item.productName}{' '}
-                            <span className="text-zinc-400">×{item.quantity}</span>
-                          </span>
-                          <span className="tabular-nums text-zinc-800 dark:text-zinc-200">
-                            {money(item.total)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className={cn(cardShell)}>
-        <CardHeader className="border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:px-6">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <FileText className="h-4 w-4 text-rose-600" strokeWidth={1.75} />
-            Egresos del turno ({report.egresos.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {report.egresos.length === 0 ? (
-            <p className="p-4 text-sm text-zinc-500 md:p-6">Sin egresos en este turno.</p>
-          ) : (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {report.egresos.map((e, index) => (
-                <div
-                  key={`${e.createdAt}-${index}`}
-                  className="flex flex-wrap items-start justify-between gap-2 p-4 md:px-6"
-                >
-                  <div>
-                    <p className="font-medium text-zinc-900 dark:text-zinc-50">{e.concept}</p>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {formatDateTimeCo(e.createdAt)} · {paymentLabel(e.paymentMethod)}
-                      {e.description ? ` · ${e.description}` : ''}
-                    </p>
-                  </div>
-                  <p className="text-sm font-semibold tabular-nums text-rose-700 dark:text-rose-400">
-                    {money(e.amount)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <p className="px-1 text-xs text-zinc-400">Sesión {session.id}</p>
-    </div>
-  )
-}
-
-function SummaryTile({
-  icon: Icon,
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  icon: typeof Wallet
-  label: string
-  value: string
-  tone?: 'neutral' | 'income' | 'expense' | 'cash'
-}) {
-  const tones = {
-    neutral: 'text-zinc-600 dark:text-zinc-400',
-    income: 'text-emerald-600 dark:text-emerald-400',
-    expense: 'text-rose-600 dark:text-rose-400',
-    cash: 'text-amber-600 dark:text-amber-400',
-  }
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-        <Icon className={cn('h-4 w-4', tones[tone])} strokeWidth={1.75} />
-        {label}
+                    <div className="shrink-0 text-right">
+                      <p className="text-[13px] font-semibold tabular-nums text-zinc-900 dark:text-white">
+                        {money(e.amount)}
+                      </p>
+                      <MethodLabel method={e.paymentMethod} className="mt-0.5 text-xs" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
-      <p className="mt-2 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">{value}</p>
     </div>
   )
 }

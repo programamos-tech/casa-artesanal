@@ -8,6 +8,7 @@ import { CashCloseDetailPageView } from '@/components/caja/cash-close-detail-pag
 import type { CashSession } from '@/types'
 import type { CashCloseReportInput } from '@/lib/cash-close-whatsapp'
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 
 export default function CashCloseDetailPage() {
   const params = useParams()
@@ -48,13 +49,18 @@ export default function CashCloseDetailPage() {
   return (
     <RoleProtectedRoute module="cash_register" requiredAction="view">
       {loading ? (
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <p className="text-sm text-zinc-500">Cargando detalle…</p>
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+          <p className="text-[13px] text-zinc-500 dark:text-white/50">Cargando cierre…</p>
         </div>
       ) : error || !session || !report ? (
-        <div className="space-y-3 py-10 text-center">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || 'No disponible'}</p>
-          <Link href="/caja" className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
+          <p className="text-sm font-semibold text-zinc-900 dark:text-white">{error || 'No disponible'}</p>
+          <Link
+            href="/caja"
+            className="casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
             Volver a Caja
           </Link>
         </div>

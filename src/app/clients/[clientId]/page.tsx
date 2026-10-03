@@ -7,8 +7,9 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useClients } from '@/contexts/clients-context'
 import { ClientsService } from '@/lib/clients-service'
 import { isStoreClient } from '@/lib/client-helpers'
-import { Client, Credit } from '@/types'
+import { Client, Credit, Sale } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
+import { SalesService } from '@/lib/sales-service'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -39,6 +40,10 @@ export default function ClientDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [credits, setCredits] = useState<Credit[]>([])
   const [creditsLoading, setCreditsLoading] = useState(true)
+  const [sales, setSales] = useState<Array<Pick<Sale, 'id' | 'invoiceNumber' | 'total' | 'status' | 'paymentMethod' | 'createdAt'>>>([])
+  const [salesLoading, setSalesLoading] = useState(true)
+  const [abonos, setAbonos] = useState<Array<{ id: string; amount: number; paymentDate: string }>>([])
+  const [abonosLoading, setAbonosLoading] = useState(true)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   const [editing, setEditing] = useState(false)
@@ -83,6 +88,44 @@ export default function ClientDetailPage() {
       })
       .finally(() => {
         if (!cancelled) setCreditsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [clientId])
+
+  useEffect(() => {
+    if (!clientId) return
+    let cancelled = false
+    setSalesLoading(true)
+    SalesService.getSalesByClientId(clientId)
+      .then((list) => {
+        if (!cancelled) setSales(list)
+      })
+      .catch(() => {
+        if (!cancelled) setSales([])
+      })
+      .finally(() => {
+        if (!cancelled) setSalesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [clientId])
+
+  useEffect(() => {
+    if (!clientId) return
+    let cancelled = false
+    setAbonosLoading(true)
+    CreditsService.getPaymentRecordsByClientId(clientId)
+      .then((list) => {
+        if (!cancelled) setAbonos(list)
+      })
+      .catch(() => {
+        if (!cancelled) setAbonos([])
+      })
+      .finally(() => {
+        if (!cancelled) setAbonosLoading(false)
       })
     return () => {
       cancelled = true
@@ -178,29 +221,26 @@ export default function ClientDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-24 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando cliente…</p>
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+        <p className="text-[13px] text-zinc-500 dark:text-white/50">Cargando cliente…</p>
       </div>
     )
   }
 
   if (notFound || !client) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 px-4 py-16 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
-        <div className="mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-          <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">Cliente no encontrado</p>
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No existe o no tienes acceso.</p>
-          <Link
-            href="/clients"
-            className={cn(
-              'mt-6 inline-flex h-12 items-center justify-center rounded-xl px-6 text-base font-semibold transition-colors',
-              'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white'
-            )}
-          >
-            Volver a clientes
-          </Link>
-        </div>
+      <div className="py-16 text-center">
+        <p className="text-base font-semibold text-zinc-900 dark:text-white">Cliente no encontrado</p>
+        <p className="mt-1 text-[13px] text-zinc-500 dark:text-white/50">No existe o no tienes acceso.</p>
+        <Link
+          href="/clients"
+          className={cn(
+            'mt-5 inline-flex h-8 items-center justify-center rounded-md bg-zinc-900 px-3.5 text-[13px] font-semibold text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+          )}
+        >
+          Volver a clientes
+        </Link>
       </div>
     )
   }
@@ -217,6 +257,10 @@ export default function ClientDetailPage() {
         canMutate={canMutate}
         credits={credits}
         creditsLoading={creditsLoading}
+        sales={sales}
+        salesLoading={salesLoading}
+        abonos={abonos}
+        abonosLoading={abonosLoading}
         editing={editing}
         draft={draft}
         onDraftChange={onDraftChange}

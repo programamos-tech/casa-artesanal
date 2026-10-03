@@ -2,82 +2,117 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import {
-  BarChart3,
-  Package,
-  Users,
-  Receipt,
-  CreditCard,
-  Shield,
-  Activity,
-  UserCircle,
-  UserCog,
-  Store as StoreIcon,
-  Warehouse,
-  Truck,
-  CheckCircle,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  Wallet,
-  Banknote,
-} from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
-import { canAccessAllStores, getCurrentUserStoreId, isMainStoreUser } from '@/lib/store-helper'
+import { canAccessAllStores, getCurrentUserStoreId } from '@/lib/store-helper'
 import { StoresService } from '@/lib/stores-service'
 import { loadTransferAlerts, resolveUserStoreId } from '@/lib/transfer-alerts'
-import { APP_BRAND_LOGO, APP_NAME, APP_VERSION } from '@/config/app-meta'
+import { APP_NAME, APP_SIDEBAR_LOGO, POWERED_BY_LOGO, POWERED_BY_NAME } from '@/config/app-meta'
 import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
+import { FABRICA_NAV } from '@/components/fabrica/fabrica-nav'
 import type { Store } from '@/types/store'
-const navigation = [
-  { name: 'Reportes', href: '/dashboard', icon: BarChart3, module: 'dashboard' },
-  { 
-    name: 'Inventario', 
-    href: '/inventory/products', 
-    icon: Warehouse, 
+
+const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
+type NavItem = {
+  name: string
+  href: string
+  module: string
+  requiresAllStoresAccess?: boolean
+}
+
+type NavGroup = {
+  label: string
+  /** Si el usuario no puede ver este módulo, el grupo completo se oculta. */
+  module: string
+  items: NavItem[]
+}
+
+const navigation: NavGroup[] = [
+  {
+    label: 'General',
+    module: 'dashboard',
+    items: [{ name: 'Reportes', href: '/dashboard', module: 'dashboard' }],
+  },
+  {
+    label: 'Inventario',
     module: 'products',
-    submenu: [
-      { name: 'Productos', href: '/inventory/products', icon: Package, module: 'products' },
+    items: [
+      { name: 'Productos', href: '/inventory/products', module: 'products' },
       ...(isTransfersAndReceptionsEnabled()
         ? [
-            { name: 'Traslados', href: '/inventory/transfers', icon: Truck, module: 'transfers' },
-            { name: 'Recepciones', href: '/inventory/receptions', icon: CheckCircle, module: 'receptions' },
+            { name: 'Traslados', href: '/inventory/transfers', module: 'transfers' },
+            { name: 'Recepciones', href: '/inventory/receptions', module: 'receptions' },
           ]
         : []),
-    ]
+    ],
   },
-  { 
-    name: 'Comercial', 
-    href: '/clients', 
-    icon: Users, 
+  {
+    label: 'Comercial',
     module: 'clients',
-    submenu: [
-      { name: 'Clientes', href: '/clients', icon: Users, module: 'clients' },
-      { name: 'Ventas', href: '/sales', icon: Receipt, module: 'sales' },
-      { name: 'Créditos', href: '/payments', icon: CreditCard, module: 'payments' },
-      { name: 'Proveedores', href: '/purchases/invoices', icon: FileText, module: 'supplier_invoices' },
-      { name: 'Egresos', href: '/egresos', icon: Wallet, module: 'egresos' },
-      { name: 'Resultado', href: '/resultado-mensual', icon: BarChart3, module: 'egresos' },
-      { name: 'Caja', href: '/caja', icon: Banknote, module: 'cash_register' },
-    ]
+    items: [
+      { name: 'Clientes', href: '/clients', module: 'clients' },
+      { name: 'Ventas', href: '/sales', module: 'sales' },
+      { name: 'Créditos', href: '/payments', module: 'payments' },
+      { name: 'Proveedores', href: '/purchases/invoices', module: 'supplier_invoices' },
+      { name: 'Egresos', href: '/egresos', module: 'egresos' },
+      { name: 'Caja', href: '/caja', module: 'cash_register' },
+    ],
   },
-  { 
-    name: 'Administración', 
-    href: '/stores', 
-    icon: Shield, 
+  {
+    label: 'Administración',
     module: 'roles',
-    submenu: [
-      { name: 'Tiendas', href: '/stores', icon: StoreIcon, module: 'roles', requiresAllStoresAccess: true as const },
-      { name: 'Roles', href: '/roles', icon: UserCog, module: 'roles' },
-      { name: 'Actividades', href: '/logs', icon: Activity, module: 'logs' },
-    ]
+    items: [
+      { name: 'Tiendas', href: '/stores', module: 'roles', requiresAllStoresAccess: true },
+      { name: 'Roles', href: '/roles', module: 'roles' },
+      { name: 'Actividades', href: '/logs', module: 'logs' },
+    ],
   },
-  { name: 'Perfil', href: '/profile', icon: UserCircle, module: 'dashboard' },
+  {
+    label: 'Cuenta',
+    module: 'dashboard',
+    items: [{ name: 'Perfil', href: '/profile', module: 'dashboard' }],
+  },
 ]
+
+const workspaceTabClass = 'casa-artesanal-preserve-surface flex-1 rounded-md border py-[7px] text-center text-[13px] transition-colors'
+const workspaceTabActiveClass = 'border-white/[0.12] bg-[#0a0a0b] font-semibold text-white'
+const workspaceTabIdleClass = 'border-transparent text-white/50 hover:text-white'
+
+const navGroupLabelClass = 'px-3 pb-1.5 pt-5 text-xs font-medium uppercase tracking-[0.06em] text-white/40'
+const navItemClass = 'casa-artesanal-preserve-surface flex items-center rounded-md px-3 py-2 text-sm transition-colors'
+const navItemActiveClass = 'bg-white/[0.1] font-semibold text-white'
+const navItemIdleClass = 'text-white/70 hover:bg-white/[0.05] hover:text-white'
+
+function isPathActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false
+  if (href === '/dashboard') return pathname === '/dashboard'
+  if (href === '/fabrica') return pathname === '/fabrica'
+  if (href === '/purchases/invoices') return pathname.startsWith('/purchases')
+  return pathname === href || pathname.startsWith(`${href}/`) || pathname.startsWith(`${href}?`)
+}
+
+/** "La Casa Artesanal Parque" → "Tienda El Parque"; "La Casa Artesanal 2 Piso" → "Tienda 2 Piso". */
+function storeLabel(name: string): string {
+  const short = name.replace(/^\s*la\s+casa\s+artesanal\s*/i, '').trim()
+  if (!short) return name
+  return `Tienda ${/^parque$/i.test(short) ? 'El Parque' : short}`
+}
+
+function storeSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 30)
+}
 
 interface SidebarProps {
   className?: string
@@ -86,38 +121,23 @@ interface SidebarProps {
 
 export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { canView } = usePermissions()
-  const { user } = useAuth()
+  const { user, switchStore } = useAuth()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [currentStore, setCurrentStore] = useState<Store | null>(null)
+  const [stores, setStores] = useState<Store[]>([])
   const [pendingReceptionsCount, setPendingReceptionsCount] = useState(0)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
-  // Inicializar con todos los menús expandidos por defecto
-  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['Inventario', 'Comercial', 'Administración']))
+  const canSwitchStores = canAccessAllStores(user)
+  const isFactory = canSwitchStores && (pathname?.startsWith('/fabrica') ?? false)
 
-  // Mantener expandidos los menús cuando estamos en alguna de sus rutas
-  useEffect(() => {
-    if (pathname?.startsWith('/inventory')) {
-      setExpandedMenus(prev => new Set([...prev, 'Inventario']))
-    }
-    if (pathname?.startsWith('/clients') || pathname?.startsWith('/sales') || pathname?.startsWith('/payments') || pathname?.startsWith('/purchases') || pathname?.startsWith('/egresos') || pathname?.startsWith('/caja') || pathname?.startsWith('/warranties')) {
-      setExpandedMenus(prev => new Set([...prev, 'Comercial']))
-    }
-    if (pathname?.startsWith('/stores') || pathname?.startsWith('/roles') || pathname?.startsWith('/logs')) {
-      setExpandedMenus(prev => new Set([...prev, 'Administración']))
-    }
-  }, [pathname])
-
-  // Notificar al layout cuando cambie el estado del menú móvil
   useEffect(() => {
     onMobileMenuToggle?.(isMobileMenuOpen)
   }, [isMobileMenuOpen, onMobileMenuToggle])
 
-  // Cargar tienda activa (principal o microtienda seleccionada)
   useEffect(() => {
-    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-
     const loadStoreInfo = async () => {
       if (!user) {
         setCurrentStore(null)
@@ -140,7 +160,24 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     void loadStoreInfo()
   }, [user, user?.storeId])
 
-  // Contadores de traslados: por aprobar (origen) y por recibir (destino).
+  useEffect(() => {
+    if (!canSwitchStores) {
+      setStores([])
+      return
+    }
+    let cancelled = false
+    StoresService.getAllStores()
+      .then((list) => {
+        if (!cancelled) setStores(list)
+      })
+      .catch(() => {
+        if (!cancelled) setStores([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canSwitchStores])
+
   useEffect(() => {
     let cancelled = false
 
@@ -154,7 +191,6 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
       const storeId = resolveUserStoreId(user.storeId)
 
       try {
-        // Los contadores corresponden solo a la tienda activa.
         const { approvalTotal, receptionTotal } = await loadTransferAlerts(storeId)
         if (!cancelled) {
           setPendingApprovalsCount(approvalTotal)
@@ -179,7 +215,6 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     }
   }, [user?.id, user?.storeId, user?.role, pathname])
 
-  // Cerrar menú cuando se hace click fuera del sidebar
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
@@ -196,264 +231,196 @@ export function Sidebar({ className, onMobileMenuToggle }: SidebarProps) {
     }
   }, [isMobileMenuOpen])
 
+  const handleStoreChange = (storeId: string) => {
+    const store = stores.find((s) => s.id === storeId)
+    if (!store || !switchStore) return
+    switchStore(store.id)
+    setIsMobileMenuOpen(false)
+    // Detalles y formularios (/sales/new, /sales/[id]…) pertenecen a la tienda anterior: se vuelve al listado del módulo.
+    const moduleHref =
+      navigation.flatMap((g) => g.items).find((item) => isPathActive(pathname, item.href))?.href ?? '/dashboard'
+    router.replace(`${moduleHref}?store=${storeSlug(store.name)}`, { scroll: false })
+  }
+
+  const activeStoreId = currentStore?.id ?? MAIN_STORE_ID
+
+  const badgeFor = (href: string): number => {
+    if (href === '/inventory/transfers') return pendingApprovalsCount
+    if (href === '/inventory/receptions') return pendingReceptionsCount
+    return 0
+  }
+
   return (
-    <>
-      {/* Mobile/Tablet menu button - solo visible cuando el sidebar está cerrado */}
-      {/* Hidden hamburger on mobile: usamos bottom nav */}
+    <div
+      ref={sidebarRef}
+      className={cn(
+        'casa-artesanal-preserve-surface fixed inset-y-0 left-0 z-40 w-60 transform overflow-hidden border-r border-white/[0.07] bg-[#111113] transition-transform duration-300 ease-in-out xl:translate-x-0',
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
+        /* Cerrado en móvil/tablet: sin pointer-events para que WebKit no intercepte toques en la barra inferior (z-40 compartida con bottom nav). */
+        !isMobileMenuOpen && 'max-xl:pointer-events-none',
+        className
+      )}
+    >
+      <div className="flex h-full flex-col px-3 pb-3 pt-4">
+        <Link
+          href="/dashboard"
+          aria-label={APP_NAME}
+          className="flex justify-center px-1 transition-opacity hover:opacity-90"
+        >
+          <Image
+            src={APP_SIDEBAR_LOGO}
+            alt={APP_NAME}
+            width={480}
+            height={300}
+            className="h-auto w-[88px]"
+            priority
+            unoptimized
+          />
+        </Link>
 
-      {/* Mobile/Tablet overlay - removido para evitar pantalla negra */}
-
-      {/* Sidebar */}
-      <div 
-        ref={sidebarRef}
-        className={cn(
-          'casa-artesanal-preserve-surface fixed inset-y-0 left-0 z-40 w-60 transform overflow-hidden border-r border-[#1c1c1f] bg-[#0d0d0e] shadow-[2px_0_16px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-[#0d0d0e] xl:translate-x-0',
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
-          /* Cerrado en móvil/tablet: sin pointer-events para que WebKit no intercepte toques en la barra inferior (z-40 compartida con bottom nav). */
-          !isMobileMenuOpen && 'max-xl:pointer-events-none',
-          className
-        )}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo y Tienda */}
-          <div
-            className={cn(
-              'border-b border-[#1c1c1f] px-2 py-3 transition-colors dark:border-zinc-800'
-            )}
-          >
-            <Link
-              href="/dashboard"
-              className="relative flex w-full flex-col items-center gap-2 px-1 transition-opacity hover:opacity-90"
-            >
-              <div className="flex h-[5.5rem] w-full items-center justify-center overflow-hidden">
-                <Image
-                  src={APP_BRAND_LOGO}
-                  alt={APP_NAME}
-                  width={840}
-                  height={840}
-                  className="h-[10rem] w-full translate-y-3 object-contain object-[center_42%]"
-                  priority
-                  unoptimized
-                />
-              </div>
-              {currentStore?.name ? (
-                <p
-                  className="max-w-full text-center text-[11px] font-medium leading-snug tracking-wide text-white/55"
-                  title={
-                    currentStore.city
-                      ? `${currentStore.name} — ${currentStore.city}`
-                      : currentStore.name
-                  }
-                >
-                  <span className="line-clamp-2">
-                    {isMainStoreUser(user)
-                      ? currentStore.name
-                      : currentStore.city
-                        ? `${currentStore.name} — ${currentStore.city}`
-                        : currentStore.name}
-                  </span>
-                </p>
-              ) : null}
-            </Link>
-          </div>
-
-          {/* Navigation */}
-          <nav className="scrollbar-hide flex-1 space-y-0.5 overflow-y-auto px-2.5 py-3">
-            {navigation.map((item) => {
-              // Solo mostrar el item si el usuario tiene permisos para verlo
-              if (!canView(item.module)) return null
-              
-              // Para el módulo de Tiendas, siempre mostrarlo pero solo permitir acceso si es super admin
-              const isStoresModule = item.href === '/stores'
-              const canAccessStores = isStoresModule ? canAccessAllStores(user) : true
-              
-              // Si requiere acceso a todas las tiendas (y no es stores), verificar
-              if ((item as { requiresAllStoresAccess?: boolean }).requiresAllStoresAccess && !isStoresModule && !canAccessAllStores(user)) return null
-              
-              // Verificar si tiene submenú
-              const hasSubmenu = item.submenu && item.submenu.length > 0
-              const isExpanded = expandedMenus.has(item.name)
-              
-              // Verificar si algún subitem está activo
-              const isSubmenuActive = hasSubmenu && item.submenu?.some(subitem => {
-                if (subitem.href === '/inventory/products' && pathname?.startsWith('/inventory/products')) return true
-                if (subitem.href === '/inventory/transfers' && pathname?.startsWith('/inventory/transfers')) return true
-                if (subitem.href === '/inventory/receptions' && pathname?.startsWith('/inventory/receptions')) return true
-                if (subitem.href === '/clients' && pathname?.startsWith('/clients')) return true
-                if (subitem.href === '/sales' && pathname?.startsWith('/sales')) return true
-                if (subitem.href === '/payments' && pathname?.startsWith('/payments')) return true
-                if (subitem.href === '/purchases/invoices' && pathname?.startsWith('/purchases')) return true
-                if (subitem.href === '/egresos' && pathname?.startsWith('/egresos')) return true
-                if (subitem.href === '/caja' && pathname?.startsWith('/caja')) return true
-                if (subitem.href === '/stores' && pathname?.startsWith('/stores')) return true
-                if (subitem.href === '/roles' && pathname?.startsWith('/roles')) return true
-                if (subitem.href === '/logs' && pathname?.startsWith('/logs')) return true
-                return pathname === subitem.href
-              })
-              
-              // Para créditos, productos, ventas y stores, también considerar activo si la ruta empieza con el href
-              const isActive = pathname === item.href || 
-                (item.href === '/payments' && pathname?.startsWith('/payments')) ||
-                (item.href === '/inventory/products' && pathname?.startsWith('/inventory')) ||
-                (item.href === '/clients' && (pathname?.startsWith('/clients') || pathname?.startsWith('/sales') || pathname?.startsWith('/payments') || pathname?.startsWith('/purchases') || pathname?.startsWith('/egresos') || pathname?.startsWith('/caja') || pathname?.startsWith('/warranties'))) ||
-                (item.href === '/stores' && (pathname?.startsWith('/stores') || pathname?.startsWith('/roles') || pathname?.startsWith('/logs'))) ||
-                (item.href === '/stores' && pathname?.startsWith('/stores')) ||
-                isSubmenuActive
-              
-              const rowActive =
-                'bg-white/[0.1] text-white ring-1 ring-inset ring-white/[0.1] shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
-              const rowInactive =
-                'text-white/55 hover:bg-white/[0.055] hover:text-white/90'
-              /** Con submenú: el padre no se resalta; solo el hijo activo */
-              const isParentHighlighted = hasSubmenu ? false : isActive
-
-              const navIconParent = (active: boolean) =>
-                cn(
-                  'mr-2.5 h-[18px] w-[18px] shrink-0 stroke-[1.75] transition-colors',
-                  active ? 'text-white/85' : 'text-white/40 group-hover:text-white/70'
-                )
-
-              const navIconChild = (active: boolean) =>
-                cn(
-                  'mr-2 h-4 w-4 shrink-0 stroke-[1.75] transition-colors',
-                  active ? 'text-white/85' : 'text-white/38 group-hover:text-white/65'
-                )
-
-              const toggleSubmenu = (e: React.MouseEvent) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setExpandedMenus(prev => {
-                  const newSet = new Set(prev)
-                  if (newSet.has(item.name)) {
-                    newSet.delete(item.name)
-                  } else {
-                    newSet.add(item.name)
-                  }
-                  return newSet
-                })
-              }
-              
-              return (
-                <div key={item.name}>
-                  {hasSubmenu ? (
-                    <>
-                      <button
-                        onClick={toggleSubmenu}
-                        className={cn(
-                          'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
-                          isParentHighlighted ? rowActive : rowInactive
-                        )}
-                      >
-                        <div className="flex min-w-0 flex-1 items-center">
-                          <item.icon className={navIconParent(isParentHighlighted)} aria-hidden />
-                          <span className="flex-1 truncate text-left">{item.name}</span>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronDown strokeWidth={2} className="ml-1 h-3 w-3 shrink-0 text-white/30" />
-                        ) : (
-                          <ChevronRight strokeWidth={2} className="ml-1 h-3 w-3 shrink-0 text-white/30" />
-                        )}
-                      </button>
-                      {isExpanded && item.submenu && (
-                        <div className="ml-2.5 mt-0.5 space-y-0.5 border-l border-white/[0.07] pl-2.5">
-                          {item.submenu.map((subitem) => {
-                            if (!canView(subitem.module)) return null
-                            
-                            // Traslados: visible si tiene permiso (incl. microtienda que debe aprobar salidas)
-                            if (subitem.href === '/inventory/transfers' && !canView('transfers')) return null
-                            
-                            // Verificar si requiere acceso a todas las tiendas (para el subitem de Tiendas)
-                            if (subitem.requiresAllStoresAccess && !canAccessAllStores(user)) return null
-                            
-                            const isSubActive = pathname === subitem.href ||
-                              (subitem.href === '/inventory/products' && pathname?.startsWith('/inventory/products')) ||
-                              (subitem.href === '/inventory/transfers' && pathname?.startsWith('/inventory/transfers')) ||
-                              (subitem.href === '/inventory/receptions' && pathname?.startsWith('/inventory/receptions')) ||
-                              (subitem.href === '/clients' && pathname?.startsWith('/clients')) ||
-                              (subitem.href === '/sales' && pathname?.startsWith('/sales')) ||
-                              (subitem.href === '/payments' && pathname?.startsWith('/payments')) ||
-                              (subitem.href === '/purchases/invoices' && pathname?.startsWith('/purchases')) ||
-                              (subitem.href === '/egresos' && pathname?.startsWith('/egresos')) ||
-                              (subitem.href === '/caja' && pathname?.startsWith('/caja')) ||
-                              (subitem.href === '/stores' && pathname?.startsWith('/stores')) ||
-                              (subitem.href === '/roles' && pathname?.startsWith('/roles')) ||
-                              (subitem.href === '/logs' && pathname?.startsWith('/logs'))
-
-                            return (
-                              <Link
-                                key={subitem.name}
-                                href={subitem.href}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={cn(
-                                  'group flex items-center rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-150',
-                                  isSubActive ? rowActive : rowInactive
-                                )}
-                              >
-                                <subitem.icon className={navIconChild(isSubActive)} aria-hidden />
-                                <span className="flex-1 truncate">{subitem.name}</span>
-                                {subitem.href === '/inventory/transfers' && pendingApprovalsCount > 0 && (
-                                  <span
-                                    className="casa-artesanal-preserve-surface ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
-                                    title={`${pendingApprovalsCount} por aprobar`}
-                                  >
-                                    {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
-                                  </span>
-                                )}
-                                {subitem.href === '/inventory/receptions' && pendingReceptionsCount > 0 && (
-                                  <span
-                                    className="casa-artesanal-preserve-surface ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
-                                    title={`${pendingReceptionsCount} pendientes por gestionar`}
-                                  >
-                                    {pendingReceptionsCount > 99 ? '99+' : pendingReceptionsCount}
-                                  </span>
-                                )}
-                              </Link>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {isStoresModule && !canAccessStores ? (
-                        <div
-                          className="group flex cursor-not-allowed items-center rounded-lg px-2.5 py-2 text-sm font-medium opacity-35 text-white/60"
-                          title="Solo disponible para Super Administradores"
-                        >
-                          <item.icon className="mr-2.5 h-[18px] w-[18px] shrink-0 text-white/35" aria-hidden />
-                          <span className="flex-1 truncate">{item.name}</span>
-                        </div>
-                  ) : (
-                    <Link
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        'group flex items-center rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
-                        isActive ? rowActive : rowInactive
-                      )}
-                    >
-                      <item.icon className={navIconParent(!!isActive)} aria-hidden />
-                      <span className="flex-1 truncate">{item.name}</span>
-                    </Link>
-                      )}
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </nav>
-
-          <div className="flex flex-col items-center border-t border-white/[0.065] px-2 pb-4 pt-3.5">
-            <p className="max-w-full text-center text-[10px] leading-snug tracking-wide text-white/30">
-              <span className="font-medium text-white/45">{APP_NAME}</span>
-              <span className="mx-1.5 text-white/15" aria-hidden>
-                ·
-              </span>
-              <span className="tabular-nums text-white/35">v{APP_VERSION}</span>
+        <div className="mt-3">
+          {isFactory ? (
+            <p className="flex h-9 items-center truncate rounded-md border border-white/[0.12] px-3 text-[13px] font-medium text-white/90">
+              Planta de producción
             </p>
-          </div>
+          ) : canSwitchStores && stores.length > 1 ? (
+            <div className="relative">
+              <select
+                value={activeStoreId}
+                onChange={(e) => handleStoreChange(e.target.value)}
+                aria-label="Tienda activa"
+                className="casa-artesanal-preserve-surface h-9 w-full cursor-pointer appearance-none truncate rounded-md border border-white/[0.12] bg-[#111113] py-1 pl-3 pr-8 text-[13px] font-medium text-white/90 focus:border-white/25 focus:outline-none"
+              >
+                {stores.map((store) => (
+                  <option key={store.id} value={store.id} className="bg-zinc-900 text-white">
+                    {storeLabel(store.name)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50"
+                aria-hidden
+              />
+            </div>
+          ) : currentStore?.name ? (
+            <p className="truncate px-1 text-[13px] text-white/60" title={currentStore.name}>
+              {storeLabel(currentStore.name)}
+            </p>
+          ) : null}
+        </div>
+
+        <div
+          className="casa-artesanal-preserve-surface mt-3 flex gap-0.5 rounded-lg bg-white/[0.06] p-0.5"
+          role="group"
+          aria-label="Espacio de trabajo"
+        >
+          <Link
+            href="/dashboard"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-current={!isFactory ? 'page' : undefined}
+            className={cn(workspaceTabClass, !isFactory ? workspaceTabActiveClass : workspaceTabIdleClass)}
+          >
+            Tiendas
+          </Link>
+          {canSwitchStores ? (
+            <Link
+              href="/fabrica"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-current={isFactory ? 'page' : undefined}
+              className={cn(workspaceTabClass, isFactory ? workspaceTabActiveClass : workspaceTabIdleClass)}
+            >
+              Fábrica
+            </Link>
+          ) : (
+            <span
+              className="flex flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-md border border-transparent py-[7px] text-center text-[13px] text-white/40"
+              title="El módulo de Fábrica estará disponible pronto"
+            >
+              Fábrica
+              <span className="text-[10px] uppercase tracking-wide text-white/35">Pronto</span>
+            </span>
+          )}
+        </div>
+
+        <nav className="scrollbar-hide -mx-1 mt-2 flex-1 overflow-y-auto px-1">
+          {isFactory
+            ? FABRICA_NAV.map((group) => (
+                <div key={group.label}>
+                  <p className={navGroupLabelClass}>{group.label}</p>
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(navItemClass, isPathActive(pathname, item.href) ? navItemActiveClass : navItemIdleClass)}
+                      >
+                        <span className="flex-1 truncate">{item.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))
+            : null}
+          {!isFactory && navigation.map((group) => {
+            if (!canView(group.module)) return null
+            const items = group.items.filter((item) => {
+              if (!canView(item.module)) return false
+              if (item.requiresAllStoresAccess && !canAccessAllStores(user)) return false
+              return true
+            })
+            if (items.length === 0) return null
+
+            return (
+              <div key={group.label}>
+                <p className={navGroupLabelClass}>{group.label}</p>
+                <div className="space-y-0.5">
+                  {items.map((item) => {
+                    const active = isPathActive(pathname, item.href)
+                    const badge = badgeFor(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(navItemClass, active ? navItemActiveClass : navItemIdleClass)}
+                      >
+                        <span className="flex-1 truncate">{item.name}</span>
+                        {badge > 0 && (
+                          <span
+                            className="casa-artesanal-preserve-surface ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white"
+                            title={
+                              item.href === '/inventory/transfers'
+                                ? `${badge} por aprobar`
+                                : `${badge} pendientes por gestionar`
+                            }
+                          >
+                            {badge > 99 ? '99+' : badge}
+                          </span>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </nav>
+
+        <div className="mt-2 flex flex-col items-center gap-1.5 border-t border-white/[0.07] pb-1 pt-3">
+          <span className="text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/35">
+            Powered by
+          </span>
+          <Image
+            src={POWERED_BY_LOGO}
+            alt={POWERED_BY_NAME}
+            width={480}
+            height={213}
+            className="h-auto w-[52px]"
+            unoptimized
+          />
         </div>
       </div>
-    </>
+    </div>
   )
 }

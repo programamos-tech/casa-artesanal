@@ -14,7 +14,6 @@ import {
   PackageCheck,
   Plus,
   Search,
-  SlidersHorizontal,
   Sun,
   UserCircle,
   Receipt,
@@ -38,23 +37,16 @@ import {
 import { cn } from '@/lib/utils'
 import { isTransfersAndReceptionsEnabled } from '@/config/feature-flags'
 
-/** Altura única de la barra y de todos los controles interactivos */
-const NAV_BAR_H = 'h-16'
-const CONTROL_H = 'h-10'
-/** Mismo espacio entre buscador, cada botón y la cuenta */
-const NAV_GAP = 'gap-3'
-
-const iconBtn = cn(
-  'flex shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors',
-  CONTROL_H,
-  'w-10',
-  'hover:bg-zinc-100 hover:text-zinc-800',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10',
-  'dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
-)
+const iconBtn =
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10 dark:text-white/45 dark:hover:text-white dark:focus-visible:ring-white/15'
 
 const menuPanel =
-  'absolute z-50 overflow-hidden rounded-xl border border-zinc-200/90 bg-white py-1 shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40'
+  'casa-artesanal-preserve-surface absolute z-50 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-white/[0.08] dark:bg-[#111113] dark:shadow-black/50'
+
+const menuItem =
+  'casa-artesanal-preserve-surface flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-white/75 dark:hover:bg-white/[0.05] dark:hover:text-white'
+
+const menuIcon = 'h-4 w-4 shrink-0 text-zinc-400 dark:text-white/40'
 
 function TopNavThemeButton({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme()
@@ -68,7 +60,7 @@ function TopNavThemeButton({ className }: { className?: string }) {
       aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >
-      <Sun className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+      <Sun className="h-4 w-4" strokeWidth={1.5} aria-hidden />
     </button>
   )
 }
@@ -220,32 +212,16 @@ export function AppTopNav() {
   const displayName = user?.name?.trim() || 'Usuario'
 
   return (
-    <header
-      className={cn(
-        'sticky top-0 z-30 hidden shrink-0 bg-white xl:block dark:bg-zinc-950',
-        NAV_BAR_H
-      )}
-    >
-      <div
-        className={cn(
-          'mx-auto flex w-full max-w-[100%] items-center',
-          NAV_BAR_H,
-          NAV_GAP,
-          'px-5 2xl:px-6'
-        )}
-      >
-        <div ref={searchRef} className="relative min-w-0 flex-1">
+    <header className="sticky top-0 z-30 hidden h-16 shrink-0 border-b border-zinc-200 bg-white xl:block dark:border-white/[0.07] dark:bg-zinc-950">
+      <div className="flex h-16 w-full items-center gap-4 px-5 2xl:px-6">
+        <div ref={searchRef} className="relative min-w-0 max-w-xl flex-1">
           <div
             className={cn(
-              'flex w-full items-center gap-3 rounded-full border border-zinc-200 bg-zinc-50 px-4',
-              CONTROL_H,
-              'transition-[border-color,background-color,box-shadow]',
-              'focus-within:border-zinc-300 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.06)]',
-              'dark:border-zinc-700 dark:bg-zinc-900/60',
-              'dark:focus-within:border-zinc-600 dark:focus-within:bg-zinc-900 dark:focus-within:shadow-[0_0_0_3px_rgba(255,255,255,0.06)]'
+              'casa-artesanal-preserve-surface flex h-9 w-full items-center gap-2.5 rounded-lg border border-zinc-200 px-3 transition-colors',
+              'focus-within:border-zinc-300 dark:border-white/[0.1] dark:focus-within:border-white/20'
             )}
           >
-            <Search className="h-[18px] w-[18px] shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={2} aria-hidden />
+            <Search className="h-4 w-4 shrink-0 text-zinc-400 dark:text-white/35" strokeWidth={1.5} aria-hidden />
             <input
               type="search"
               value={query}
@@ -253,8 +229,8 @@ export function AppTopNav() {
               onFocus={() => {
                 if (query.trim().length >= minSearchLength(query)) setSearchOpen(true)
               }}
-              placeholder="Ref., productos, clientes, facturas…"
-              className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-[15px] leading-5 text-zinc-900 placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
+              placeholder="Buscar ref., productos, clientes, facturas…"
+              className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
               aria-label="Buscar en el sistema"
               autoComplete="off"
             />
@@ -266,7 +242,7 @@ export function AppTopNav() {
                   setHits([])
                   setSearchOpen(false)
                 }}
-                className="rounded-full p-0.5 text-zinc-400 transition-colors hover:text-zinc-700 dark:hover:text-zinc-200"
+                className="p-0.5 text-zinc-400 transition-colors hover:text-zinc-800 dark:text-white/40 dark:hover:text-white"
                 aria-label="Limpiar búsqueda"
               >
                 <X className="h-3.5 w-3.5" strokeWidth={2} />
@@ -284,264 +260,202 @@ export function AppTopNav() {
           )}
         </div>
 
-        <div ref={plusRef} className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setPlusOpen(v => !v)}
-            className={cn(
-              'flex shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white',
-              CONTROL_H,
-              'w-10',
-              plusOpen && 'ring-2 ring-zinc-900/15 dark:ring-white/20'
-            )}
-            aria-label="Acciones rápidas"
-            aria-expanded={plusOpen}
-          >
-            <Plus className="h-[18px] w-[18px]" strokeWidth={2.25} />
-          </button>
-          {plusOpen && quickActions.length > 0 && (
-            <div className={cn(menuPanel, 'right-0 top-[calc(100%+8px)] min-w-[11rem]')}>
-              {quickActions.map(action => (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  onClick={(e) => {
-                    if (action.href !== '/sales/new') {
-                      setPlusOpen(false)
-                      return
-                    }
-                    e.preventDefault()
-                    setPlusOpen(false)
-                    void (async () => {
-                      const ok = await ensureCashReady('sale')
-                      if (ok) router.push('/sales/new')
-                    })()
-                  }}
-                  className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800/80"
-                >
-                  <action.icon className="h-4 w-4 text-zinc-400" strokeWidth={1.75} />
-                  {action.label}
-                </Link>
-              ))}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {quickActions.length > 0 && (
+            <div ref={plusRef} className="relative mr-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPlusOpen(v => !v)}
+                className="casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-3 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                aria-label="Acciones rápidas"
+                aria-expanded={plusOpen}
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                Nuevo
+                <ChevronDown
+                  className={cn('h-3.5 w-3.5 opacity-60 transition-transform', plusOpen && 'rotate-180')}
+                  strokeWidth={2}
+                />
+              </button>
+              {plusOpen && (
+                <div className={cn(menuPanel, 'right-0 top-[calc(100%+6px)] min-w-[11rem]')}>
+                  {quickActions.map(action => (
+                    <Link
+                      key={action.href}
+                      href={action.href}
+                      onClick={(e) => {
+                        if (action.href !== '/sales/new') {
+                          setPlusOpen(false)
+                          return
+                        }
+                        e.preventDefault()
+                        setPlusOpen(false)
+                        void (async () => {
+                          const ok = await ensureCashReady('sale')
+                          if (ok) router.push('/sales/new')
+                        })()
+                      }}
+                      className={menuItem}
+                    >
+                      <action.icon className={menuIcon} strokeWidth={1.5} />
+                      {action.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
 
-        <TopNavThemeButton />
-        <button
-          type="button"
-          className={iconBtn}
-          title="Novedades y ayuda"
-          onClick={() => window.dispatchEvent(new CustomEvent('casa-artesanal:open-release-notes'))}
-        >
-          <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.75} />
-        </button>
-        {canView('logs') ? (
-          <Link href="/logs" className={iconBtn} title="Actividades">
-            <Activity className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </Link>
-        ) : (
-          <span className={cn(iconBtn, 'pointer-events-none opacity-30')} aria-hidden>
-            <Activity className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </span>
-        )}
-        <Link href="/profile" className={iconBtn} title="Perfil y ajustes">
-          <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={1.75} />
-        </Link>
-        {showBell ? (
-          <div ref={bellRef} className="relative shrink-0 overflow-visible">
-            <button
-              type="button"
-              className={cn(
-                iconBtn,
-                'relative overflow-visible',
-                alertCount > 0 && 'text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300'
-              )}
-              title={
-                alertCount > 0
-                  ? `${alertCount} traslado${alertCount === 1 ? '' : 's'} pendiente${alertCount === 1 ? '' : 's'}`
-                  : 'Notificaciones de traslados'
-              }
-              aria-label="Notificaciones de traslados"
-              aria-expanded={bellOpen}
-              onClick={() => setBellOpen((v) => !v)}
-            >
-              <Bell
-                className={cn('h-[18px] w-[18px]', alertCount > 0 && 'animate-pulse')}
-                strokeWidth={alertCount > 0 ? 2.25 : 1.75}
-              />
-              {alertCount > 0 && (
-                <span
-                  className="casa-artesanal-preserve-surface absolute -right-1 -top-1 z-20 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950"
-                  aria-hidden
-                >
-                  {alertCount > 99 ? '99+' : alertCount}
-                </span>
-              )}
-            </button>
-            {bellOpen && (
-              <div className={cn(menuPanel, 'right-0 top-[calc(100%+8px)] w-[22rem] max-w-[calc(100vw-2rem)]')}>
-                <div className="border-b border-zinc-100 px-3.5 py-2.5 dark:border-zinc-800">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Traslados pendientes</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    La alerta sigue hasta que se aprueben y reciban
-                  </p>
-                </div>
-                <div className="max-h-[22rem] overflow-y-auto py-1">
-                  {alertCount === 0 ? (
-                    <p className="px-3.5 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                      No hay traslados pendientes
-                    </p>
-                  ) : (
-                    <>
-                      {approvals.map((item) => (
-                        <button
-                          key={`a-${item.id}`}
-                          type="button"
-                          onClick={() => {
-                            setBellOpen(false)
-                            router.push(item.href)
-                          }}
-                          className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
-                        >
-                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-                            <Truck className="h-4 w-4" strokeWidth={1.75} />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                              {item.title}
-                            </span>
-                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
-                              {item.subtitle}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                      {receptions.map((item) => (
-                        <button
-                          key={`r-${item.id}`}
-                          type="button"
-                          onClick={() => {
-                            setBellOpen(false)
-                            router.push(item.href)
-                          }}
-                          className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
-                        >
-                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                            <PackageCheck className="h-4 w-4" strokeWidth={1.75} />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                              {item.title}
-                            </span>
-                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
-                              {item.subtitle}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                      {waiting.map((item) => (
-                        <button
-                          key={`w-${item.id}`}
-                          type="button"
-                          onClick={() => {
-                            setBellOpen(false)
-                            router.push(item.href)
-                          }}
-                          className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/80"
-                        >
-                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                            <Clock className="h-4 w-4" strokeWidth={1.75} />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                              {item.title}
-                            </span>
-                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
-                              {item.subtitle}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </div>
+          <TopNavThemeButton />
+          <button
+            type="button"
+            className={iconBtn}
+            title="Novedades y ayuda"
+            aria-label="Novedades y ayuda"
+            onClick={() => window.dispatchEvent(new CustomEvent('casa-artesanal:open-release-notes'))}
+          >
+            <CircleHelp className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+          {canView('logs') ? (
+            <Link href="/logs" className={iconBtn} title="Actividades" aria-label="Actividades">
+              <Activity className="h-4 w-4" strokeWidth={1.5} />
+            </Link>
+          ) : null}
+          {showBell ? (
+            <div ref={bellRef} className="relative shrink-0 overflow-visible">
+              <button
+                type="button"
+                className={cn(iconBtn, 'relative overflow-visible', alertCount > 0 && 'text-zinc-900 dark:text-white')}
+                title={
+                  alertCount > 0
+                    ? `${alertCount} traslado${alertCount === 1 ? '' : 's'} pendiente${alertCount === 1 ? '' : 's'}`
+                    : 'Notificaciones de traslados'
+                }
+                aria-label="Notificaciones de traslados"
+                aria-expanded={bellOpen}
+                onClick={() => setBellOpen((v) => !v)}
+              >
+                <Bell className="h-4 w-4" strokeWidth={1.5} />
                 {alertCount > 0 && (
-                  <div className="border-t border-zinc-100 px-2 py-1.5 dark:border-zinc-800">
-                    {(approvals.length > 0 || waiting.length > 0) && (
-                      <Link
-                        href="/inventory/transfers"
-                        onClick={() => setBellOpen(false)}
-                        className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-950/40"
-                      >
-                        Ver traslados
-                      </Link>
-                    )}
-                    {receptions.length > 0 && (
-                      <Link
-                        href="/inventory/receptions"
-                        onClick={() => setBellOpen(false)}
-                        className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                      >
-                        Ver recepciones
-                      </Link>
+                  <span
+                    className="casa-artesanal-preserve-surface absolute -right-0.5 -top-0.5 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white dark:ring-zinc-950"
+                    aria-hidden
+                  >
+                    {alertCount > 99 ? '99+' : alertCount}
+                  </span>
+                )}
+              </button>
+              {bellOpen && (
+                <div className={cn(menuPanel, 'right-0 top-[calc(100%+6px)] w-[22rem] max-w-[calc(100vw-2rem)]')}>
+                  <div className="border-b border-zinc-100 px-3.5 py-2.5 dark:border-white/[0.06]">
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Traslados pendientes</p>
+                  </div>
+                  <div className="max-h-[22rem] overflow-y-auto py-1">
+                    {alertCount === 0 ? (
+                      <p className="px-3.5 py-6 text-center text-[13px] text-zinc-500 dark:text-white/50">
+                        No hay traslados pendientes
+                      </p>
+                    ) : (
+                      <>
+                        {[
+                          ...approvals.map((item) => ({ item, key: `a-${item.id}`, Icon: Truck })),
+                          ...receptions.map((item) => ({ item, key: `r-${item.id}`, Icon: PackageCheck })),
+                          ...waiting.map((item) => ({ item, key: `w-${item.id}`, Icon: Clock })),
+                        ].map(({ item, key, Icon }) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setBellOpen(false)
+                              router.push(item.href)
+                            }}
+                            className={cn(menuItem, 'items-start py-2.5')}
+                          >
+                            <Icon className={cn(menuIcon, 'mt-0.5')} strokeWidth={1.5} />
+                            <span className="min-w-0">
+                              <span className="block font-medium text-zinc-900 dark:text-white">{item.title}</span>
+                              <span className="block text-xs text-zinc-500 dark:text-white/50">{item.subtitle}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </>
                     )}
                   </div>
-                )}
+                  {alertCount > 0 && (
+                    <div className="flex gap-1 border-t border-zinc-100 px-2 py-1.5 dark:border-white/[0.06]">
+                      {(approvals.length > 0 || waiting.length > 0) && (
+                        <Link
+                          href="/inventory/transfers"
+                          onClick={() => setBellOpen(false)}
+                          className="rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-white/70 dark:hover:text-white"
+                        >
+                          Ver traslados
+                        </Link>
+                      )}
+                      {receptions.length > 0 && (
+                        <Link
+                          href="/inventory/receptions"
+                          onClick={() => setBellOpen(false)}
+                          className="rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-white/70 dark:hover:text-white"
+                        >
+                          Ver recepciones
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          <span className="mx-2 h-5 w-px bg-zinc-200 dark:bg-white/[0.1]" aria-hidden />
+
+          <div ref={userRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setUserOpen(v => !v)}
+              className="casa-artesanal-preserve-surface flex h-9 items-center gap-2 rounded-md pl-1 pr-1.5 transition-colors hover:bg-zinc-50 dark:hover:bg-white/[0.05]"
+              aria-expanded={userOpen}
+              aria-haspopup="menu"
+            >
+              <UserAvatar name={displayName} seed={user?.id} size="xs" />
+              <span className="max-w-[12rem] truncate text-[13px] font-medium text-zinc-900 dark:text-white">
+                {displayName}
+              </span>
+              <ChevronDown
+                className={cn('h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform dark:text-white/40', userOpen && 'rotate-180')}
+                strokeWidth={2}
+              />
+            </button>
+            {userOpen && (
+              <div className={cn(menuPanel, 'right-0 top-[calc(100%+6px)] min-w-[14rem]')}>
+                <div className="border-b border-zinc-100 px-3 py-2.5 dark:border-white/[0.06]">
+                  <p className="truncate text-[13px] font-semibold text-zinc-900 dark:text-white">{displayName}</p>
+                  {user?.email ? (
+                    <p className="truncate text-xs text-zinc-500 dark:text-white/50">{user.email}</p>
+                  ) : null}
+                </div>
+                <div className="py-1">
+                  <Link href="/profile" onClick={() => setUserOpen(false)} className={menuItem}>
+                    <UserCircle className={menuIcon} strokeWidth={1.5} />
+                    Mi perfil
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserOpen(false)
+                      logout()
+                      router.push('/login')
+                    }}
+                    className={cn(menuItem, 'hover:text-rose-600 dark:hover:text-rose-400 [&>svg]:hover:text-rose-500')}
+                  >
+                    <LogOut className={menuIcon} strokeWidth={1.5} />
+                    Cerrar sesión
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        ) : (
-          <span className={cn(iconBtn, 'relative opacity-30')} aria-hidden>
-            <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </span>
-        )}
-
-        <div ref={userRef} className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setUserOpen(v => !v)}
-            className={cn(
-              'flex items-center rounded-full transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60',
-              CONTROL_H,
-              'gap-2 pl-1 pr-2'
-            )}
-            aria-expanded={userOpen}
-            aria-haspopup="menu"
-          >
-            <span className="hidden max-w-[12rem] truncate text-[15px] font-semibold leading-5 text-zinc-900 xl:inline dark:text-zinc-100">
-              {displayName}
-            </span>
-            <UserAvatar name={displayName} size="md" className="ring-1 ring-zinc-200/80 dark:ring-zinc-700" />
-            <ChevronDown
-              className={cn('h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500', userOpen && 'rotate-180')}
-              strokeWidth={2}
-            />
-          </button>
-          {userOpen && (
-            <div className={cn(menuPanel, 'right-0 top-[calc(100%+8px)] min-w-[12rem]')}>
-              <Link
-                href="/profile"
-                onClick={() => setUserOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800/80"
-              >
-                <UserCircle className="h-4 w-4 text-zinc-400" strokeWidth={1.75} />
-                Mi perfil
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setUserOpen(false)
-                  logout()
-                  router.push('/login')
-                }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-              >
-                <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                Cerrar sesión
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </header>

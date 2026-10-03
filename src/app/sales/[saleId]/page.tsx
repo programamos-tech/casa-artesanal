@@ -67,9 +67,9 @@ export default function SaleDetailPage() {
   if (loading) {
     return (
       <RoleProtectedRoute module="sales" requiredAction="view">
-        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 py-24 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando venta…</p>
+        <div className="flex flex-col items-center justify-center gap-3 py-24">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+          <p className="text-[13px] text-zinc-500 dark:text-white/50">Cargando venta…</p>
         </div>
       </RoleProtectedRoute>
     )
@@ -78,18 +78,16 @@ export default function SaleDetailPage() {
   if (notFound || !sale) {
     return (
       <RoleProtectedRoute module="sales" requiredAction="view">
-        <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 px-4 py-16 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
-          <div className="mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-            <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">Venta no encontrada</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No existe o no tienes acceso.</p>
-            <button
-              type="button"
-              onClick={() => router.push('/sales')}
-              className="mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-zinc-900 px-6 text-base font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
-              Volver al listado
-            </button>
-          </div>
+        <div className="py-16 text-center">
+          <p className="text-base font-semibold text-zinc-900 dark:text-white">Venta no encontrada</p>
+          <p className="mt-1 text-[13px] text-zinc-500 dark:text-white/50">No existe o no tienes acceso.</p>
+          <button
+            type="button"
+            onClick={() => router.push('/sales')}
+            className="mt-5 inline-flex h-8 items-center justify-center rounded-md bg-zinc-900 px-3.5 text-[13px] font-semibold text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Volver al listado
+          </button>
         </div>
       </RoleProtectedRoute>
     )

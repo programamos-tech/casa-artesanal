@@ -9,8 +9,7 @@ export default function ProductDetailRedirect() {
   const productId = typeof params?.productId === 'string' ? params.productId : ''
 
   useEffect(() => {
-    const qs = productId ? `?edit=${encodeURIComponent(productId)}` : ''
-    router.replace(`/inventory/products${qs}`)
+    router.replace(productId ? `/inventory/products/${productId}` : '/inventory/products')
   }, [router, productId])
 
   return (

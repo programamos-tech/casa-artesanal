@@ -1,24 +1,28 @@
 'use client'
 
-import { useState, useLayoutEffect } from 'react'
+import { useState, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { ChevronDown, X, Trash2 } from 'lucide-react'
+import { StatusDot, type ReportTone } from '@/components/dashboard/report-ui'
 import { Switch } from '@/components/ui/switch'
-import { X, Tag, Plus, Trash2, FileText } from 'lucide-react'
 import { Category } from '@/types'
 import { cn } from '@/lib/utils'
 import {
-  appModalBodyClass,
-  appModalErrorClass,
-  appModalFooterClass,
-  appModalHeaderClass,
-  appModalHintClass,
-  appModalInputClass,
-  appModalLabelClass,
-  appModalOverlayClass,
-  appModalPanelClass,
-  modalCardShellClass,
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalErrorClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalHintClass,
+  modalInputClass,
+  modalInputErrorClass,
+  modalLabelClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalSubtitleClass,
+  modalTitleClass,
 } from '@/lib/app-modal'
 
 interface CategoryModalProps {
@@ -28,6 +32,33 @@ interface CategoryModalProps {
   onToggleStatus: (categoryId: string, newStatus: 'active' | 'inactive') => void
   onDelete: (categoryId: string) => void
   categories: Category[]
+}
+
+const statusOptions: { value: 'active' | 'inactive'; label: string; tone: ReportTone }[] = [
+  { value: 'active', label: 'Activa', tone: 'success' },
+  { value: 'inactive', label: 'Inactiva', tone: 'neutral' },
+]
+
+function FormSection({
+  title,
+  description,
+  children,
+  className,
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <section className={className}>
+      <div className="mb-3">
+        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-white">{title}</h3>
+        {description ? <p className="mt-0.5 text-xs text-zinc-500 dark:text-white/45">{description}</p> : null}
+      </div>
+      {children}
+    </section>
+  )
 }
 
 export function CategoryModal({
@@ -51,28 +82,30 @@ export function CategoryModal({
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const listRef = useRef<HTMLUListElement>(null)
+  const [canScrollDown, setCanScrollDown] = useState(false)
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300'
-      case 'inactive':
-        return 'border-stone-200 bg-stone-50 text-stone-700 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300'
-      default:
-        return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+  useLayoutEffect(() => {
+    const el = listRef.current
+    if (!isOpen || !el) {
+      setCanScrollDown(false)
+      return
     }
-  }
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Activa'
-      case 'inactive':
-        return 'Inactiva'
-      default:
-        return status
+    const update = () => {
+      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight
+      setCanScrollDown(remaining > 12)
     }
-  }
+
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
+  }, [isOpen, mounted, categories.length])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -118,208 +151,178 @@ export function CategoryModal({
     onClose()
   }
 
-  if (!isOpen || !mounted || typeof document === 'undefined') return null
+  if (!isOpen) return null
 
   const sortedCategories = [...categories].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
-  return createPortal(
-    <div className={appModalOverlayClass} role="presentation" onClick={handleClose}>
+  const formId = 'category-modal-form'
+
+  const modal = (
+    <div className={modalOverlayClass} role="presentation" onClick={handleClose}>
       <div
-        className={cn(appModalPanelClass, 'max-w-[min(94vw,72rem)]')}
+        className={cn(modalPanelClass, 'max-w-5xl')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="category-modal-title"
         onClick={event => event.stopPropagation()}
       >
-        <div className={appModalHeaderClass}>
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Tag className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
-            <div className="min-w-0">
-              <h2
-                id="category-modal-title"
-                className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-              >
-                Gestión de categorías
-              </h2>
-              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                Crea nuevas categorías y gestiona las existentes
-              </p>
-            </div>
+        <header className={modalHeaderClass}>
+          <div className="min-w-0">
+            <h2 id="category-modal-title" className={modalTitleClass}>
+              Gestión de categorías
+            </h2>
+            <p className={modalSubtitleClass}>Crea nuevas categorías y gestiona las existentes</p>
           </div>
-          <Button
-            type="button"
-            onClick={handleClose}
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 rounded-md p-0"
-            aria-label="Cerrar"
+          <button type="button" onClick={handleClose} className={modalCloseButtonClass} aria-label="Cerrar">
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        </header>
+
+        <div className={cn(modalBodyClass, 'flex min-h-0 flex-col')}>
+          <form
+            id={formId}
+            className="flex min-h-0 flex-1 flex-col"
+            onSubmit={e => {
+              e.preventDefault()
+              handleSave()
+            }}
           >
-            <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </Button>
-        </div>
-
-        <form
-          onSubmit={e => {
-            e.preventDefault()
-            handleSave()
-          }}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className={appModalBodyClass}>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <section className={modalCardShellClass}>
-                <div className="mb-1 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Información de la categoría
-                  </h3>
-                </div>
-                <p className={cn(appModalHintClass, 'mb-3')}>Datos visibles al clasificar productos.</p>
-
-                <div className="space-y-3">
+            <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-x-10 gap-y-7 lg:grid-cols-2 lg:grid-rows-1">
+              <FormSection title="Información de la categoría" description="Datos visibles al clasificar productos.">
+                <div className="space-y-3.5">
                   <div>
-                    <label className={appModalLabelClass} htmlFor="category-name">
-                      Nombre de la categoría *
+                    <label className={modalLabelClass} htmlFor="category-name">
+                      Nombre <span className="text-zinc-400 dark:text-white/30">*</span>
                     </label>
                     <input
                       id="category-name"
                       type="text"
                       value={formData.name}
                       onChange={e => handleInputChange('name', e.target.value)}
-                      className={cn(
-                        appModalInputClass,
-                        errors.name && 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
-                      )}
+                      className={cn(modalInputClass, errors.name && modalInputErrorClass)}
                       placeholder="Nombre de la categoría"
+                      autoFocus
                     />
-                    {errors.name && <p className={appModalErrorClass}>{errors.name}</p>}
+                    {errors.name && <p className={modalErrorClass}>{errors.name}</p>}
                   </div>
 
                   <div>
-                    <label className={appModalLabelClass} htmlFor="category-description">
-                      Descripción <span className="font-normal text-zinc-400">(opcional)</span>
+                    <label className={modalLabelClass} htmlFor="category-description">
+                      Descripción <span className="font-normal text-zinc-400 dark:text-white/30">(opcional)</span>
                     </label>
                     <textarea
                       id="category-description"
                       value={formData.description}
                       onChange={e => handleInputChange('description', e.target.value)}
-                      className={cn(appModalInputClass, 'min-h-20 resize-none')}
+                      className={cn(modalInputClass, 'h-auto min-h-[4.5rem] resize-none py-2')}
                       placeholder="Breve texto para clasificar la categoría"
                       rows={3}
                     />
                   </div>
 
-                  <label
-                    htmlFor="category-active"
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-colors',
-                      formData.status === 'active'
-                        ? 'border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-800/40 dark:bg-emerald-950/25'
-                        : 'border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50'
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                        Categoría activa
-                      </span>
-                      <span className={appModalHintClass}>
-                        Si está desactivada, no estará disponible al crear productos.
-                      </span>
-                    </div>
-                    <Switch
-                      id="category-active"
-                      checked={formData.status === 'active'}
-                      onCheckedChange={checked =>
-                        setFormData(prev => ({ ...prev, status: checked ? 'active' : 'inactive' }))
-                      }
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className={cn(modalCardShellClass, 'flex min-h-0 flex-col')}>
-                <div className="mb-1 flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} aria-hidden />
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Categorías existentes
-                  </h3>
-                </div>
-                <p className={cn(appModalHintClass, 'mb-3')}>Lista ordenada por fecha de creación.</p>
-
-                <div className="min-h-0 max-h-[min(28rem,50dvh)] flex-1 space-y-2 overflow-y-auto overscroll-contain">
-                  {sortedCategories.map(cat => (
+                  <div>
+                    <span className={modalLabelClass}>Estado</span>
                     <div
-                      key={cat.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 transition-colors hover:bg-zinc-100/80 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80"
+                      role="radiogroup"
+                      aria-label="Estado de la categoría"
+                      className="casa-artesanal-preserve-surface grid grid-cols-2 gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-white/[0.06]"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{cat.name}</h4>
-                          <Badge
-                            variant="outline"
-                            className={cn('border px-2 py-0 text-[11px] font-medium', getStatusColor(cat.status))}
+                      {statusOptions.map(option => {
+                        const selected = formData.status === option.value
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => setFormData(prev => ({ ...prev, status: option.value }))}
+                            className={cn(
+                              'casa-artesanal-preserve-surface inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 text-[13px] transition-colors',
+                              selected
+                                ? 'border-zinc-200 bg-white font-semibold text-zinc-900 shadow-sm dark:border-white/[0.12] dark:bg-[#0a0a0b] dark:text-white'
+                                : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-white/55 dark:hover:text-white'
+                            )}
                           >
-                            {getStatusLabel(cat.status)}
-                          </Badge>
-                        </div>
-                        <p className={cn(appModalHintClass, 'mt-1')}>
-                          {cat.description?.trim() ? (
-                            cat.description
-                          ) : (
-                            <span className="italic text-zinc-400 dark:text-zinc-500">Sin descripción</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Switch
-                          checked={cat.status === 'active'}
-                          onCheckedChange={on => onToggleStatus(cat.id, on ? 'active' : 'inactive')}
-                          aria-label={
-                            cat.status === 'active' ? 'Desactivar categoría' : 'Activar categoría'
-                          }
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onDelete(cat.id)}
-                          className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
-                          title="Eliminar categoría"
-                        >
-                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                        </Button>
-                      </div>
+                            <StatusDot tone={option.tone} className={cn(!selected && 'opacity-60')} />
+                            {option.label}
+                          </button>
+                        )
+                      })}
                     </div>
-                  ))}
-                  {categories.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
-                      <Tag
-                        className="mx-auto mb-3 h-8 w-8 text-zinc-400 dark:text-zinc-500"
-                        strokeWidth={1.5}
-                        aria-hidden
-                      />
-                      <p className={appModalHintClass}>No hay categorías creadas</p>
-                    </div>
-                  )}
+                    <p className={modalHintClass}>Si está desactivada, no estará disponible al crear productos.</p>
+                  </div>
                 </div>
-              </section>
-            </div>
-          </div>
+              </FormSection>
 
-          <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={handleClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-              Crear categoría
-            </Button>
-          </div>
-        </form>
+              <FormSection
+                title="Categorías existentes"
+                description="Lista ordenada por fecha de creación."
+                className="flex min-h-0 flex-col overflow-hidden"
+              >
+                {sortedCategories.length === 0 ? (
+                  <p className="py-8 text-center text-[13px] text-zinc-500 dark:text-white/45">
+                    No hay categorías creadas
+                  </p>
+                ) : (
+                  <div className="relative min-h-0 flex-1">
+                    <ul
+                      ref={listRef}
+                      className="h-full divide-y divide-zinc-200 overflow-y-auto overscroll-contain dark:divide-white/[0.07]"
+                    >
+                      {sortedCategories.map(cat => (
+                        <li key={cat.id} className="flex items-center gap-3 py-2.5 first:pt-0">
+                          <h4 className="min-w-0 flex-1 truncate text-[13px] font-medium text-zinc-900 dark:text-white">
+                            {cat.name}
+                          </h4>
+                          <Switch
+                            checked={cat.status === 'active'}
+                            onCheckedChange={on => onToggleStatus(cat.id, on ? 'active' : 'inactive')}
+                            aria-label={cat.status === 'active' ? 'Desactivar categoría' : 'Activar categoría'}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => onDelete(cat.id)}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center text-zinc-400 transition-colors hover:text-rose-600 dark:text-white/40 dark:hover:text-rose-400"
+                            title="Eliminar categoría"
+                            aria-label={`Eliminar ${cat.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {canScrollDown ? (
+                      <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-white from-30% via-white/85 to-transparent pb-1.5 dark:from-[#111113] dark:via-[#111113]/90"
+                        aria-hidden
+                      >
+                        <ChevronDown className="h-5 w-5 text-zinc-500 dark:text-white/70" strokeWidth={2} />
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </FormSection>
+            </div>
+          </form>
+        </div>
+
+        <footer
+          className={modalFooterClass}
+          style={{ paddingBottom: `max(0.875rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))` }}
+        >
+          <button type="button" onClick={handleClose} className={modalSecondaryButtonClass}>
+            Cancelar
+          </button>
+          <button type="submit" form={formId} className={modalPrimaryButtonClass}>
+            Crear categoría
+          </button>
+        </footer>
       </div>
-    </div>,
-    document.body
+    </div>
   )
+
+  if (!mounted || typeof document === 'undefined') return null
+  return createPortal(modal, document.body)
 }

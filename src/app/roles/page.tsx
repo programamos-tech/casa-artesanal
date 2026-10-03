@@ -6,7 +6,7 @@ import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
 export default function RolesPage() {
   return (
     <RoleProtectedRoute module="roles" requiredAction="view">
-      <div className="min-h-screen space-y-6 bg-zinc-50 py-6 dark:bg-zinc-950">
+      <div className="py-4 max-xl:pb-1 md:py-6">
         <UserManagement />
       </div>
     </RoleProtectedRoute>

@@ -156,3 +156,23 @@ export function creditStatusLabel(
       return status
   }
 }
+
+/** Tono del punto de estado (`StatusDot`): Parcial=azul como los abonos. */
+export function creditStatusTone(
+  status: string,
+  credit?: Credit | null
+): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (isCreditCancelled(credit) || status === 'cancelled') return 'danger'
+  switch (status) {
+    case 'completed':
+      return 'success'
+    case 'partial':
+      return 'info'
+    case 'pending':
+      return 'warning'
+    case 'overdue':
+      return 'danger'
+    default:
+      return 'neutral'
+  }
+}

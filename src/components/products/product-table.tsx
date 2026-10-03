@@ -1,49 +1,40 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  Package,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Pause,
-  Tag,
-  X,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-} from 'lucide-react'
+import { Package, Plus, Search, Edit, Eye, Trash2, X, RefreshCw, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { Product, Category } from '@/types'
 import type { StockFilter, CategoryFilter } from '@/lib/products-service'
 import { isReferenceLikeQuery, minSearchLength } from '@/lib/product-search'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePermissions } from '@/hooks/usePermissions'
-import { StoreBadge } from '@/components/ui/store-badge'
+import { StatusDot, type ReportTone } from '@/components/dashboard/report-ui'
 import { cn } from '@/lib/utils'
-import { cardShell } from '@/lib/card-shell'
 
 const ITEMS_PER_PAGE = 15
 
-const actionIconBtnClass =
-  'h-9 w-9 p-0 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+const rowIconBtnClass =
+  'flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 dark:text-white/40 dark:hover:text-white'
 
-const actionDeleteBtnClass =
-  'h-9 w-9 p-0 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400'
+const rowDeleteBtnClass =
+  'flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-rose-600 dark:text-white/40 dark:hover:text-rose-400'
 
-/** Evita que globals.css (html.light * { background: inherit }) aplaste los fondos de los badges */
-const badgeTint = 'casa-artesanal-preserve-surface'
+const headerIconBtnClass =
+  'flex h-8 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:text-white/45 dark:hover:text-white'
 
-/** Acentos como en reportes/dashboard: color solo en el icono */
-const productHeroIconClass = 'text-indigo-600 dark:text-indigo-400'
-const productCategoriesIconClass = 'text-amber-600 dark:text-amber-400'
+const headerSecondaryBtnClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 items-center rounded-md border border-zinc-200 px-3 text-[13px] font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-900 dark:border-white/[0.14] dark:text-white/80 dark:hover:border-white/25 dark:hover:text-white'
+
+const headerPrimaryBtnClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-3 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+
+const filterSelectWrapClass =
+  'relative h-8 shrink-0 border-l border-zinc-200 dark:border-white/[0.08]'
+
+const filterSelectClass =
+  'block h-full w-full cursor-pointer appearance-none truncate border-0 bg-transparent pl-3 pr-8 text-[13px] text-zinc-600 transition-colors hover:text-zinc-900 focus:outline-none dark:text-white/60 dark:hover:text-white'
+
+const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
+
+const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
 
 interface ProductTableProps {
   products: Product[]
@@ -164,88 +155,28 @@ export function ProductTable({
     return 'Sin categoría'
   }
 
-  /** Catálogo: Activo en verde suave; otros estados neutros o alerta */
-  const getStatusBadgeClass = (status: string) => {
+  /** Estado de catálogo: solo se muestra cuando NO está activo. */
+  const getCatalogLabel = (status: string): string | null => {
     switch (status) {
       case 'active':
-        return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
-      case 'inactive':
-        return 'border-0 bg-zinc-100/95 text-zinc-600 dark:bg-zinc-900/55 dark:text-zinc-400'
-      case 'discontinued':
-        return 'border-0 bg-zinc-100/80 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
-      case 'out_of_stock':
-        return 'border-0 bg-red-100/90 text-red-900/90 dark:bg-red-950/35 dark:text-red-300/90'
-      default:
-        return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Activo'
+        return null
       case 'inactive':
         return 'Inactivo'
       case 'discontinued':
         return 'Descontinuado'
       case 'out_of_stock':
-        return 'Sin Stock'
+        return 'Agotado'
       default:
         return status
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return CheckCircle
-      case 'inactive':
-        return Pause
-      case 'discontinued':
-        return XCircle
-      case 'out_of_stock':
-        return AlertTriangle
-      default:
-        return CheckCircle
-    }
-  }
-
-  const getStatusIconClass = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'text-green-600 dark:text-green-400'
-      case 'inactive':
-        return 'text-zinc-500 dark:text-zinc-400'
-      case 'discontinued':
-        return 'text-zinc-600 dark:text-zinc-400'
-      case 'out_of_stock':
-        return 'text-rose-600 dark:text-rose-400'
-      default:
-        return 'text-zinc-500 dark:text-zinc-400'
-    }
-  }
-
-  const getStockStatusLabel = (product: Product) => {
+  const getStockState = (product: Product): { label: string; tone: ReportTone } => {
     const store = product.stock?.store || 0
-    if (store === 0) return 'Sin Stock'
-    if (store >= 10) return 'Disponible Local'
-    if (store >= 5) return 'Stock Local Bajo'
-    return 'Stock Local Muy Bajo'
-  }
-
-  /** Stock: acentos muy suaves; sin saturación fuerte */
-  const getStockStatusBadgeClass = (product: Product) => {
-    const store = product.stock?.store || 0
-    if (store === 0) {
-      return 'border-0 bg-red-100/85 text-red-900/85 dark:bg-red-950/30 dark:text-red-300/85'
-    }
-    if (store >= 10) {
-      return 'border-0 bg-green-100/80 text-green-900/88 dark:bg-green-950/25 dark:text-green-300/85'
-    }
-    if (store >= 5) {
-      return 'border-0 bg-amber-100/85 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
-    }
-    return 'border-0 bg-orange-100/85 text-orange-950/90 dark:bg-orange-950/25 dark:text-orange-300/85'
+    if (store === 0) return { label: 'Sin stock', tone: 'danger' }
+    if (store >= 10) return { label: 'Disponible', tone: 'success' }
+    if (store >= 5) return { label: 'Stock bajo', tone: 'warning' }
+    return { label: 'Stock muy bajo', tone: 'warning' }
   }
 
   const formatSalePrice = (product: Product) => {
@@ -258,461 +189,330 @@ export function ProductTable({
     }).format(price)
   }
 
+  /** `value` debe coincidir con los estados que entiende ProductsService. */
   const stockStatusOptions = [
     { value: 'all', label: 'Todos los estados' },
-    { value: 'Sin Stock', label: 'Sin Stock' },
-    { value: 'Disponible Local', label: 'Disponible Local' },
-    { value: 'Stock Local Bajo', label: 'Stock Local Bajo' },
-    { value: 'Stock Local Muy Bajo', label: 'Stock Local Muy Bajo' },
+    { value: 'Sin Stock', label: 'Sin stock' },
+    { value: 'Disponible Local', label: 'Disponible' },
+    { value: 'Stock Local Bajo', label: 'Stock bajo' },
+    { value: 'Stock Local Muy Bajo', label: 'Stock muy bajo' },
   ]
 
-  const thClass =
-    'casa-artesanal-preserve-surface whitespace-nowrap bg-zinc-100/95 px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-zinc-600 dark:bg-zinc-900/70 dark:text-zinc-400'
+  const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE)
+
+  const subtitle = 'Catálogo, precios de venta y stock disponible en la tienda seleccionada.'
+
+  const renderRowActions = (product: Product) => (
+    <div className="flex items-center justify-end gap-0.5" role="none" onClick={(e) => e.stopPropagation()}>
+      <button type="button" className={rowIconBtnClass} onClick={() => goProduct(product)} title="Ver producto" aria-label="Ver producto">
+        <Eye className="h-4 w-4" strokeWidth={1.5} />
+      </button>
+      {canEdit && (
+        <button type="button" className={rowIconBtnClass} onClick={() => onEdit(product)} title="Editar producto" aria-label="Editar producto">
+          <Edit className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      )}
+      {canAdjust && onStockAdjustment && (
+        <button type="button" className={rowIconBtnClass} onClick={() => onStockAdjustment(product)} title="Ajustar stock" aria-label="Ajustar stock">
+          <Package className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      )}
+      {canDelete && (
+        <button type="button" className={rowDeleteBtnClass} onClick={() => onDelete(product)} title="Eliminar" aria-label="Eliminar">
+          <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      )}
+    </div>
+  )
 
   return (
-    <TooltipProvider>
-      <div className="space-y-4 md:space-y-6">
-        <Card className={cn('relative overflow-hidden', cardShell)}>
-          <CardHeader className="space-y-0 border-b border-zinc-200/80 p-4 dark:border-zinc-800 md:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  <Package className={cn('h-5 w-5 shrink-0', productHeroIconClass)} strokeWidth={1.5} aria-hidden />
-                  <span>Gestión de productos</span>
-                  <StoreBadge />
-                  {isSearching && (
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        badgeTint,
-                        'border-0 bg-zinc-100/90 text-[11px] font-normal text-zinc-600 dark:bg-zinc-900/45 dark:text-zinc-400'
-                      )}
-                    >
-                      Búsqueda activa
-                    </Badge>
-                  )}
-                </CardTitle>
-                <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  {isSearching
-                    ? `Resultados de búsqueda (${products.length} productos)`
-                    : 'Administra tu inventario de productos'}
-                </p>
-              </div>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-                {canCreate && (
-                  <Button
-                    onClick={onCreate}
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                  >
-                    <Plus className="h-3.5 w-3.5 shrink-0" />
-                    <span className="hidden sm:inline">Nuevo producto</span>
-                    <span className="sm:hidden">Nuevo</span>
-                  </Button>
-                )}
-                {canEdit && (
-                  <Button onClick={onManageCategories} size="sm" variant="secondary" className="flex-1 sm:flex-none">
-                    <Tag className={cn('h-3.5 w-3.5 shrink-0', productCategoriesIconClass)} />
-                    <span className="hidden md:inline">Categorías</span>
-                  </Button>
-                )}
-                {onRefresh && (
-                  <Button onClick={onRefresh} disabled={loading} variant="outline" size="sm" className="flex-1 sm:flex-none">
-                    <RefreshCw
-                      className={cn(
-                        'h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400',
-                        loading && 'animate-spin'
-                      )}
-                      strokeWidth={1.5}
-                    />
-                    <span className="hidden md:inline">Actualizar</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-
-          <div className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/25 md:px-6 md:py-4">
-            <div
-              className={cn(
-                'casa-artesanal-preserve-surface relative flex min-h-11 flex-nowrap items-stretch overflow-x-auto rounded-2xl border border-zinc-300/95 bg-white shadow-sm ring-1 ring-zinc-200/90',
-                'divide-x divide-zinc-200/85 dark:divide-zinc-600/90 dark:border-zinc-600 dark:bg-zinc-900/75 dark:ring-zinc-700/85',
-                'focus-within:border-violet-400/55 focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-500/25 dark:focus-within:border-violet-500/45 dark:focus-within:ring-violet-400/20',
-                filtersLoading && 'opacity-80'
-              )}
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">Productos</h1>
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={loading}
+              className={headerIconBtnClass}
+              title="Actualizar"
+              aria-label="Actualizar"
             >
-              {filtersLoading && (
-                <div
-                  className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-white/40 dark:bg-zinc-950/40"
-                  aria-hidden
-                >
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 border-t-amber-600 dark:border-zinc-600 dark:border-t-amber-400" />
-                </div>
-              )}
-              <div className="relative min-w-[10rem] flex-1">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 z-10 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-violet-700 dark:text-violet-300"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-                <input
-                  type="search"
-                  placeholder={
-                    searchLoading ? 'Buscando…' : 'Ref., nombre o marca…'
-                  }
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      const term = searchTerm.trim()
-                      if (!term) {
-                        lastSearchedTermRef.current = ''
-                        void onSearchRef.current('')
-                        return
-                      }
-                      if (term.length < minSearchLength(term)) return
-                      lastSearchedTermRef.current = term
-                      void onSearchRef.current(term)
-                    }
-                  }}
-                  aria-label="Buscar producto por referencia, nombre o marca"
-                  aria-busy={searchLoading}
-                  className="h-11 w-full min-w-0 border-0 bg-transparent py-2 pl-10 pr-10 text-sm font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-400 [&::-webkit-search-cancel-button]:hidden"
-                />
-                {searchLoading ? (
-                  <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2" aria-hidden>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 border-t-violet-600 dark:border-zinc-600 dark:border-t-violet-400" />
-                  </div>
-                ) : searchTerm ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchTerm('')
-                      lastSearchedTermRef.current = ''
-                      void onSearchRef.current('')
-                    }}
-                    className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                    title="Limpiar búsqueda"
-                  >
-                    <X className="h-4 w-4" strokeWidth={2} />
-                  </button>
-                ) : null}
-              </div>
+              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} strokeWidth={1.5} />
+            </button>
+          )}
+          {canEdit && (
+            <button type="button" onClick={onManageCategories} className={headerSecondaryBtnClass}>
+              Categorías
+            </button>
+          )}
+          {canCreate && (
+            <button type="button" onClick={onCreate} className={headerPrimaryBtnClass}>
+              <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              Nuevo producto
+            </button>
+          )}
+        </div>
+      </div>
 
-              <label className="relative flex h-11 min-w-[10.5rem] shrink-0 items-center gap-1.5 px-2.5 sm:min-w-[12.5rem] sm:gap-2 sm:pl-3 sm:pr-9">
-                <Tag
-                  className={cn('h-4 w-4 shrink-0', productCategoriesIconClass)}
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
-                <span className="hidden text-[10px] font-medium uppercase tracking-wide text-zinc-500 lg:inline dark:text-zinc-400">
-                  Categoría
-                </span>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => onCategoryFilterChange(e.target.value as CategoryFilter)}
-                  aria-label="Filtrar por categoría"
-                  className="h-11 min-w-0 flex-1 cursor-pointer appearance-none truncate border-0 bg-transparent py-2 pr-1 text-sm font-medium text-zinc-900 focus:outline-none dark:text-zinc-100"
-                >
-                  <option value="all">Todas las categorías</option>
-                  {activeCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600/80 dark:text-amber-400/90"
-                  aria-hidden
-                />
-              </label>
-
-              <label className="relative flex h-11 min-w-[9.5rem] shrink-0 items-center gap-1.5 px-2.5 sm:min-w-[11.5rem] sm:gap-2 sm:pl-3 sm:pr-9">
-                <Package
-                  className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400"
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
-                <span className="hidden text-[10px] font-medium uppercase tracking-wide text-zinc-500 lg:inline dark:text-zinc-400">
-                  Stock
-                </span>
-                <select
-                  value={stockFilter}
-                  onChange={(e) => onFilterChange(e.target.value as StockFilter)}
-                  aria-label="Filtrar por estado de stock"
-                  className="h-11 min-w-0 flex-1 cursor-pointer appearance-none truncate border-0 bg-transparent py-2 pr-1 text-sm font-medium text-zinc-900 focus:outline-none dark:text-zinc-100"
-                >
-                  {stockStatusOptions.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600/80 dark:text-teal-400/90"
-                  aria-hidden
-                />
-              </label>
+      <div
+        className={cn(
+          'casa-artesanal-preserve-surface relative flex flex-wrap items-center rounded-xl border border-zinc-200 p-1 transition-colors sm:flex-nowrap',
+          'focus-within:border-zinc-300 dark:border-white/[0.1] dark:focus-within:border-white/20',
+          filtersLoading && 'opacity-80'
+        )}
+      >
+        <div className="relative flex min-w-[12rem] flex-1 items-center">
+          <Search className="pointer-events-none absolute left-2 h-4 w-4 text-zinc-400 dark:text-white/35" strokeWidth={1.5} aria-hidden />
+          <input
+            type="search"
+            placeholder={searchLoading ? 'Buscando…' : 'Buscar producto o referencia…'}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                const term = searchTerm.trim()
+                if (!term) {
+                  lastSearchedTermRef.current = ''
+                  void onSearchRef.current('')
+                  return
+                }
+                if (term.length < minSearchLength(term)) return
+                lastSearchedTermRef.current = term
+                void onSearchRef.current(term)
+              }
+            }}
+            aria-label="Buscar producto por referencia, nombre o marca"
+            aria-busy={searchLoading}
+            className="h-8 w-full min-w-0 border-0 bg-transparent pl-8 pr-8 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {searchLoading || filtersLoading ? (
+            <div className="absolute right-2" aria-hidden>
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-500 dark:border-white/15 dark:border-t-white/60" />
             </div>
-          </div>
+          ) : searchTerm ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('')
+                lastSearchedTermRef.current = ''
+                void onSearchRef.current('')
+              }}
+              className="absolute right-1.5 p-1 text-zinc-400 hover:text-zinc-800 dark:text-white/40 dark:hover:text-white"
+              title="Limpiar búsqueda"
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          ) : null}
+        </div>
 
-          <CardContent className="relative p-0">
-            {loading && !searchLoading && products.length === 0 && (
-              <div
-                className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-zinc-950/50"
-                aria-hidden={!loading}
-              >
-                <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
-              </div>
+        <div className={cn(filterSelectWrapClass, 'min-w-[10.5rem]')}>
+          <select
+            value={categoryFilter}
+            onChange={(e) => onCategoryFilterChange(e.target.value as CategoryFilter)}
+            aria-label="Filtrar por categoría"
+            className={filterSelectClass}
+          >
+            <option value="all">Todas las categorías</option>
+            {activeCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-white/40" aria-hidden />
+        </div>
+
+        <div className={cn(filterSelectWrapClass, 'min-w-[9.5rem]')}>
+          <select
+            value={stockFilter}
+            onChange={(e) => onFilterChange(e.target.value as StockFilter)}
+            aria-label="Filtrar por estado de stock"
+            className={filterSelectClass}
+          >
+            {stockStatusOptions.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-white/40" aria-hidden />
+        </div>
+      </div>
+
+      <div className="relative">
+        {loading && !searchLoading && products.length === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center" aria-hidden={!loading}>
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+          </div>
+        )}
+
+        {products.length === 0 ? (
+          <div className="casa-artesanal-card-surface rounded-xl border border-zinc-200 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              {loading ? 'Cargando productos…' : 'No hay productos'}
+            </p>
+            {!loading && (
+              <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+                Ajusta los filtros o crea uno con «Nuevo producto».
+              </p>
             )}
-            {products.length === 0 ? (
-              <div className="py-16 text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
-                  <Package className={cn('h-7 w-7', productHeroIconClass)} strokeWidth={1.5} />
-                </div>
-                <h3 className="text-base font-medium text-zinc-900 dark:text-zinc-100">No hay productos</h3>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
-                  Ajusta filtros o crea uno con <span className="font-medium text-zinc-700 dark:text-zinc-300">Nuevo producto</span>
-                </p>
-                {canCreate && (
-                  <Button
-                    onClick={onCreate}
-                    size="sm"
-                    className="mt-4"
+          </div>
+        ) : (
+          <>
+            <div className="casa-artesanal-card-surface divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800/80 dark:border-zinc-800 dark:bg-zinc-900/40 lg:hidden">
+              {products.map((product) => {
+                const stock = getStockState(product)
+                const catalog = getCatalogLabel(product.status)
+                return (
+                  <div
+                    key={product.id}
+                    role="button"
+                    tabIndex={0}
+                    className="casa-artesanal-preserve-surface flex cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                    onClick={() => goProduct(product)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        goProduct(product)
+                      }
+                    }}
                   >
-                    Nuevo producto
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="space-y-1 bg-zinc-50/50 p-3 dark:bg-zinc-950/20 lg:hidden">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">{product.name}</p>
+                      <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                        {product.reference} · {getCategoryLabel(product)}
+                        {catalog ? ` · ${catalog}` : ''}
+                      </p>
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                        <StatusDot tone={stock.tone} />
+                        {stock.label} · {product.stock.store} und.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">{formatSalePrice(product)}</span>
+                      {renderRowActions(product)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="casa-artesanal-card-surface hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40 lg:block">
+              <table className="w-full min-w-[760px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/70">
+                    <th className={thClass}>Producto</th>
+                    <th className={thClass}>Referencia</th>
+                    <th className={thClass}>Categoría</th>
+                    <th className={cn(thClass, 'text-right')}>Precio venta</th>
+                    <th className={cn(thClass, 'text-right')}>Stock</th>
+                    <th className={thClass}>Estado</th>
+                    <th className={cn(thClass, 'w-[9rem]')}>
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   {products.map((product) => {
-                    const StatusIcon = getStatusIcon(product.status)
+                    const stock = getStockState(product)
+                    const catalog = getCatalogLabel(product.status)
                     return (
-                      <div
+                      <tr
                         key={product.id}
-                        role="button"
-                        tabIndex={0}
-                        className="casa-artesanal-preserve-surface cursor-pointer rounded-2xl border-0 bg-transparent p-4 text-left shadow-none transition-colors hover:bg-white/75 dark:hover:bg-zinc-900/45"
+                        className="casa-artesanal-preserve-surface group cursor-pointer border-b border-zinc-100 transition-colors last:border-b-0 hover:bg-zinc-50 dark:border-zinc-800/80 dark:hover:bg-zinc-800/40"
                         onClick={() => goProduct(product)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            goProduct(product)
-                          }
-                        }}
                       >
-                        <div className="min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <span className="font-mono text-xs font-semibold text-zinc-600 dark:text-zinc-400">{product.reference}</span>
-                              <p className="mt-0.5 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">{product.name}</p>
-                              <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
-                            </div>
-                            <Badge variant="outline" className={cn(badgeTint, 'shrink-0 border-0 px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
-                              <span className="flex items-center gap-1">
-                                <StatusIcon className={cn('h-3 w-3', getStatusIconClass(product.status))} strokeWidth={2} />
-                                {getStatusLabel(product.status)}
-                              </span>
-                            </Badge>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
-                            <div className="text-center">
-                              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Precio venta</div>
-                              <div className="mt-0.5 text-sm font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
-                                {formatSalePrice(product)}
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Stock</div>
-                              <div className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                                {product.stock.store}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
-                            <Badge
-                              variant="outline"
-                              className={cn(badgeTint, 'border-0 px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}
-                            >
-                              {getStockStatusLabel(product)}
-                            </Badge>
-                            <div className="flex shrink-0 gap-0.5" role="none" onClick={(e) => e.stopPropagation()}>
-                              {canEdit && (
-                                <Button type="button" size="sm" variant="ghost" className={actionIconBtnClass} onClick={() => onEdit(product)} title="Editar">
-                                  <Edit className="h-4 w-4" strokeWidth={1.5} />
-                                </Button>
-                              )}
-                              {canAdjust && onStockAdjustment && (
-                                <Button type="button" size="sm" variant="ghost" className={actionIconBtnClass} onClick={() => onStockAdjustment(product)} title="Ajustar stock">
-                                  <Package className="h-4 w-4" strokeWidth={1.5} />
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button type="button" size="sm" variant="ghost" className={actionDeleteBtnClass} onClick={() => onDelete(product)} title="Eliminar">
-                                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                        <td className={cn(tdClass, 'max-w-[min(22rem,32vw)]')}>
+                          <span className="block truncate font-medium text-zinc-900 dark:text-zinc-50">
+                            {product.name}
+                            {catalog ? (
+                              <span className="ml-2 text-xs font-normal text-zinc-400 dark:text-zinc-500">{catalog}</span>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className={cn(tdClass, 'whitespace-nowrap text-zinc-500 dark:text-zinc-400')}>{product.reference}</td>
+                        <td className={cn(tdClass, 'max-w-[12rem] truncate text-zinc-500 dark:text-zinc-400')}>{getCategoryLabel(product)}</td>
+                        <td className={cn(tdClass, 'whitespace-nowrap text-right tabular-nums')}>{formatSalePrice(product)}</td>
+                        <td className={cn(tdClass, 'whitespace-nowrap text-right tabular-nums')}>{product.stock.store}</td>
+                        <td className={cn(tdClass, 'whitespace-nowrap')}>
+                          <span className="inline-flex items-center gap-2">
+                            <StatusDot tone={stock.tone} />
+                            {stock.label}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5">{renderRowActions(product)}</td>
+                      </tr>
                     )
                   })}
-                </div>
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
-                <div className="hidden lg:block">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[760px] border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                          <th className={cn(thClass, 'pl-4')}>Producto</th>
-                          <th className={thClass}>Precio venta</th>
-                          <th className={thClass}>Stock</th>
-                          <th className={thClass}>Estado stock</th>
-                          <th className={thClass}>Catálogo</th>
-                          <th className={cn(thClass, 'w-[11rem] px-2 text-right')}>Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                        {products.map((product) => {
-                          const StatusIcon = getStatusIcon(product.status)
-                          return (
-                            <tr
-                              key={product.id}
-                              className="casa-artesanal-preserve-surface cursor-pointer transition-colors hover:bg-zinc-100/90 dark:hover:bg-zinc-800/40"
-                              onClick={() => goProduct(product)}
-                            >
-                              <td className="max-w-[min(24rem,40vw)] px-4 py-3">
-                                <div className="min-w-0">
-                                  <span className="font-mono text-xs font-semibold text-zinc-600 dark:text-zinc-400">{product.reference}</span>
-                                  <p className="mt-0.5 truncate font-semibold text-zinc-900 dark:text-zinc-100">{product.name}</p>
-                                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{getCategoryLabel(product)}</p>
-                                </div>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-3 font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
-                                {formatSalePrice(product)}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
-                                {product.stock.store}
-                              </td>
-                              <td className="px-3 py-3">
-                                <Badge variant="outline" className={cn(badgeTint, 'inline-flex border-0 px-2 py-0.5 text-[11px] font-normal', getStockStatusBadgeClass(product))}>
-                                  {getStockStatusLabel(product)}
-                                </Badge>
-                              </td>
-                              <td className="px-3 py-3">
-                                <Badge variant="outline" className={cn(badgeTint, 'inline-flex items-center gap-1 border-0 px-2 py-0.5 text-[11px] font-normal', getStatusBadgeClass(product.status))}>
-                                  <StatusIcon className={cn('h-3 w-3 shrink-0', getStatusIconClass(product.status))} strokeWidth={2} />
-                                  {getStatusLabel(product.status)}
-                                </Badge>
-                              </td>
-                              <td className="px-1 py-2" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex flex-wrap items-center justify-end gap-0.5">
-                                  {canEdit && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button type="button" size="sm" variant="ghost" className={actionIconBtnClass} onClick={() => onEdit(product)}>
-                                          <Edit className="h-4 w-4" strokeWidth={1.5} />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="z-[200]">
-                                        Editar producto
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  {canAdjust && onStockAdjustment && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button type="button" size="sm" variant="ghost" className={actionIconBtnClass} onClick={() => onStockAdjustment(product)}>
-                                          <Package className="h-4 w-4" strokeWidth={1.5} />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="z-[200]">
-                                        Ajustar stock
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  {canDelete && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button type="button" size="sm" variant="ghost" className={actionDeleteBtnClass} onClick={() => onDelete(product)}>
-                                          <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="z-[200]">
-                                        Eliminar
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {!isSearching && totalProducts > ITEMS_PER_PAGE && (
-              <div className="flex items-center justify-center gap-1 border-t border-zinc-200 px-4 py-4 dark:border-zinc-800 md:px-6">
-                <button
-                  type="button"
-                  onClick={() => onPageChange(currentPage - 1)}
-                  disabled={currentPage === 1 || loading}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: Math.ceil(totalProducts / ITEMS_PER_PAGE) }, (_, i) => i + 1).map((page) => {
-                    const last = Math.ceil(totalProducts / ITEMS_PER_PAGE)
-                    if (page === 1 || page === 2 || page === last || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                      return (
-                        <button
-                          key={page}
-                          type="button"
-                          onClick={() => onPageChange(page)}
-                          disabled={loading}
-                          className={cn(
-                            'flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors',
-                            currentPage === page
-                              ? 'bg-zinc-900 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900'
-                              : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
-                          )}
-                        >
-                          {page}
-                        </button>
-                      )
-                    }
-                    if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <span key={page} className="px-1 text-sm text-zinc-400 dark:text-zinc-500">
-                          …
-                        </span>
-                      )
-                    }
-                    return null
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onPageChange(currentPage + 1)}
-                  disabled={!hasMore || loading}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {!isSearching && totalProducts > ITEMS_PER_PAGE && (
+          <div className="mt-4 flex items-center justify-between gap-3 sm:pr-16">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Página {currentPage} de {totalPages}
+            </p>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1 || loading}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+                aria-label="Página anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                if (page === 1 || page === 2 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => onPageChange(page)}
+                      disabled={loading}
+                      className={cn(
+                        'casa-artesanal-preserve-surface flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[13px] tabular-nums transition-colors',
+                        currentPage === page
+                          ? 'bg-zinc-100 font-semibold text-zinc-900 dark:bg-white/[0.1] dark:text-white'
+                          : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                      )}
+                    >
+                      {page}
+                    </button>
+                  )
+                }
+                if (page === currentPage - 2 || page === currentPage + 2) {
+                  return (
+                    <span key={page} className="px-1 text-sm text-zinc-400 dark:text-zinc-500">
+                      …
+                    </span>
+                  )
+                }
+                return null
+              })}
+              <button
+                type="button"
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={!hasMore || loading}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+                aria-label="Página siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </TooltipProvider>
+    </div>
   )
 }

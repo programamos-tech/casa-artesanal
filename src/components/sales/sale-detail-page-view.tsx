@@ -1,94 +1,61 @@
 'use client'
 
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
-  Receipt,
-  Calendar,
-  CreditCard,
   AlertTriangle,
-  Truck,
-  FileText,
   ArrowLeft,
-  Printer,
+  ArrowRightLeft,
   Ban,
-  ExternalLink,
-  Hash,
-  DollarSign,
-  Pencil,
+  Calendar,
   CheckCircle2,
+  CreditCard,
+  Pencil,
+  Printer,
+  User,
 } from 'lucide-react'
+import { StatusDot, type ReportTone } from '@/components/dashboard/report-ui'
+import { REPORT_CHART_COLORS } from '@/components/dashboard/report-bar-chart'
+import { PaymentMethodLabel } from '@/components/sales/payment-method-label'
 import { cn } from '@/lib/utils'
-import { cardShell } from '@/lib/card-shell'
-import { UserAvatar } from '@/components/ui/user-avatar'
+import { modalInputClass } from '@/lib/app-modal'
 import { Sale, Credit, StoreStockTransfer } from '@/types'
 import { CreditsService } from '@/lib/credits-service'
 import { StoreStockTransferService } from '@/lib/store-stock-transfer-service'
-import {
-  creditStatusBadgeClass,
-  creditStatusLabel,
-  getEffectiveCreditStatus,
-} from '@/lib/credit-status-ui'
+import { creditStatusLabel, getEffectiveCreditStatus } from '@/lib/credit-status-ui'
 
-const badgeTint = 'casa-artesanal-preserve-surface'
+const detailActionClass =
+  'casa-artesanal-preserve-surface inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium leading-none transition-colors disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0'
 
-const sectionIconClass = 'shrink-0 text-indigo-600 dark:text-indigo-400'
+const detailGhostClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/[0.12] dark:text-white/80 dark:hover:bg-white/[0.06] dark:hover:text-white'
+)
 
-const iconMuted = 'shrink-0 text-zinc-500 dark:text-zinc-400'
+const detailPrimaryClass = cn(
+  detailActionClass,
+  'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
+)
 
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={className}>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">{label}</dt>
-      <dd className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{children}</dd>
-    </div>
-  )
+const detailDangerClass = cn(
+  detailActionClass,
+  'border border-zinc-200 text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:border-white/[0.12] dark:text-rose-300 dark:hover:border-rose-400/40 dark:hover:bg-rose-500/10'
+)
+
+const metaIconClass = 'h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40'
+
+const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
+const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
+
+const sectionTitleClass = 'text-[13px] font-semibold text-zinc-900 dark:text-white'
+
+function statusTone(status: string): ReportTone {
+  if (status === 'completed') return 'success'
+  if (status === 'pending' || status === 'partial') return 'warning'
+  if (status === 'overdue' || status === 'cancelled') return 'danger'
+  if (status === 'draft') return 'info'
+  return 'neutral'
 }
-
-function saleStatusBadgeClass(status: string) {
-  switch (status) {
-    case 'completed':
-      return 'border-0 bg-green-100/85 text-green-900/90 dark:bg-green-950/30 dark:text-green-300/90'
-    case 'pending':
-      return 'border-0 bg-amber-100/90 text-amber-950/90 dark:bg-amber-950/25 dark:text-amber-200/85'
-    case 'draft':
-      return 'border-0 bg-violet-100/85 text-violet-950/90 dark:bg-violet-950/30 dark:text-violet-200/85'
-    case 'cancelled':
-      return 'border-0 bg-red-100/90 text-red-900/90 dark:bg-red-950/35 dark:text-red-300/90'
-    default:
-      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
-  }
-}
-
-function paymentMethodBadgeClass(method: string) {
-  switch (method) {
-    case 'cash':
-      return 'border-0 bg-emerald-100/85 text-emerald-950/90 dark:bg-emerald-950/28 dark:text-emerald-200/88'
-    case 'credit':
-      return 'border-0 bg-violet-100/88 text-violet-950/90 dark:bg-violet-950/30 dark:text-violet-200/85'
-    case 'transfer':
-      return 'border-0 bg-sky-100/85 text-sky-950/90 dark:bg-sky-950/30 dark:text-sky-200/85'
-    case 'nequi':
-      return 'border-0 bg-fuchsia-100/80 text-fuchsia-950/90 dark:bg-fuchsia-950/28 dark:text-fuchsia-200/85'
-    case 'bancolombia':
-      return 'border-0 bg-amber-100/88 text-amber-950/90 dark:bg-amber-950/28 dark:text-amber-200/88'
-    case 'card':
-      return 'border-0 bg-indigo-100/88 text-indigo-950/90 dark:bg-indigo-950/30 dark:text-indigo-200/85'
-    case 'warranty':
-      return 'border-0 bg-zinc-200/90 text-zinc-800 dark:bg-zinc-800/55 dark:text-zinc-300'
-    case 'mixed':
-      return 'border-0 bg-teal-100/85 text-teal-950/90 dark:bg-teal-950/28 dark:text-teal-200/85'
-    default:
-      return 'border-0 bg-zinc-100/90 text-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400'
-  }
-}
-
-const linkAccentClass =
-  'text-indigo-600 underline-offset-2 hover:text-indigo-700 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300'
-
-const linkAccentStrongClass = cn(linkAccentClass, 'font-semibold')
 
 function saleStatusLabel(status: string) {
   switch (status) {
@@ -182,17 +149,6 @@ export function SaleDetailPageView({
     }
   }, [sale.status])
 
-  const getCreditId = (c: Credit): string => {
-    const clientInitials = c.clientName
-      .split(' ')
-      .map((word) => word.charAt(0).toUpperCase())
-      .join('')
-      .substring(0, 2)
-      .padEnd(2, 'X')
-    const creditSuffix = c.id.substring(c.id.length - 6).toLowerCase()
-    return `${clientInitials}${creditSuffix}`
-  }
-
   const getTransferId = (t: StoreStockTransfer): string => {
     if (t.transferNumber) return t.transferNumber.replace('TRF-', '')
     return t.id.substring(t.id.length - 8).toUpperCase()
@@ -213,13 +169,6 @@ export function SaleDetailPageView({
       maximumFractionDigits: 0,
     }).format(amount)
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-
   const formatDateTime = (dateString: string) =>
     new Date(dateString).toLocaleString('es-CO', {
       day: '2-digit',
@@ -228,31 +177,6 @@ export function SaleDetailPageView({
       hour: '2-digit',
       minute: '2-digit',
     })
-
-  const getPaymentMethodLabel = (method: string) => {
-    switch (method) {
-      case 'cash':
-        return 'Efectivo/Contado'
-      case 'credit':
-        return 'Crédito'
-      case 'nequi':
-        return 'Nequi'
-      case 'bancolombia':
-        return 'Bancolombia'
-      case 'transfer':
-        return 'Transferencia (otro / sin canal)'
-      case 'card':
-        return 'Tarjeta'
-      case 'warranty':
-        return 'Garantía'
-      case 'mixed':
-        return 'Mixto'
-      case 'pending':
-        return 'Sin método'
-      default:
-        return method
-    }
-  }
 
   const handleShowCancelForm = () => {
     setShowCancelForm(true)
@@ -312,502 +236,300 @@ export function SaleDetailPageView({
     }
   }
 
+  const creditStatus = credit ? getEffectiveCreditStatus(credit) : null
+  const statusLabel = creditStatus && sale.status !== 'cancelled' ? creditStatusLabel(creditStatus, credit) : saleStatusLabel(sale.status)
+  const statusDotTone = statusTone(creditStatus && sale.status !== 'cancelled' ? creditStatus : sale.status)
+  const unitsTotal = sale.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+  const paidAmount = sale.status === 'cancelled' ? 0 : paidOnCredit
+  const creditHref = credit ? `/payments/${credit.clientId}/credit/${credit.id}` : null
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/80 pb-28 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 xl:pb-8">
-      <div className="border-b border-zinc-200/80 bg-white/90 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
-        <div className="flex w-full min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-5 md:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <FileText className={cn('h-6 w-6 shrink-0', sectionIconClass)} strokeWidth={1.5} />
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                {isDraft ? 'Borrador' : 'Factura'} {titleInvoice}
-              </h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                {isDraft ? 'Pendiente de finalizar · no descuenta inventario' : 'Detalle del registro'}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {isDraft && onEditDraft && (
-              <Button size="sm" variant="outline" type="button" onClick={() => onEditDraft(sale)} disabled={isFinalizing}>
-                <Pencil className="h-4 w-4" strokeWidth={1.5} />
-                Editar borrador
-              </Button>
+    <div className="py-4 max-xl:pb-1 md:py-6">
+      <div className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-white/[0.07] sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-white md:text-xl">
+            {isDraft ? 'Borrador' : 'Factura'} {titleInvoice}
+          </h1>
+          <p className="mt-0.5 text-[13px] text-zinc-500 dark:text-white/50">
+            {sale.clientId ? (
+              <Link href={`/clients/${sale.clientId}`} className="underline-offset-2 hover:text-zinc-900 hover:underline dark:hover:text-white">
+                {sale.clientName}
+              </Link>
+            ) : (
+              sale.clientName
             )}
-            {isDraft && onFinalizeDraft && (
-              <Button
-                size="sm"
-                type="button"
-                className="border-transparent bg-emerald-700 text-white hover:bg-emerald-800"
-                onClick={() => void handleFinalizeDraft()}
-                disabled={isFinalizing}
-              >
-                <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />
-                {isFinalizing ? 'Finalizando…' : 'Finalizar factura'}
-              </Button>
-            )}
-            {canVoid && (
-              <Button
-                size="sm"
-                variant="outline"
-                className={cn(
-                  'border-rose-300/80 text-rose-800 hover:bg-rose-500/[0.08] dark:border-rose-500/40 dark:bg-transparent dark:text-rose-300 dark:hover:bg-rose-950/45'
+            {isDraft ? ' · Pendiente de finalizar, no descuenta inventario' : null}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-zinc-700 dark:text-white/80">
+            <span className="inline-flex items-center gap-1.5">
+              <StatusDot tone={statusDotTone} />
+              {statusLabel}
+            </span>
+            <PaymentMethodLabel method={sale.paymentMethod} className="gap-1.5" />
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar className={metaIconClass} strokeWidth={1.75} aria-hidden />
+              <time dateTime={sale.createdAt}>{formatDateTime(sale.createdAt)}</time>
+            </span>
+            {sale.sellerName ? (
+              <span className="inline-flex items-center gap-1.5">
+                <User className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                {sale.sellerId ? (
+                  <Link href={`/sellers/${sale.sellerId}`} className="underline-offset-2 hover:underline">
+                    {sale.sellerName}
+                  </Link>
+                ) : (
+                  sale.sellerName
                 )}
-                onClick={handleShowCancelForm}
-                disabled={isCancelling}
-              >
-                <Ban className="h-4 w-4" strokeWidth={1.5} />
-                Anular factura
-              </Button>
-            )}
-            {!isDraft && (
-              <Button size="sm" variant="outline" type="button" onClick={() => void onPrint(sale)} disabled={isCancelling}>
-                <Printer className="h-4 w-4" strokeWidth={1.5} />
-                Imprimir ticket
-              </Button>
-            )}
-            <button
-              type="button"
-              onClick={onBack}
-              disabled={isCancelling}
-              className={cn(
-                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-800 transition-colors',
-                'hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-900/70',
-                'disabled:pointer-events-none disabled:opacity-50'
-              )}
-            >
-              <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-              Volver
-            </button>
+              </span>
+            ) : null}
+            {transfer ? (
+              <span className="inline-flex items-center gap-1.5">
+                <ArrowRightLeft className={metaIconClass} strokeWidth={1.75} aria-hidden />
+                <span className="font-mono text-xs">{transfer.transferNumber || `#${getTransferId(transfer)}`}</span>
+              </span>
+            ) : null}
           </div>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+          <button type="button" onClick={onBack} disabled={isCancelling} className={detailGhostClass}>
+            <ArrowLeft strokeWidth={1.75} />
+            Volver
+          </button>
+          {creditHref ? (
+            <Link href={creditHref} className={detailGhostClass}>
+              <CreditCard strokeWidth={1.75} />
+              Crédito
+            </Link>
+          ) : null}
+          {isDraft && onEditDraft && (
+            <button type="button" onClick={() => onEditDraft(sale)} disabled={isFinalizing} className={detailGhostClass}>
+              <Pencil strokeWidth={1.75} />
+              Editar
+            </button>
+          )}
+          {!isDraft && (
+            <button type="button" onClick={() => void onPrint(sale)} disabled={isCancelling} className={detailGhostClass}>
+              <Printer strokeWidth={1.75} />
+              Imprimir
+            </button>
+          )}
+          {isDraft && onFinalizeDraft && (
+            <button type="button" onClick={() => void handleFinalizeDraft()} disabled={isFinalizing} className={detailPrimaryClass}>
+              <CheckCircle2 strokeWidth={1.75} />
+              {isFinalizing ? 'Finalizando…' : 'Finalizar'}
+            </button>
+          )}
+          {canVoid && (
+            <button type="button" onClick={handleShowCancelForm} disabled={isCancelling} className={detailDangerClass}>
+              <Ban strokeWidth={1.75} />
+              Anular
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="w-full min-w-0 px-4 py-6 md:px-6">
-        {cancelSuccessMessage && (
-          <div
-            className={cn(
-              'mb-6 rounded-xl border-2 p-4',
-              cancelSuccessMessage.includes('exitosamente')
-                ? 'border-emerald-200/90 bg-emerald-50/90 dark:border-emerald-900/50 dark:bg-emerald-950/25'
-                : 'border-red-200 bg-red-50/90 dark:border-red-800 dark:bg-red-950/30'
-            )}
+      {cancelSuccessMessage && (
+        <div
+          className={cn(
+            'mt-5 rounded-xl border px-4 py-3 text-[13px]',
+            cancelSuccessMessage.includes('exitosamente')
+              ? 'border-emerald-200 text-emerald-800 dark:border-emerald-400/20 dark:text-emerald-300'
+              : 'border-rose-200 text-rose-700 dark:border-rose-400/20 dark:text-rose-300'
+          )}
+        >
+          {cancelSuccessMessage.split('\n').filter(Boolean).map((line, index) => (
+            <p key={index} className={index === 0 ? 'font-semibold' : 'mt-0.5'}>
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-b border-zinc-200 pb-5 dark:border-white/[0.07] sm:grid-cols-4">
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Total</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+            {formatCurrency(sale.total)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">{credit ? 'Pagado' : 'Cobrado'}</p>
+          <p
+            className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+            style={paidAmount > 0 ? { color: REPORT_CHART_COLORS.tertiary } : undefined}
           >
-            <div className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-              {cancelSuccessMessage.split('\n').map((line, index) => (
-                <div key={index} className={index === 0 ? 'font-semibold' : ''}>
-                  {line}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+            {formatCurrency(paidAmount)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Pendiente</p>
+          <p
+            className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
+            style={pendingCredit > 0 ? { color: REPORT_CHART_COLORS.primary } : undefined}
+          >
+            {formatCurrency(pendingCredit)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Productos</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+            {unitsTotal.toLocaleString('es-CO')}
+          </p>
+          <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-white/45">
+            {sale.items.length} {sale.items.length === 1 ? 'referencia' : 'referencias'}
+          </p>
+        </div>
+      </div>
 
-        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-          <aside className="w-full min-w-0 shrink-0 lg:sticky lg:top-6 lg:w-80">
-            <div className={cardShell}>
-              <div className="border-b border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/35">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
-                  Estado de la venta
-                </p>
-                <div className="mt-3">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      badgeTint,
-                      'inline-flex px-2.5 py-1 text-sm font-medium',
-                      saleStatusBadgeClass(sale.status)
-                    )}
-                  >
-                    {saleStatusLabel(sale.status)}
-                  </Badge>
-                </div>
-              </div>
-              <dl className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                <div className="px-4 py-3">
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Total</dt>
-                  <dd className="mt-1 text-base font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                    {formatCurrency(sale.total)}
-                  </dd>
-                </div>
-                {credit ? (
-                  <>
-                    <div className="px-4 py-3">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pagado (crédito)</dt>
-                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-300/95">
-                        {formatCurrency(credit.paidAmount)}
-                      </dd>
-                    </div>
-                    <div className="px-4 py-3">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pendiente</dt>
-                      <dd
-                        className={cn(
-                          'mt-1 text-base font-semibold tabular-nums',
-                          pendingCredit <= 0
-                            ? 'text-zinc-500 dark:text-zinc-500'
-                            : 'text-rose-600 dark:text-rose-400'
-                        )}
-                      >
-                        {formatCurrency(pendingCredit)}
-                      </dd>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="px-4 py-3">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Cobrado</dt>
-                      <dd className="mt-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-300/95">
-                        {formatCurrency(sale.status === 'cancelled' ? 0 : paidOnCredit)}
-                      </dd>
-                    </div>
-                    <div className="px-4 py-3">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pendiente</dt>
-                      <dd className="mt-1 text-base font-semibold tabular-nums text-zinc-500 dark:text-zinc-500">
-                        {formatCurrency(0)}
-                      </dd>
-                    </div>
-                  </>
-                )}
-                <div className="flex gap-3 px-4 py-3">
-                  <Hash className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">ID interno</dt>
-                    <dd className="mt-1 break-all font-mono text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
-                      {sale.id}
-                    </dd>
-                  </div>
-                </div>
-                <div className="flex gap-3 px-4 py-3">
-                  <Receipt className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
-                  <div className="min-w-0 flex-1">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Número de factura</dt>
-                    <dd className="mt-1 font-mono text-sm text-zinc-900 dark:text-zinc-100">{titleInvoice}</dd>
-                  </div>
-                </div>
-                <div className="flex gap-3 px-4 py-3">
-                  <Calendar className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
-                  <div className="min-w-0 flex-1">
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Emisión</dt>
-                    <dd className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{formatDate(sale.createdAt)}</dd>
-                  </div>
-                </div>
-                {credit && (
-                  <div className="flex gap-3 px-4 py-3">
-                    <CreditCard className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
-                    <div className="min-w-0 flex-1">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Crédito</dt>
-                      <dd className="mt-1">
-                        <Link
-                          href={`/payments/${credit.clientId}/credit/${credit.id}`}
-                          className={cn('inline-flex items-center gap-1 font-mono text-sm', linkAccentStrongClass)}
-                        >
-                          #{getCreditId(credit)}
-                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                        </Link>
-                      </dd>
-                    </div>
-                  </div>
-                )}
-                {transfer &&
-                  (sale.paymentMethod === 'transfer' ||
-                    sale.paymentMethod === 'nequi' ||
-                    sale.paymentMethod === 'bancolombia' ||
-                    sale.paymentMethod === 'mixed') && (
-                  <div className="flex gap-3 px-4 py-3">
-                    <Truck className={cn('mt-0.5 h-4 w-4', iconMuted)} strokeWidth={1.5} />
-                    <div className="min-w-0 flex-1">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Transferencia</dt>
-                      <dd className="mt-1 font-mono text-sm text-sky-700 dark:text-sky-400">
-                        {transfer.transferNumber || `#${getTransferId(transfer)}`}
-                      </dd>
-                    </div>
-                  </div>
-                )}
-              </dl>
-            </div>
-          </aside>
+      {sale.status === 'cancelled' && sale.cancellationReason ? (
+        <section className="mt-8">
+          <h2 className={cn(sectionTitleClass, 'text-rose-600 dark:text-rose-300')}>Motivo de anulación</h2>
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-zinc-700 dark:text-white/80">{sale.cancellationReason}</p>
+        </section>
+      ) : null}
 
-          <div className="min-w-0 flex-1 space-y-6">
-            <div className={cardShell}>
-              <div className="border-b border-zinc-200/80 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Datos de la venta</h2>
-                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cliente, vendedor, método y referencias.</p>
-              </div>
-              <section className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                <div className="px-4 py-5 md:px-6">
-                  <div className="flex items-center gap-3">
-                    <UserAvatar
-                      name={sale.clientName || 'Cliente'}
-                      seed={sale.clientId}
-                      size="md"
-                      className="ring-1 ring-zinc-200/80 dark:ring-zinc-700"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                        {sale.clientName}
-                      </p>
-                      <p className="mt-1 font-mono text-[11px] text-zinc-500 dark:text-zinc-400" title="ID interno">
-                        {sale.clientId}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-4 py-5 md:px-6">
-                  <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-8">
-                    {sale.sellerName && (
-                      <Field label="Vendedor">
-                        {sale.sellerId ? (
-                          <Link
-                            href={`/sellers/${sale.sellerId}`}
-                            className={cn('inline-flex items-center gap-1', linkAccentClass)}
-                          >
-                            {sale.sellerName}
-                            <ExternalLink className="h-3.5 w-3.5 text-zinc-400" />
-                          </Link>
-                        ) : (
-                          sale.sellerName
-                        )}
-                      </Field>
-                    )}
-                    <Field label="Fecha y hora">{formatDateTime(sale.createdAt)}</Field>
-                    <Field label="Tipo de pago">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          badgeTint,
-                          'mt-1 px-2 py-0.5 text-[13px] font-normal',
-                          paymentMethodBadgeClass(sale.paymentMethod)
-                        )}
-                      >
-                        {getPaymentMethodLabel(sale.paymentMethod)}
-                      </Badge>
-                    </Field>
-                    {credit && (
-                      <Field label="ID crédito">
-                        <Link
-                          href={`/payments/${credit.clientId}/credit/${credit.id}`}
-                          className={cn('inline-flex items-center gap-1 font-mono text-sm', linkAccentStrongClass)}
-                        >
-                          #{getCreditId(credit)}
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Link>
-                      </Field>
-                    )}
-                  </dl>
-                </div>
-                {sale.paymentMethod === 'mixed' && sale.payments && sale.payments.length > 0 && (
-                  <div className="px-4 py-5 md:px-6">
-                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Desglose de pago mixto</h4>
-                    <div className="space-y-2">
-                      {sale.payments.map((payment, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950/40"
-                        >
-                          <Badge
-                            variant="outline"
-                            className={cn(badgeTint, 'border-0 px-2 py-0.5 text-xs font-normal', paymentMethodBadgeClass(payment.paymentType))}
-                          >
-                            {getPaymentMethodLabel(payment.paymentType)}
-                          </Badge>
-                          <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
-                            {formatCurrency(payment.amount)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {sale.status === 'cancelled' && sale.cancellationReason && (
-                  <div className="px-4 py-5 md:px-6">
-                    <div className="rounded-lg border border-red-200/80 bg-red-50/80 p-3 dark:border-red-900/40 dark:bg-red-950/25">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-red-800 dark:text-red-300">
-                        Motivo de anulación
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-200">
-                        {sale.cancellationReason}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {sale.notes?.trim() && (
-                  <div className="px-4 py-5 md:px-6">
-                    <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                        Notas
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-200">
-                        {sale.notes.trim()}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {sale.status !== 'cancelled' && transfer && (
-                  <div className="px-4 py-5 md:px-6">
-                    <p className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300/95">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      Esta factura solo puede anularse desde Traslados.
-                    </p>
-                  </div>
-                )}
-              </section>
-            </div>
+      {sale.paymentMethod === 'mixed' && sale.payments && sale.payments.length > 0 ? (
+        <section className="mt-8">
+          <h2 className={cn(sectionTitleClass, 'mb-3')}>Desglose del pago</h2>
+          <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-white/[0.07] dark:border-white/[0.08]">
+            {sale.payments.map((payment, index) => (
+              <li key={index} className="flex items-center justify-between px-4 py-2.5 text-[13px] text-zinc-800 dark:text-zinc-200">
+                <PaymentMethodLabel method={payment.paymentType} />
+                <span className="font-medium tabular-nums">{formatCurrency(payment.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
-            {credit && sale.paymentMethod === 'credit' && (
-              <div className={cardShell}>
-                <div className="border-b border-zinc-200/80 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    <CreditCard className={cn('h-4 w-4', sectionIconClass)} strokeWidth={1.5} />
-                    Crédito asociado
-                  </h2>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Enlazado a esta factura.</p>
-                </div>
-                <div className="px-4 py-5 md:px-6">
-                  <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <Field label="Saldo pendiente">
-                      <span className="text-lg font-semibold tabular-nums">{formatCurrency(credit.pendingAmount)}</span>
-                    </Field>
-                    <Field label="Total crédito">{formatCurrency(credit.totalAmount)}</Field>
-                    <Field label="Estado">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'mt-1 font-medium',
-                          creditStatusBadgeClass(getEffectiveCreditStatus(credit), credit)
-                        )}
-                      >
-                        {creditStatusLabel(getEffectiveCreditStatus(credit), credit)}
-                      </Badge>
-                    </Field>
-                  </dl>
-                  <Link
-                    href={`/payments/${credit.clientId}/credit/${credit.id}`}
-                    className={cn(
-                      'mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50',
-                      'dark:border-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-900/70'
-                    )}
-                  >
-                    Ver detalle del crédito y pagos
-                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
-                  </Link>
-                </div>
-              </div>
-            )}
+      <section className="mt-8">
+        <h2 className={cn(sectionTitleClass, 'mb-3')}>Productos vendidos</h2>
 
-            <div className={cardShell}>
-              <div className="border-b border-zinc-200/80 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  <DollarSign className={cn('h-4 w-4', sectionIconClass)} strokeWidth={1.5} />
-                  Productos vendidos
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Líneas facturadas en esta venta.</p>
-              </div>
-              <div className="p-4 pt-2 md:px-6 md:pb-5">
-                <div className="overflow-x-auto overscroll-contain scrollbar-hide">
-                  <table className="w-full min-w-[640px] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-200/90 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
-                        <th className="pb-2 pr-3">Producto</th>
-                        <th className="pb-2 pr-3 text-center">Cant.</th>
-                        <th className="pb-2 pr-3 text-right">Precio unit.</th>
-                        <th className="pb-2 pr-3 text-center">Desc.</th>
-                        <th className="pb-2 pr-3 text-right">Subtotal</th>
-                        <th className="pb-2">Vendedor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                      {sale.items.map((item) => {
-                        const baseTotal = item.quantity * item.unitPrice
-                        const discountAmount =
-                          item.discountType === 'percentage'
-                            ? (baseTotal * (item.discount || 0)) / 100
-                            : item.discount || 0
-                        const subtotalAfterDiscount = Math.max(0, baseTotal - discountAmount)
-                        return (
-                          <tr key={item.id}>
-                            <td className="py-3 pr-3 align-top">
-                              <div className="font-medium text-zinc-900 dark:text-zinc-100">{item.productName}</div>
-                              <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Ref: {item.productReferenceCode || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="py-3 pr-3 text-center align-top">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-violet-100/75 text-sm font-semibold tabular-nums text-violet-950 ring-1 ring-violet-200/90 dark:bg-violet-950/35 dark:text-violet-200 dark:ring-violet-800/80">
-                                {item.quantity}
-                              </span>
-                            </td>
-                            <td className="py-3 pr-3 text-right tabular-nums text-zinc-700 dark:text-zinc-300">
-                              {formatCurrency(item.unitPrice)}
-                            </td>
-                            <td className="py-3 pr-3 text-center align-top text-zinc-600 dark:text-zinc-400">
-                              {item.discount && item.discount > 0
-                                ? item.discountType === 'percentage'
-                                  ? `${item.discount}%`
-                                  : formatCurrency(item.discount)
-                                : '—'}
-                            </td>
-                            <td className="py-3 pr-3 text-right font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                              {formatCurrency(subtotalAfterDiscount)}
-                            </td>
-                            <td className="py-3 align-top text-zinc-600 dark:text-zinc-300">
-                              <div>{sale.sellerName || '—'}</div>
-                              {sale.sellerEmail && (
-                                <div className="text-xs text-zinc-500 dark:text-zinc-500">{sale.sellerEmail}</div>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+        <div className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-white/[0.08] md:block">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-white/[0.07] dark:bg-white/[0.03]">
+                <th className={thClass}>Producto</th>
+                <th className={cn(thClass, 'text-right')}>Cant.</th>
+                <th className={cn(thClass, 'text-right')}>Precio unit.</th>
+                <th className={cn(thClass, 'text-right')}>Desc.</th>
+                <th className={cn(thClass, 'text-right')}>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sale.items.map(item => {
+                const baseTotal = item.quantity * item.unitPrice
+                const discountAmount =
+                  item.discountType === 'percentage' ? (baseTotal * (item.discount || 0)) / 100 : item.discount || 0
+                const subtotal = Math.max(0, baseTotal - discountAmount)
+                return (
+                  <tr key={item.id} className="border-b border-zinc-100 last:border-0 dark:border-white/[0.05]">
+                    <td className={tdClass}>
+                      <p className="font-medium text-zinc-900 dark:text-white">{item.productName}</p>
+                      <p className="text-xs text-zinc-500 dark:text-white/45">Ref. {item.productReferenceCode || 'N/A'}</p>
+                    </td>
+                    <td className={cn(tdClass, 'text-right tabular-nums')}>{item.quantity}</td>
+                    <td className={cn(tdClass, 'text-right tabular-nums')}>{formatCurrency(item.unitPrice)}</td>
+                    <td className={cn(tdClass, 'text-right tabular-nums text-zinc-500 dark:text-white/50')}>
+                      {item.discount && item.discount > 0
+                        ? item.discountType === 'percentage'
+                          ? `${item.discount}%`
+                          : formatCurrency(item.discount)
+                        : '—'}
+                    </td>
+                    <td className={cn(tdClass, 'text-right font-medium tabular-nums')}>{formatCurrency(subtotal)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-zinc-200 bg-zinc-50 dark:border-white/[0.07] dark:bg-white/[0.03]">
+                <td className={cn(tdClass, 'text-xs font-semibold')} colSpan={4}>
+                  Total
+                </td>
+                <td className={cn(tdClass, 'text-right font-semibold tabular-nums')}>{formatCurrency(sale.total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
 
-            {showCancelForm && (
-              <div ref={cancelFormRef} className={cardShell}>
-                <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
-                    <AlertTriangle className="h-4 w-4" strokeWidth={1.5} />
-                    Anular factura
-                  </h2>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    Describe el motivo con al menos 10 caracteres.
+        <ul className="divide-y divide-zinc-200 dark:divide-white/[0.07] md:hidden">
+          {sale.items.map(item => {
+            const baseTotal = item.quantity * item.unitPrice
+            const discountAmount =
+              item.discountType === 'percentage' ? (baseTotal * (item.discount || 0)) / 100 : item.discount || 0
+            return (
+              <li key={item.id} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-zinc-900 dark:text-white">{item.productName}</p>
+                  <p className="mt-0.5 text-xs tabular-nums text-zinc-500 dark:text-white/45">
+                    {item.quantity} × {formatCurrency(item.unitPrice)}
+                    {discountAmount > 0 ? ` · −${formatCurrency(discountAmount)}` : ''}
                   </p>
                 </div>
-                <div className="space-y-4 px-4 py-5 md:px-6">
-                  <textarea
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="Describe detalladamente el motivo de la anulación…"
-                    disabled={isCancelling}
-                    rows={4}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/25 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                  />
-                  <div className="text-right text-xs text-zinc-500">
-                    <span className={cancelReason.length < 10 ? 'text-red-600' : ''}>
-                      {cancelReason.length}/10 caracteres mínimo
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setShowCancelForm(false)} disabled={isCancelling}>
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => void handleCancel()}
-                      disabled={!cancelReason.trim() || cancelReason.trim().length < 10 || isCancelling}
-                    >
-                      {isCancelling ? 'Anulando…' : 'Confirmar anulación'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+                <p className="shrink-0 text-[13px] font-medium tabular-nums text-zinc-900 dark:text-white">
+                  {formatCurrency(Math.max(0, baseTotal - discountAmount))}
+                </p>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+
+      {sale.notes?.trim() ? (
+        <section className="mt-8">
+          <h2 className={sectionTitleClass}>Notas</h2>
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-zinc-700 dark:text-white/80">{sale.notes.trim()}</p>
+        </section>
+      ) : null}
+
+      {sale.status !== 'cancelled' && transfer ? (
+        <p className="mt-8 flex items-center gap-2 text-[13px] text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+          Esta factura solo puede anularse desde Traslados.
+        </p>
+      ) : null}
+
+      {showCancelForm && (
+        <section ref={cancelFormRef} className="mt-8 rounded-xl border border-zinc-200 p-4 dark:border-white/[0.08]">
+          <h2 className={cn(sectionTitleClass, 'text-rose-600 dark:text-rose-300')}>Anular factura</h2>
+          <p className="mt-0.5 text-xs text-zinc-500 dark:text-white/50">
+            Los productos vuelven al inventario. Describe el motivo con al menos 10 caracteres.
+          </p>
+          <textarea
+            value={cancelReason}
+            onChange={e => setCancelReason(e.target.value)}
+            placeholder="Motivo de la anulación…"
+            disabled={isCancelling}
+            rows={3}
+            className={cn(modalInputClass, 'mt-3 h-auto resize-none py-2')}
+          />
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span
+              className={cn(
+                'text-xs tabular-nums',
+                cancelReason.trim().length < 10 ? 'text-zinc-500 dark:text-white/45' : 'text-emerald-600 dark:text-emerald-400'
+              )}
+            >
+              {cancelReason.trim().length}/10 caracteres
+            </span>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => setShowCancelForm(false)} disabled={isCancelling} className={detailGhostClass}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleCancel()}
+                disabled={cancelReason.trim().length < 10 || isCancelling}
+                className={detailDangerClass}
+              >
+                {isCancelling ? 'Anulando…' : 'Confirmar anulación'}
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
+      )}
     </div>
   )
 }

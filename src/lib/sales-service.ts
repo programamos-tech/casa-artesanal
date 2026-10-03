@@ -2088,6 +2088,36 @@ export class SalesService {
     }
   }
 
+  static async getSalesByClientId(clientId: string): Promise<
+    Array<Pick<Sale, 'id' | 'invoiceNumber' | 'total' | 'status' | 'paymentMethod' | 'createdAt'>>
+  > {
+    const storeId = getCurrentUserStoreId()
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+
+    let query = supabase
+      .from('sales')
+      .select('id, invoice_number, total, status, payment_method, created_at')
+      .eq('client_id', clientId)
+
+    if (!storeId || storeId === MAIN_STORE_ID) {
+      query = query.or(`store_id.is.null,store_id.eq.${MAIN_STORE_ID}`)
+    } else {
+      query = query.eq('store_id', storeId)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
+    if (error) throw error
+
+    return (data || []).map(sale => ({
+      id: sale.id,
+      invoiceNumber: sale.invoice_number || '',
+      total: Number(sale.total) || 0,
+      status: sale.status,
+      paymentMethod: sale.payment_method,
+      createdAt: sale.created_at,
+    }))
+  }
+
   // Obtener todas las ventas de un producto específico
   static async getSalesByProductId(productId: string, startDate?: Date): Promise<Sale[]> {
     try {

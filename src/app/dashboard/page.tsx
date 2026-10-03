@@ -3,40 +3,11 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import {
-  DollarSign,
-  TrendingUp,
-  Users,
-  Package,
-  Shield,
-  Wallet,
-  CreditCard,
-  ShoppingCart,
-  BarChart3,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
-  Activity,
-  XCircle,
-  X,
-  RefreshCw,
-  Home,
-  Eye,
-  EyeOff,
-  ChevronDown,
-} from 'lucide-react'
-import {
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line
-} from 'recharts'
+import { Calendar, X, RefreshCw, Eye, EyeOff, ChevronDown } from 'lucide-react'
+import { ReportCallout, ReportSectionTitle, ReportStat, ReportTable } from '@/components/dashboard/report-ui'
+import { REPORT_CHART_COLORS, ReportBarChart } from '@/components/dashboard/report-bar-chart'
 import { useSales } from '@/contexts/sales-context'
 import { useProducts } from '@/contexts/products-context'
 import { useClients } from '@/contexts/clients-context'
@@ -44,11 +15,9 @@ import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUserStoreId, isMainStoreUser } from '@/lib/store-helper'
 import { StoresService } from '@/lib/stores-service'
 import { RoleProtectedRoute } from '@/components/auth/role-protected-route'
-import { StoreBadge } from '@/components/ui/store-badge'
 import { Sale } from '@/types'
 import { CancelledInvoicesModal } from '@/components/dashboard/cancelled-invoices-modal'
 import { cn } from '@/lib/utils'
-import { cardShell } from '@/lib/card-shell'
 import { isWholesaleClientType } from '@/lib/product-pricing'
 
 type DateFilter = 'today' | 'specific' | 'all' | 'range'
@@ -114,43 +83,11 @@ function revenueMixSubtitle(
   return `Ventas ${formatCurrency(p)} · Domicilios ${formatCurrency(t)}`
 }
 
-const dashCardBase =
-  'casa-artesanal-card-surface max-w-full min-w-0 rounded-xl border border-solid border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 md:p-6'
-
-/** Celda dentro del panel único de métricas (sin card por KPI) */
-/** KPI: sin “cuadrito” (borde/sombra); solo tipografía + icono con color */
-const dashKpiCard =
-  'casa-artesanal-preserve-surface flex w-full min-h-0 flex-col rounded-2xl border-0 bg-transparent px-3 py-3 text-left shadow-none ring-0 outline-none md:px-4 md:py-4 dark:bg-transparent'
-const dashMetricTileInteractive =
-  'cursor-pointer transition-colors hover:bg-white/75 dark:hover:bg-zinc-900/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/30 dark:focus-visible:ring-zinc-500/25'
-
-/** Alineación del icono sin “cuadrito” de fondo; el color va solo en el trazo del icono */
-const dashKpiIconWrap = 'flex h-10 w-10 shrink-0 items-center justify-center'
-
-const kpiIconTone = {
-  total: 'text-slate-600 dark:text-slate-400',
-  cash: 'text-green-600 dark:text-green-400',
-  transfer: 'text-violet-600 dark:text-violet-400',
-  cancelled: 'text-rose-600 dark:text-rose-400',
-  credit: 'text-sky-600 dark:text-sky-400',
-  warranties: 'text-amber-600 dark:text-amber-400',
-  egresos: 'text-rose-600 dark:text-rose-400',
-  profit: 'text-teal-600 dark:text-teal-400',
-  stock: 'text-indigo-600 dark:text-indigo-400',
-  products: 'text-emerald-600 dark:text-emerald-400',
-  transport: 'text-orange-600 dark:text-orange-400',
-} as const
-
-const dashMetricIconEm = 'h-5 w-5 shrink-0'
-const dashMetricLabelClass =
-  'min-w-0 text-left text-[11px] font-medium uppercase leading-snug tracking-wide text-zinc-600 dark:text-zinc-400'
-
-/** Toolbar de filtros: mismo criterio que `Button` outline / selects de inventario */
 const dashFilterSelectClass =
-  'block h-10 w-full appearance-none border-0 bg-transparent px-3 pr-9 text-sm font-medium leading-none text-zinc-800 focus:outline-none focus:ring-0 dark:text-zinc-100 md:pr-8'
+  'block h-full w-full cursor-pointer appearance-none border-0 bg-transparent pl-2.5 pr-7 text-[13px] font-medium leading-none text-zinc-800 focus:outline-none focus:ring-0 dark:text-zinc-100'
 
-const dashToolbarButtonClass =
-  'h-9 min-h-9 border-zinc-300/90 bg-white px-2.5 shadow-sm dark:border-brand-700/70 dark:bg-zinc-900/65 dark:text-brand-200 dark:hover:border-brand-600/80 dark:hover:bg-zinc-800'
+const dashIconButtonClass =
+  'flex h-8 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:text-white/45 dark:hover:text-white'
 
 /** Debe coincidir con la ventana del gráfico “Últimos N días” (incluye el día de referencia). */
 const INCOME_TREND_CHART_DAYS = 15
@@ -812,7 +749,6 @@ export default function DashboardPage() {
 
     if (currentStoreId !== user.storeId) {
       setAllSales([])
-      setAllWarranties([])
       setAllCredits([])
       setAllClients([])
       setAllProducts([])
@@ -1112,7 +1048,7 @@ export default function DashboardPage() {
             }
           }
           productSales[item.productId].quantity += item.quantity
-          productSales[item.productId].revenue += item.price * item.quantity
+          productSales[item.productId].revenue += item.total ?? item.unitPrice * item.quantity
         })
       }
     })
@@ -1475,6 +1411,101 @@ export default function DashboardPage() {
     }
   }, [filteredData, allSales, allProducts, allClients, egresosSummary, allCredits, optimizedMetrics, specificProductsCache])
 
+  const incomeTrend = useMemo(() => {
+    type Bucket = { label: string; cash: number; other: number }
+    const isOtherChannel = (t?: string) => t === 'transfer' || t === 'nequi' || t === 'bancolombia' || t === 'card'
+    const isCashChannel = (t?: string) => t === 'cash' || t === 'efectivo'
+
+    const addSale = (bucket: Bucket, sale: Sale) => {
+      if (sale.paymentMethod === 'cash') {
+        bucket.cash += sale.total || 0
+      } else if (isOtherChannel(sale.paymentMethod)) {
+        bucket.other += sale.total || 0
+      } else if (sale.paymentMethod === 'mixed' && sale.payments) {
+        sale.payments.forEach(payment => {
+          if (payment.paymentType === 'cash') bucket.cash += payment.amount || 0
+          else if (isOtherChannel(payment.paymentType)) bucket.other += payment.amount || 0
+        })
+      }
+    }
+
+    const addPayment = (bucket: Bucket, payment: { status?: string; paymentMethod?: string; amount?: number }) => {
+      if (payment.status === 'cancelled') return
+      if (isCashChannel(payment.paymentMethod)) bucket.cash += payment.amount || 0
+      else if (isOtherChannel(payment.paymentMethod)) bucket.other += payment.amount || 0
+    }
+
+    if (effectiveDateFilter === 'all') {
+      const buckets: Bucket[] = Array.from({ length: 12 }, (_, m) => ({
+        label: new Date(selectedYear, m, 1).toLocaleDateString('es-CO', { month: 'short' }).replace('.', ''),
+        cash: 0,
+        other: 0,
+      }))
+      filteredData.sales.forEach((sale: Sale) => {
+        if (sale.status === 'cancelled' || sale.status === 'draft') return
+        const date = new Date(sale.createdAt)
+        if (date.getFullYear() !== selectedYear) return
+        addSale(buckets[date.getMonth()], sale)
+      })
+      filteredData.paymentRecords.forEach((payment: any) => {
+        const date = new Date(payment.paymentDate)
+        if (date.getFullYear() !== selectedYear) return
+        addPayment(buckets[date.getMonth()], payment)
+      })
+      return { ready: true, data: buckets }
+    }
+
+    if (effectiveDateFilter === 'range' && (!dateRangeStart || !dateRangeEnd)) {
+      return { ready: false, data: [] as Bucket[] }
+    }
+
+    const days: Date[] = []
+    if (effectiveDateFilter === 'range' && dateRangeStart && dateRangeEnd) {
+      const a = new Date(dateRangeStart.getFullYear(), dateRangeStart.getMonth(), dateRangeStart.getDate())
+      const b = new Date(dateRangeEnd.getFullYear(), dateRangeEnd.getMonth(), dateRangeEnd.getDate())
+      const [start, end] = a <= b ? [a, b] : [b, a]
+      for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        days.push(new Date(cursor))
+      }
+    } else {
+      const reference = effectiveDateFilter === 'specific' && specificDate ? new Date(specificDate) : new Date()
+      reference.setHours(0, 0, 0, 0)
+      for (let i = INCOME_TREND_CHART_DAYS - 1; i >= 0; i--) {
+        const day = new Date(reference)
+        day.setDate(day.getDate() - i)
+        days.push(day)
+      }
+    }
+
+    const keyOf = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    const buckets = new Map<string, Bucket>(
+      days.map(d => [
+        keyOf(d),
+        { label: d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }).replace('.', ''), cash: 0, other: 0 },
+      ])
+    )
+
+    const currentStoreId = getCurrentUserStoreId()
+    const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
+    const isMicroStore = Boolean(currentStoreId && currentStoreId !== MAIN_STORE_ID)
+
+    allSales.forEach((sale: Sale) => {
+      if (isMicroStore && sale.storeId !== currentStoreId) return
+      if (sale.status === 'cancelled' || sale.status === 'draft') return
+      const bucket = buckets.get(keyOf(new Date(sale.createdAt)))
+      if (bucket) addSale(bucket, sale)
+    })
+
+    allPaymentRecords.forEach((payment: any) => {
+      if (isMicroStore && payment.storeId !== currentStoreId) return
+      const bucket = buckets.get(keyOf(new Date(payment.paymentDate)))
+      if (bucket) addPayment(bucket, payment)
+    })
+
+    return { ready: true, data: days.map(d => buckets.get(keyOf(d))!) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveDateFilter, selectedYear, filteredData, allSales, allPaymentRecords, specificDate, dateRangeStart, dateRangeEnd, user?.storeId])
+
   // Función helper para formatear moneda con opción de ocultar
   const formatCurrency = (amount: number): string => {
     if (hideNumbers) {
@@ -1605,69 +1636,214 @@ export default function DashboardPage() {
   if (isInitialLoading && allSales.length === 0) {
     return (
       <RoleProtectedRoute module="dashboard" requiredAction="view">
-        <div className="min-h-screen bg-zinc-50 py-4 dark:bg-neutral-950 md:py-6">
-          {/* Header Skeleton */}
-          <div className="mb-4 md:mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-gray-200 dark:bg-neutral-800 rounded-lg animate-pulse"></div>
-                  <div className="h-7 w-32 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse"></div>
-                </div>
-                <div className="h-4 w-64 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse"></div>
+        <div className="min-h-screen py-4 md:py-6">
+          <div className="mb-6 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+            <div className="h-6 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+            <div className="mt-2 h-4 w-64 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="px-3 py-3">
+                <div className="h-7 w-2/3 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
               </div>
-            </div>
+            ))}
           </div>
-
-          {/* Panel de métricas (misma forma que la vista cargada) */}
-          <div className={cn(cardShell, 'mb-4 overflow-hidden rounded-xl md:mb-8')}>
-            <div className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800 md:px-6 md:py-3.5">
-              <div className="h-3 w-28 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-              <div className="mt-2 h-4 w-44 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-            </div>
-            <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 sm:gap-2.5 sm:p-3 lg:grid-cols-4 lg:gap-3 lg:p-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="rounded-lg px-3 py-3 md:px-3.5 md:py-3.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="h-4 w-4 shrink-0 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-                    <div className="h-3 min-w-0 flex-1 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-                  </div>
-                  <div className="mt-2.5 h-7 w-[70%] animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-                  <div className="mt-1 h-3 w-1/2 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-                </div>
-              ))}
-            </div>
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+            <div className="h-[300px] animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900/60" />
+            <div className="h-[300px] animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900/60" />
           </div>
-
-          {/* Loading indicator */}
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              {/* Spinner minimalista */}
-              <div className="w-16 h-16 mx-auto mb-6">
-                <div className="h-full w-full animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-700 dark:border-t-brand-500" />
-              </div>
-              <p className="mb-1 text-lg font-medium text-zinc-700 dark:text-zinc-300">
-                Cargando reportes...
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Esto puede tomar unos segundos
-              </p>
-            </div>
-          </div>
+          <p className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">Cargando reportes...</p>
         </div>
       </RoleProtectedRoute>
     )
   }
 
+  const isVendedorUser = user?.role === 'vendedor' || (user?.role as string) === 'Vendedor'
+
+  const trendSubtitle =
+    effectiveDateFilter === 'all'
+      ? `Por mes · ${selectedYear}`
+      : effectiveDateFilter === 'range' && dateRangeStart && dateRangeEnd
+        ? `Por día · ${dateRangeStart.toLocaleDateString('es-CO')} — ${dateRangeEnd.toLocaleDateString('es-CO')}`
+        : `Últimos ${INCOME_TREND_CHART_DAYS} días`
+
+  const methodChartData = [
+    { label: 'Efectivo', value: metrics.cashRevenue },
+    { label: 'Nequi', value: metrics.nequiRevenue },
+    { label: 'Bancolombia', value: metrics.bancolombiaRevenue },
+    { label: 'Otra transf.', value: metrics.otherTransferRevenue },
+    { label: 'Tarjeta', value: metrics.cardRevenue },
+  ]
+  const hasMethodIncome = methodChartData.some((m) => m.value > 0)
+
+  const alerts: { tone: 'success' | 'warning' | 'danger' | 'info'; title: string; body: string; onClick?: () => void }[] = []
+  if (canViewCredits && metrics.overdueCreditsCount > 0) {
+    alerts.push({
+      tone: 'danger',
+      title:
+        metrics.overdueCreditsCount === 1
+          ? '1 crédito vencido'
+          : `${metrics.overdueCreditsCount} créditos vencidos`,
+      body: `${formatCurrency(metrics.overdueCreditsDebt)} por cobrar con la fecha de pago vencida.`,
+      onClick: goToCredits,
+    })
+  }
+  if (metrics.cancelledSales > 0) {
+    alerts.push({
+      tone: 'warning',
+      title:
+        metrics.cancelledSales === 1 ? '1 factura anulada' : `${metrics.cancelledSales} facturas anuladas`,
+      body: `Valor anulado: ${formatCurrency(metrics.lostValue)}.`,
+      onClick: () => setShowCancelledModal(true),
+    })
+  }
+  if (isSuperAdmin && metrics.lowStockProducts > 0) {
+    alerts.push({
+      tone: 'warning',
+      title: `${formatNumber(metrics.lowStockProducts)} productos con stock bajo`,
+      body: 'Revisa el inventario para reponer a tiempo.',
+      onClick: () => router.push('/inventory/products'),
+    })
+  }
+  if ((metrics.totalEgresos || 0) > 0) {
+    alerts.push({
+      tone: 'info',
+      title: 'Egresos del período',
+      body: `${formatCurrency(metrics.totalEgresos)} en ${metrics.egresosCount} ${metrics.egresosCount === 1 ? 'egreso' : 'egresos'}.`,
+      onClick: () => router.push('/egresos'),
+    })
+  }
+  if (alerts.length === 0) {
+    alerts.push({
+      tone: 'success',
+      title: 'Todo en orden',
+      body: 'No hay créditos vencidos ni facturas anuladas en este período.',
+    })
+  }
+
+  const chartCaption = (text: string) => (
+    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{text}</p>
+  )
+
+  const trendBlock = (
+    <div className="min-w-0">
+      <ReportSectionTitle
+        title={effectiveDateFilter === 'all' ? 'Ingresos por mes: efectivo vs. transferencias' : 'Ingresos por día: efectivo vs. transferencias'}
+        subtitle={trendSubtitle}
+      />
+      {incomeTrend.ready ? (
+        <>
+          <ReportBarChart
+            data={incomeTrend.data}
+            categoryKey="label"
+            series={[
+              { key: 'cash', name: 'Efectivo', color: REPORT_CHART_COLORS.primary },
+              { key: 'other', name: 'Transferencias y tarjeta', color: REPORT_CHART_COLORS.secondary },
+            ]}
+            isDarkMode={isDarkMode}
+            hideValues={hideNumbers}
+            height={280}
+          />
+          {chartCaption('Ventas cobradas y abonos de créditos · no incluye ventas a crédito sin abonar')}
+        </>
+      ) : (
+        <p className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
+          Selecciona fechas de inicio y fin para ver los ingresos día a día en ese período.
+        </p>
+      )}
+    </div>
+  )
+
+  const alertsBlock = (
+    <div className="min-w-0">
+      <ReportSectionTitle title="Alertas" />
+      <div className="space-y-1">
+        {alerts.map((alert) => (
+          <ReportCallout key={alert.title} tone={alert.tone} title={alert.title} onClick={alert.onClick}>
+            {alert.body}
+          </ReportCallout>
+        ))}
+      </div>
+    </div>
+  )
+
+  const methodBlock = (
+    <div className="min-w-0">
+      <ReportSectionTitle title="Ingresos por método de pago" subtitle={periodLabelShort} />
+      {hasMethodIncome ? (
+        <>
+          <ReportBarChart
+            data={methodChartData}
+            categoryKey="label"
+            series={[{ key: 'value', name: 'Ingresos', color: REPORT_CHART_COLORS.primary }]}
+            isDarkMode={isDarkMode}
+            hideValues={hideNumbers}
+            showValues
+            height={240}
+          />
+          {chartCaption('Ventas y abonos cobrados en el período, por canal de pago')}
+        </>
+      ) : (
+        <p className="py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">Sin ingresos en este período.</p>
+      )}
+    </div>
+  )
+
+  const topProductsBlock = (
+    <div className="min-w-0">
+      <ReportSectionTitle title="Productos más vendidos" subtitle={periodLabelShort} />
+      {metrics.topProducts.length > 0 ? (
+        <ReportTable
+          headers={['Producto', 'Unidades', 'Ingresos']}
+          align={['left', 'right', 'right']}
+          rows={metrics.topProducts.map((product) => [
+            <span key="n" className="font-medium">{product.name}</span>,
+            formatNumber(product.quantity),
+            formatCurrency(product.revenue),
+          ])}
+        />
+      ) : (
+        <p className="py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">Sin ventas en este período.</p>
+      )}
+    </div>
+  )
+
+  const creditsBlock =
+    canViewCredits && metrics.recentPendingCredits.length > 0 ? (
+      <div className="min-w-0">
+        <ReportSectionTitle
+          title="Créditos pendientes recientes"
+          subtitle={`${formatCurrency(metrics.totalDebt || 0)} por cobrar en total`}
+          action={
+            <Button variant="ghost" size="sm" onClick={goToCredits}>
+              Ver créditos
+            </Button>
+          }
+        />
+        <ReportTable
+          headers={['Cliente', 'Factura', 'Pendiente', 'Estado', 'Última actualización']}
+          align={['left', 'left', 'right', 'left', 'left']}
+          rowTone={metrics.recentPendingCredits.map((c) => (c.status === 'partial' ? 'warning' : 'info'))}
+          onRowClick={goToCredits}
+          rows={metrics.recentPendingCredits.map((credit) => [
+            <span key="c" className="font-medium">{credit.clientName}</span>,
+            credit.reference || '—',
+            formatCurrency(credit.pendingAmount),
+            credit.status === 'partial' ? 'Parcial' : 'Pendiente',
+            `${credit.dateLabel} · ${credit.timeLabel}`,
+          ])}
+        />
+      </div>
+    ) : null
+
   return (
     <RoleProtectedRoute module="dashboard" requiredAction="view">
-      <div className="relative min-h-screen bg-zinc-50 py-4 dark:bg-neutral-950 md:py-6">
-        {/* Overlay de carga para actualizaciones */}
+      <div className="relative min-h-screen py-4 md:py-6">
         {(isRefreshing || isFiltering) && (
-          <div className="absolute inset-0 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="flex flex-col items-center justify-center -mt-[200px]">
-              {/* Spinner minimalista */}
-              <div className="w-12 h-12 mb-4">
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-neutral-950/80">
+            <div className="-mt-[200px] flex flex-col items-center justify-center">
+              <div className="mb-4 h-12 w-12">
                 <div className="h-full w-full animate-spin rounded-full border-2 border-zinc-200 border-t-brand-600 dark:border-zinc-700 dark:border-t-brand-500" />
               </div>
               <p className="text-base font-medium text-zinc-700 dark:text-zinc-300">
@@ -1677,892 +1853,277 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Header — mismos patrones que Ventas / Productos (cardShell + CardTitle + StoreBadge) */}
-        <Card className={cn(cardShell, 'mb-3 md:mb-6')}>
-          <CardHeader className="space-y-0 p-4 md:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">
-                  <BarChart3
-                    className="h-5 w-5 shrink-0 text-zinc-400 dark:text-zinc-500"
-                    strokeWidth={1.5}
-                    aria-hidden
-                  />
-                  <span>Reportes</span>
-                  <StoreBadge />
-                  {(isRefreshing || isFiltering) && (
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 border-zinc-200 bg-zinc-50 text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300"
-                    >
-                      Actualizando…
-                    </Badge>
-                  )}
-                </CardTitle>
-                <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  {currentStoreName && !isMainStoreUser(user)
-                    ? 'Estás viendo los reportes de esta micro tienda. Los datos mostrados corresponden únicamente a esta ubicación.'
-                    : isMainStoreUser(user)
-                      ? 'Resumen ejecutivo y métricas de rendimiento de la tienda principal'
-                      : 'Resumen ejecutivo y métricas de rendimiento'}
-                </p>
-              </div>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-                  {isSuperAdmin ? (
-                    <>
-                      {/* Período: segmentado (estilo referencia), sin dropdown */}
-                      <div
-                        className="casa-artesanal-preserve-surface flex w-full flex-wrap gap-1 rounded-xl border border-zinc-200 bg-zinc-100/90 p-1 dark:border-zinc-700 dark:bg-zinc-900/55 sm:w-auto"
-                        role="group"
-                        aria-label="Período de reportes"
-                      >
-                        {(['today', 'specific', 'range', 'all'] as DateFilter[]).map((filter) => {
-                          const short =
-                            filter === 'today'
-                              ? 'Hoy'
-                              : filter === 'specific'
-                                ? 'Fecha'
-                                : filter === 'range'
-                                  ? 'Rango'
-                                  : 'Todo'
-                          return (
-                            <button
-                              key={filter}
-                              type="button"
-                              onClick={() => void handleFilterChange(filter)}
-                              className={cn(
-                                'rounded-lg px-3 py-2 text-xs font-medium transition-colors md:text-sm',
-                                dateFilter === filter
-                                  ? 'bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900'
-                                  : 'text-zinc-600 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-800'
-                              )}
-                            >
-                              {short}
-                            </button>
-                          )
-                        })}
-                      </div>
-
-                      {/* Selector de año cuando "Todo el Tiempo" está seleccionado */}
-                      {dateFilter === 'all' && isSuperAdmin && (
-                        <div className="relative w-full overflow-hidden rounded-lg border border-zinc-300/90 bg-white shadow-sm transition-colors hover:border-zinc-400/80 focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-950/50 dark:hover:border-zinc-500 dark:focus-within:border-zinc-500 dark:focus-within:ring-zinc-500/25 sm:ml-2 sm:w-auto sm:min-w-[100px]">
-                          <select
-                            value={selectedYear}
-                            onChange={(e) => handleYearChange(Number(e.target.value))}
-                            className={dashFilterSelectClass}
-                            aria-label="Año"
-                          >
-                            {availableYears.map((year) => (
-                              <option key={year} value={year}>
-                                {year}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 md:pr-2">
-                            <ChevronDown className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Calendario para fecha específica */}
-                      {dateFilter === 'specific' && (
-                        <DatePicker
-                          selectedDate={specificDate}
-                          onDateSelect={handleDateSelect}
-                          placeholder="Seleccionar fecha"
-                          className="w-full sm:w-40 text-xs md:text-sm"
-                        />
-                      )}
-
-                      {/* Rango de fechas: desde - hasta (solo super admin) */}
-                      {dateFilter === 'range' && (
-                        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                          <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                              Desde
-                            </span>
-                            <DatePicker
-                              selectedDate={dateRangeStart}
-                              onDateSelect={handleRangeStartSelect}
-                              placeholder="Inicio"
-                              className="w-full min-w-[11rem] sm:w-40"
-                            />
-                          </div>
-                          <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                              Hasta
-                            </span>
-                            <DatePicker
-                              selectedDate={dateRangeEnd}
-                              onDateSelect={handleRangeEndSelect}
-                              placeholder="Fin"
-                              className="w-full min-w-[11rem] sm:w-40"
-                              minDate={dateRangeStart ?? undefined}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800/40 md:px-3 md:py-1.5">
-                      <Calendar className="h-3 w-3 text-zinc-500 dark:text-zinc-400 md:h-4 md:w-4" strokeWidth={1.5} />
-                      <span className="hidden text-xs font-medium text-zinc-600 dark:text-zinc-300 sm:inline md:text-sm">
-                        Vista del día actual
-                      </span>
-                      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 sm:hidden">Hoy</span>
-                    </div>
-                  )}
-                  {/* Botones de acción agrupados */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={() => setHideNumbers(!hideNumbers)}
-                      variant="outline"
-                      size="sm"
-                      className={cn(dashToolbarButtonClass, 'w-9 justify-center px-0 md:w-auto md:px-3')}
-                      title={hideNumbers ? 'Mostrar números' : 'Ocultar números'}
-                    >
-                      {hideNumbers ? <EyeOff className="h-4 w-4" strokeWidth={1.5} /> : <Eye className="h-4 w-4" strokeWidth={1.5} />}
-                    </Button>
-                    <Button
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                      variant="outline"
-                      size="sm"
-                      className={cn(dashToolbarButtonClass, 'gap-2 px-3 text-xs disabled:opacity-50 md:px-4 md:text-sm')}
-                    >
-                      <RefreshCw className={`h-4 w-4 shrink-0 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-                      <span className="hidden md:inline">Actualizar</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-          </CardHeader>
-        </Card>
-
-        {/* Panel único de métricas: un borde, período arriba; celdas planas sin 8 cards sueltas */}
-        <div className={cn(cardShell, 'mb-6 overflow-hidden rounded-xl md:mb-8')}>
-          <div className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800 md:px-6 md:py-3.5">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Resumen del período
+        <div className="mb-6 flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-xl">Reportes</h1>
+              {(isRefreshing || isFiltering) && (
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Actualizando…</span>
+              )}
+            </div>
+            <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+              {periodLabelShort}
+              {' · '}
+              {currentStoreName && !isMainStoreUser(user)
+                ? `Solo datos de ${currentStoreName}${currentStoreCity ? ` — ${currentStoreCity}` : ''}`
+                : 'Resumen de la tienda principal'}
             </p>
-            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{periodLabelShort}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 bg-zinc-50/80 p-3 sm:grid-cols-3 sm:p-4 lg:grid-cols-4 dark:bg-zinc-950/25">
-            <button
-              ref={revenueTileRef}
-              type="button"
-              onClick={() => {
-                setShowTransferBreakdown(false)
-                setShowProfitBreakdown(false)
-                setShowRevenueBreakdown((prev) => !prev)
-              }}
-              className={cn(dashKpiCard, dashMetricTileInteractive)}
-              aria-haspopup="dialog"
-              aria-expanded={showRevenueBreakdown}
-            >
-              <div className="flex gap-3">
-                <div className={dashKpiIconWrap} aria-hidden>
-                  <BarChart3 className={cn(dashMetricIconEm, kpiIconTone.total)} strokeWidth={1.5} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Total ingresos</span>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.totalRevenue)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {metrics.totalSales} ventas
-                  </p>
-                  <p className="mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
-                    Clic para ver desglose
-                  </p>
-                </div>
-              </div>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => router.push('/sales')}
-              className={cn(dashKpiCard, dashMetricTileInteractive)}
-            >
-              <div className="flex gap-3">
-                <div className={dashKpiIconWrap} aria-hidden>
-                  <DollarSign className={cn(dashMetricIconEm, kpiIconTone.cash)} strokeWidth={1.5} />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end lg:flex-nowrap">
+            {isSuperAdmin ? (
+              <>
+                <div
+                  className="casa-artesanal-preserve-surface flex h-8 shrink-0 gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-white/[0.06]"
+                  role="group"
+                  aria-label="Período de reportes"
+                >
+                  {(['today', 'specific', 'range', 'all'] as DateFilter[]).map((filter) => {
+                    const short =
+                      filter === 'today' ? 'Hoy' : filter === 'specific' ? 'Fecha' : filter === 'range' ? 'Rango' : 'Año'
+                    const active = dateFilter === filter
+                    return (
+                      <button
+                        key={filter}
+                        type="button"
+                        onClick={() => void handleFilterChange(filter)}
+                        className={cn(
+                          'flex items-center rounded-md border px-3 text-[13px] transition-colors',
+                          active
+                            ? 'border-zinc-200 bg-white font-semibold text-zinc-900 dark:border-white/[0.12] dark:bg-[#0a0a0b] dark:text-white'
+                            : 'border-transparent font-medium text-zinc-500 hover:text-zinc-800 dark:text-white/50 dark:hover:text-white/90'
+                        )}
+                      >
+                        {short}
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Efectivo</span>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.cashRevenue)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {revenueMixSubtitle(
-                      metrics.cashProductsRevenue,
-                      metrics.cashTransportRevenue,
-                      formatCurrency
-                    )}
-                  </p>
-                </div>
-              </div>
-            </button>
 
-            <button
-              ref={transferTileRef}
-              type="button"
+                {dateFilter === 'all' && (
+                  <div className="relative h-8 shrink-0 overflow-hidden rounded-md border border-zinc-200 dark:border-white/[0.12] sm:min-w-[92px]">
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => handleYearChange(Number(e.target.value))}
+                      className={dashFilterSelectClass}
+                      aria-label="Año"
+                    >
+                      {availableYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                      <ChevronDown className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" strokeWidth={1.5} aria-hidden />
+                    </div>
+                  </div>
+                )}
+
+                {dateFilter === 'specific' && (
+                  <DatePicker
+                    compact
+                    selectedDate={specificDate}
+                    onDateSelect={handleDateSelect}
+                    placeholder="Elegir fecha"
+                    className="w-full shrink-0 sm:w-36"
+                  />
+                )}
+
+                {dateFilter === 'range' && (
+                  <div className="flex w-full items-center gap-1.5 sm:w-auto">
+                    <DatePicker
+                      compact
+                      selectedDate={dateRangeStart}
+                      onDateSelect={handleRangeStartSelect}
+                      placeholder="Desde"
+                      className="min-w-0 flex-1 sm:w-[8.5rem] sm:flex-none"
+                    />
+                    <span className="text-xs text-zinc-400 dark:text-white/30">—</span>
+                    <DatePicker
+                      compact
+                      selectedDate={dateRangeEnd}
+                      onDateSelect={handleRangeEndSelect}
+                      placeholder="Hasta"
+                      className="min-w-0 flex-1 sm:w-[8.5rem] sm:flex-none"
+                      minDate={dateRangeStart ?? undefined}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <span className="casa-artesanal-preserve-surface inline-flex h-8 items-center gap-1.5 rounded-lg bg-zinc-100 px-3 text-[13px] font-medium text-zinc-600 dark:bg-white/[0.06] dark:text-white/70">
+                <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                Vista del día actual
+              </span>
+            )}
+            <div className="flex shrink-0 items-center gap-0.5 pl-1">
+              <button
+                type="button"
+                onClick={() => setHideNumbers(!hideNumbers)}
+                className={dashIconButtonClass}
+                title={hideNumbers ? 'Mostrar números' : 'Ocultar números'}
+                aria-label={hideNumbers ? 'Mostrar números' : 'Ocultar números'}
+              >
+                {hideNumbers ? <EyeOff className="h-4 w-4" strokeWidth={1.5} /> : <Eye className="h-4 w-4" strokeWidth={1.5} />}
+              </button>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={dashIconButtonClass}
+                title="Actualizar"
+                aria-label="Actualizar"
+              >
+                <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-8 grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-4">
+          <ReportStat
+            buttonRef={revenueTileRef}
+            label="Total ingresos"
+            value={formatCurrency(metrics.totalRevenue)}
+            hint={`${metrics.totalSales} ventas · clic para ver desglose`}
+            ariaExpanded={showRevenueBreakdown}
+            onClick={() => {
+              setShowTransferBreakdown(false)
+              setShowProfitBreakdown(false)
+              setShowRevenueBreakdown((prev) => !prev)
+            }}
+          />
+          <ReportStat
+            label="Efectivo"
+            value={formatCurrency(metrics.cashRevenue)}
+            hint={revenueMixSubtitle(metrics.cashProductsRevenue, metrics.cashTransportRevenue, formatCurrency)}
+            onClick={() => router.push('/sales')}
+          />
+          <ReportStat
+            buttonRef={transferTileRef}
+            label="Transferencia"
+            value={formatCurrency(metrics.transferRevenue)}
+            hint={revenueMixSubtitle(metrics.transferProductsRevenue, metrics.transferTransportRevenue, formatCurrency)}
+            ariaExpanded={showTransferBreakdown}
+            onClick={() => {
+              setShowRevenueBreakdown(false)
+              setShowProfitBreakdown(false)
+              setShowTransferBreakdown((prev) => !prev)
+            }}
+          />
+          {user && !isVendedorUser ? (
+            isSuperAdmin ? (
+              <ReportStat
+                label="Facturas anuladas"
+                value={metrics.cancelledSales}
+                hint={metrics.cancelledSales > 0 ? formatCurrency(metrics.lostValue) : 'Sin anulaciones'}
+                tone={metrics.cancelledSales > 0 ? 'danger' : 'neutral'}
+                onClick={() => setShowCancelledModal(true)}
+              />
+            ) : (
+              <ReportStat
+                label="Crédito"
+                value={formatCurrency(metrics.creditRevenue)}
+                hint={`${
+                  filteredData.credits.filter(
+                    (c: any) => (c.status === 'pending' || c.status === 'partial') && (c.pendingAmount || 0) > 0
+                  ).length
+                } créditos pendientes`}
+                onClick={() => router.push('/payments')}
+              />
+            )
+          ) : null}
+          {canViewCredits && !isSuperAdmin && (
+            <ReportStat
+              label="Dinero afuera"
+              value={formatCurrency(metrics.dailyCreditsDebt || 0)}
+              hint={`${metrics.dailyCreditsCount || 0} créditos del día`}
+              onClick={goToCredits}
+            />
+          )}
+          <ReportStat
+            label="Egresos"
+            value={formatCurrency(metrics.totalEgresos || 0)}
+            hint={`${metrics.egresosCount || 0} del período`}
+            tone={(metrics.totalEgresos || 0) > 0 ? 'warning' : 'neutral'}
+            onClick={() => router.push('/egresos')}
+          />
+          {isSuperAdmin && (
+            <ReportStat
+              buttonRef={profitTileRef}
+              label="Ganancia bruta"
+              value={formatCurrency(metrics.grossProfit)}
+              hint="Por ventas del período · clic para ver desglose"
+              tone={metrics.grossProfit > 0 ? 'success' : 'neutral'}
+              ariaExpanded={showProfitBreakdown}
               onClick={() => {
                 setShowRevenueBreakdown(false)
-                setShowProfitBreakdown(false)
-                setShowTransferBreakdown((prev) => !prev)
+                setShowTransferBreakdown(false)
+                setShowProfitBreakdown((prev) => !prev)
               }}
-              className={cn(dashKpiCard, dashMetricTileInteractive)}
-              aria-haspopup="dialog"
-              aria-expanded={showTransferBreakdown}
-            >
-              <div className="flex gap-3">
-                <div className={dashKpiIconWrap} aria-hidden>
-                  <TrendingUp className={cn(dashMetricIconEm, kpiIconTone.transfer)} strokeWidth={1.5} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Transferencia</span>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.transferRevenue)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {revenueMixSubtitle(
-                      metrics.transferProductsRevenue,
-                      metrics.transferTransportRevenue,
-                      formatCurrency
-                    )}
-                  </p>
-                  <p className="mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Clic para ver desglose</p>
-                </div>
-              </div>
-            </button>
-
-            {user && user.role !== 'vendedor' && user.role !== 'Vendedor' ? (
-              isSuperAdmin ? (
-                <button
-                  type="button"
-                  onClick={() => setShowCancelledModal(true)}
-                  className={cn(dashKpiCard, dashMetricTileInteractive)}
-                >
-                  <div className="flex gap-3">
-                    <div className={dashKpiIconWrap} aria-hidden>
-                      <XCircle className={cn(dashMetricIconEm, kpiIconTone.cancelled)} strokeWidth={1.5} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className={dashMetricLabelClass}>Facturas anuladas</span>
-                      <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                        {metrics.cancelledSales}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                        {metrics.cancelledSales === 1 ? 'Factura anulada' : 'Facturas anuladas'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => router.push('/payments')}
-                  className={cn(dashKpiCard, dashMetricTileInteractive)}
-                >
-                  <div className="flex gap-3">
-                    <div className={dashKpiIconWrap} aria-hidden>
-                      <CreditCard className={cn(dashMetricIconEm, kpiIconTone.credit)} strokeWidth={1.5} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className={dashMetricLabelClass}>Crédito</span>
-                      <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                        {formatCurrency(metrics.creditRevenue)}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                        {
-                          filteredData.credits.filter(
-                            (c: any) =>
-                              (c.status === 'pending' || c.status === 'partial') && (c.pendingAmount || 0) > 0
-                          ).length
-                        }{' '}
-                        créditos pendientes
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              )
-            ) : null}
-
-            {canViewCredits && !isSuperAdmin && (
-              <button type="button" onClick={goToCredits} className={cn(dashKpiCard, dashMetricTileInteractive)}>
-                <div className="flex gap-3">
-                  <div className={dashKpiIconWrap} aria-hidden>
-                    <CreditCard className={cn(dashMetricIconEm, kpiIconTone.credit)} strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className={dashMetricLabelClass}>Dinero afuera</span>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                      {formatCurrency(metrics.dailyCreditsDebt || 0)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                      {metrics.dailyCreditsCount || 0} créditos del día
-                    </p>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => router.push('/egresos')}
-              className={cn(dashKpiCard, dashMetricTileInteractive)}
-            >
-              <div className="flex gap-3">
-                <div className={dashKpiIconWrap} aria-hidden>
-                  <Wallet className={cn(dashMetricIconEm, kpiIconTone.egresos)} strokeWidth={1.5} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className={dashMetricLabelClass}>Egresos</span>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                    {formatCurrency(metrics.totalEgresos || 0)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {metrics.egresosCount || 0} del período
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            {isSuperAdmin && (
-              <button
-                ref={profitTileRef}
-                type="button"
-                onClick={() => {
-                  setShowRevenueBreakdown(false)
-                  setShowTransferBreakdown(false)
-                  setShowProfitBreakdown((prev) => !prev)
-                }}
-                className={cn(dashKpiCard, dashMetricTileInteractive)}
-                aria-haspopup="dialog"
-                aria-expanded={showProfitBreakdown}
-              >
-                <div className="flex gap-3">
-                  <div className={dashKpiIconWrap} aria-hidden>
-                    <Activity className={cn(dashMetricIconEm, kpiIconTone.profit)} strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className={dashMetricLabelClass}>Ganancia bruta</span>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                      {formatCurrency(metrics.grossProfit)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Por ventas del período</p>
-                    <p className="mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
-                      Clic para ver desglose
-                    </p>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            {isSuperAdmin && (
-              <button
-                type="button"
-                onClick={() => router.push('/inventory/products')}
-                className={cn(dashKpiCard, dashMetricTileInteractive)}
-              >
-                <div className="flex gap-3">
-                  <div className={dashKpiIconWrap} aria-hidden>
-                    <Package className={cn(dashMetricIconEm, kpiIconTone.stock)} strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className={dashMetricLabelClass}>Stock (inversión)</span>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                      {formatCurrency(metrics.totalStockInvestment > 0 ? metrics.totalStockInvestment : metrics.potentialInvestment)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                      {metrics.totalStockInvestment > 0 ? 'Inversión en stock' : 'Inversión potencial'}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            {isSuperAdmin ? (
-              <button type="button" onClick={goToCredits} className={cn(dashKpiCard, dashMetricTileInteractive)}>
-                <div className="flex gap-3">
-                  <div className={dashKpiIconWrap} aria-hidden>
-                    <CreditCard className={cn(dashMetricIconEm, kpiIconTone.credit)} strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className={dashMetricLabelClass}>Créditos</span>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                      {formatCurrency(metrics.totalDebt || 0)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Total adeudado</p>
-                  </div>
-                </div>
-              </button>
-            ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setShowCancelledModal(true)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    setShowCancelledModal(true)
-                  }
-                }}
-                className={cn(dashKpiCard, dashMetricTileInteractive, 'sm:col-span-2 lg:col-span-2')}
-              >
-                <div className="flex gap-3">
-                  <div className={dashKpiIconWrap} aria-hidden>
-                    <XCircle className={cn(dashMetricIconEm, kpiIconTone.cancelled)} strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className={dashMetricLabelClass}>Facturas anuladas</span>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50 md:text-xl">
-                      {metrics.cancelledSales}
-                    </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                      {metrics.cancelledSales === 1 ? 'Factura anulada' : 'Facturas anuladas'}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1.5 border-t border-zinc-200/90 pt-3 dark:border-zinc-700/90">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-500 dark:text-zinc-400">Valor anulado</span>
-                    <span className="font-medium tabular-nums text-red-600/90 dark:text-red-400">
-                      {formatCurrency(metrics.lostValue)}
-                    </span>
-                  </div>
-                  <p className="pt-1 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-                    <span className="inline-flex items-center gap-1">
-                      <BarChart3 className="h-3 w-3 shrink-0" aria-hidden />
-                      Clic para ver el detalle
-                    </span>
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Gráficos y estadísticas mejoradas */}
-        <div className="space-y-4 md:space-y-6 mb-6 md:mb-8">
-          {/* Tendencia de Ingresos — ancho completo (super admin) */}
+            />
+          )}
           {isSuperAdmin && (
-            <div className="w-full min-w-0">
-            <div className={cn(dashCardBase, 'w-full')}>
-              <div className="mb-4 flex min-w-0 items-start gap-2">
-                <TrendingUp className={cn(dashMetricIconEm, 'text-zinc-500 dark:text-zinc-400')} strokeWidth={1.5} aria-hidden />
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 md:text-base">Tendencia de Ingresos</h3>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {effectiveDateFilter === 'all'
-                      ? `Por mes · ${selectedYear}`
-                      : effectiveDateFilter === 'range' && dateRangeStart && dateRangeEnd
-                        ? `Por día · ${dateRangeStart.toLocaleDateString('es-CO')} — ${dateRangeEnd.toLocaleDateString('es-CO')}`
-                        : effectiveDateFilter === 'range'
-                          ? 'Elige inicio y fin en el rango'
-                          : 'Últimos 15 días'}
-                  </p>
-                </div>
-              </div>
-              <div className="h-[260px] w-full min-w-0 md:h-[320px] lg:h-[360px]">
-                {(() => {
-                  // Si es anual, mostrar por mes
-                  if (effectiveDateFilter === 'all') {
-                    // Agrupar datos por mes
-                    const monthlyData: { [key: string]: number } = {}
-
-                    filteredData.sales.forEach((sale: Sale) => {
-                      if (sale.status !== 'cancelled') {
-                        const saleDate = new Date(sale.createdAt)
-                        const monthKey = saleDate.toLocaleDateString('es-CO', {
-                          month: 'short',
-                          year: 'numeric'
-                        })
-
-                        if (!monthlyData[monthKey]) {
-                          monthlyData[monthKey] = 0
-                        }
-
-                        // Sumar efectivo y transferencia
-                        if (
-                          sale.paymentMethod === 'cash' ||
-                          sale.paymentMethod === 'transfer' ||
-                          sale.paymentMethod === 'nequi' ||
-                          sale.paymentMethod === 'bancolombia' ||
-                          sale.paymentMethod === 'card'
-                        ) {
-                          monthlyData[monthKey] += sale.total || 0
-                        } else if (sale.paymentMethod === 'mixed' && sale.payments) {
-                          sale.payments.forEach(payment => {
-                            if (
-                              payment.paymentType === 'cash' ||
-                              payment.paymentType === 'transfer' ||
-                              payment.paymentType === 'nequi' ||
-                              payment.paymentType === 'bancolombia' ||
-                              payment.paymentType === 'card'
-                            ) {
-                              monthlyData[monthKey] += payment.amount || 0
-                            }
-                          })
-                        }
-                      }
-                    })
-
-                    // Agregar abonos de créditos
-                    filteredData.paymentRecords.forEach((payment: any) => {
-                      if (
-                        payment.status !== 'cancelled' &&
-                        (payment.paymentMethod === 'cash' ||
-                          payment.paymentMethod === 'efectivo' ||
-                          payment.paymentMethod === 'transfer' ||
-                          payment.paymentMethod === 'nequi' ||
-                          payment.paymentMethod === 'bancolombia' ||
-                          payment.paymentMethod === 'card')
-                      ) {
-                        const paymentDate = new Date(payment.paymentDate)
-                        const monthKey = paymentDate.toLocaleDateString('es-CO', {
-                          month: 'short',
-                          year: 'numeric'
-                        })
-
-                        if (!monthlyData[monthKey]) {
-                          monthlyData[monthKey] = 0
-                        }
-                        monthlyData[monthKey] += payment.amount || 0
-                      }
-                    })
-
-                    // Siempre 12 meses del año seleccionado (meses sin ventas = 0), orden cronológico
-                    const monthKeyFor = (y: number, monthIndex: number) =>
-                      new Date(y, monthIndex, 1).toLocaleDateString('es-CO', {
-                        month: 'short',
-                        year: 'numeric',
-                      })
-                    const monthlyArray = Array.from({ length: 12 }, (_, m) => {
-                      const key = monthKeyFor(selectedYear, m)
-                      return {
-                        date: key,
-                        amount: monthlyData[key] ?? 0,
-                        count: 0,
-                        average: 0,
-                      }
-                    })
-
-                    // Colores adaptativos para modo oscuro
-                    const axisColor = isDarkMode ? '#9ca3af' : '#666'
-                    const lineStroke = isDarkMode ? '#525252' : '#e4e4e7'
-                    const dotFill = '#22c55e'
-                    const dotStrokeColor = isDarkMode ? '#171717' : '#ffffff'
-                    const tooltipBg = isDarkMode ? '#1f2937' : 'white'
-                    const tooltipBorder = isDarkMode ? '#374151' : '#e5e7eb'
-                    const tooltipText = isDarkMode ? '#f3f4f6' : '#111827'
-
-                    return monthlyArray.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-                        <LineChart data={monthlyArray}>
-                          <XAxis
-                            dataKey="date"
-                            stroke={axisColor}
-                            fontSize={12}
-                            tick={{ fontSize: 12, fill: axisColor }}
-                          />
-                          <YAxis
-                            stroke={axisColor}
-                            fontSize={12}
-                            tick={{ fontSize: 12, fill: axisColor }}
-                            tickFormatter={(value) => {
-                              if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
-                              if (value >= 1000) return `$${(value / 1000).toFixed(0)}k`
-                              return `$${value}`
-                            }}
-                          />
-                          <Tooltip
-                            formatter={(value: number) => [
-                              new Intl.NumberFormat('es-CO', {
-                                style: 'currency',
-                                currency: 'COP',
-                                minimumFractionDigits: 0
-                              }).format(value),
-                              'Ingresos'
-                            ]}
-                            contentStyle={{
-                              backgroundColor: tooltipBg,
-                              border: `1px solid ${tooltipBorder}`,
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                              color: tooltipText
-                            }}
-                            labelStyle={{ color: tooltipText }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="amount"
-                            stroke={lineStroke}
-                            strokeWidth={2.5}
-                            dot={{ fill: dotFill, r: 4, strokeWidth: 2, stroke: dotStrokeColor }}
-                            activeDot={{ r: 6, fill: dotFill }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No hay datos disponibles</p>
-                      </div>
-                    )
-                  }
-
-                  if (effectiveDateFilter === 'range' && (!dateRangeStart || !dateRangeEnd)) {
-                    return (
-                      <div className="flex h-full items-center justify-center px-4">
-                        <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-                          Selecciona fechas de inicio y fin para ver los ingresos día a día en ese período.
-                        </p>
-                      </div>
-                    )
-                  }
-
-                  // Rango completo, hoy o fecha específica: serie diaria
-                  const getDateKey = (dateInput: Date | string): string => {
-                    const date = new Date(dateInput)
-                    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-                    return normalizedDate.toLocaleDateString('es-CO', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: '2-digit'
-                    })
-                  }
-
-                  // Determinar fechas para el gráfico
-                  let chartDays: Date[] = []
-                  if (effectiveDateFilter === 'range' && dateRangeStart && dateRangeEnd) {
-                    const a = new Date(
-                      dateRangeStart.getFullYear(),
-                      dateRangeStart.getMonth(),
-                      dateRangeStart.getDate(),
-                      0,
-                      0,
-                      0,
-                      0
-                    )
-                    const b = new Date(
-                      dateRangeEnd.getFullYear(),
-                      dateRangeEnd.getMonth(),
-                      dateRangeEnd.getDate(),
-                      0,
-                      0,
-                      0,
-                      0
-                    )
-                    const start = a.getTime() <= b.getTime() ? a : b
-                    const end = a.getTime() <= b.getTime() ? b : a
-                    for (let cursor = new Date(start); cursor.getTime() <= end.getTime(); cursor.setDate(cursor.getDate() + 1)) {
-                      chartDays.push(
-                        new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 0, 0, 0, 0)
-                      )
-                    }
-                  } else {
-                    let referenceDate: Date
-                    if (effectiveDateFilter === 'specific' && specificDate) {
-                      referenceDate = new Date(specificDate)
-                    } else {
-                      referenceDate = new Date()
-                    }
-                    referenceDate.setHours(0, 0, 0, 0)
-                    for (let i = 0; i < INCOME_TREND_CHART_DAYS; i++) {
-                      const date = new Date(referenceDate)
-                      date.setDate(date.getDate() - i)
-                      chartDays.push(date)
-                    }
-                    chartDays.reverse()
-                  }
-
-                  const chartWindowDays = chartDays
-
-                  // Calcular ingresos por día desde TODOS los datos (no filteredData)
-                  // porque filteredData solo tiene el día seleccionado, pero necesitamos la ventana del gráfico
-                  const dailyData: { [key: string]: number } = {}
-
-                  // Inicializar todos los días con 0
-                  chartWindowDays.forEach(date => {
-                    const dateKey = getDateKey(date)
-                    dailyData[dateKey] = 0
-                  })
-
-                  // Crear un Set de timestamps para verificación rápida
-                  const dayTimestamps = new Set<number>()
-                  chartWindowDays.forEach(day => {
-                    const dayStart = new Date(day)
-                    dayStart.setHours(0, 0, 0, 0)
-                    dayTimestamps.add(dayStart.getTime())
-                  })
-
-                  // Obtener el storeId actual para filtrar ventas
-                  const currentStoreId = getCurrentUserStoreId()
-                  const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
-
-                  // Sumar ventas desde allSales (todos los datos)
-                  // IMPORTANTE: Filtrar por store_id para micro tiendas
-                  allSales.forEach((sale: Sale) => {
-                    // Filtrar por store_id si es una micro tienda
-                    if (currentStoreId && currentStoreId !== MAIN_STORE_ID) {
-                      if (sale.storeId !== currentStoreId) {
-                        return // Saltar ventas de otras tiendas
-                      }
-                    }
-
-                    if (sale.status !== 'cancelled') {
-                      const saleDate = new Date(sale.createdAt)
-                      saleDate.setHours(0, 0, 0, 0)
-
-                      // Verificar si la venta está en la ventana del gráfico (15 días)
-                      if (dayTimestamps.has(saleDate.getTime())) {
-                        const dateKey = getDateKey(saleDate)
-
-                        // Sumar efectivo y transferencia
-                        if (
-                          sale.paymentMethod === 'cash' ||
-                          sale.paymentMethod === 'transfer' ||
-                          sale.paymentMethod === 'nequi' ||
-                          sale.paymentMethod === 'bancolombia' ||
-                          sale.paymentMethod === 'card'
-                        ) {
-                          dailyData[dateKey] = (dailyData[dateKey] || 0) + (sale.total || 0)
-                        } else if (sale.paymentMethod === 'mixed' && sale.payments) {
-                          sale.payments.forEach(payment => {
-                            if (
-                              payment.paymentType === 'cash' ||
-                              payment.paymentType === 'transfer' ||
-                              payment.paymentType === 'nequi' ||
-                              payment.paymentType === 'bancolombia' ||
-                              payment.paymentType === 'card'
-                            ) {
-                              dailyData[dateKey] = (dailyData[dateKey] || 0) + (payment.amount || 0)
-                            }
-                          })
-                        }
-                      }
-                    }
-                  })
-
-                  // Obtener el storeId actual para filtrar pagos
-                  // (ya está definido arriba, pero lo reutilizamos)
-
-                  // Sumar abonos de créditos desde allPaymentRecords
-                  // IMPORTANTE: Filtrar por store_id para micro tiendas
-                  allPaymentRecords.forEach((payment: any) => {
-                    // Filtrar por store_id si es una micro tienda
-                    if (currentStoreId && currentStoreId !== MAIN_STORE_ID) {
-                      // Los pagos pueden tener storeId en el crédito asociado
-                      // Por ahora, si el pago no tiene storeId, asumimos que es de la tienda principal
-                      // y lo excluimos para micro tiendas
-                      if (payment.storeId && payment.storeId !== currentStoreId) {
-                        return // Saltar pagos de otras tiendas
-                      }
-                      // Si no tiene storeId, probablemente es de la tienda principal, saltarlo
-                      if (!payment.storeId) {
-                        return
-                      }
-                    }
-
-                    if (
-                      payment.status !== 'cancelled' &&
-                      (payment.paymentMethod === 'cash' ||
-                        payment.paymentMethod === 'efectivo' ||
-                        payment.paymentMethod === 'transfer' ||
-                        payment.paymentMethod === 'nequi' ||
-                        payment.paymentMethod === 'bancolombia' ||
-                        payment.paymentMethod === 'card')
-                    ) {
-                      const paymentDate = new Date(payment.paymentDate)
-                      paymentDate.setHours(0, 0, 0, 0)
-
-                      // Verificar si el pago está en el rango
-                      if (dayTimestamps.has(paymentDate.getTime())) {
-                        const dateKey = getDateKey(paymentDate)
-                        dailyData[dateKey] = (dailyData[dateKey] || 0) + (payment.amount || 0)
-                      }
-                    }
-                  })
-
-                  // Convertir a array ordenado
-                  const chartData = chartWindowDays.map(date => {
-                    const dateKey = getDateKey(date)
-                    return {
-                      date: dateKey,
-                      amount: dailyData[dateKey] || 0,
-                      count: 0,
-                      average: 0
-                    }
-                  })
-
-                  // Colores adaptativos para modo oscuro (línea suave + puntos verdes como referencia)
-                  const axisColor = isDarkMode ? '#9ca3af' : '#666'
-                  const lineStroke = isDarkMode ? '#525252' : '#e4e4e7'
-                  const dotFill = '#22c55e'
-                  const dotStrokeColor = isDarkMode ? '#171717' : '#ffffff'
-                  const tooltipBg = isDarkMode ? '#1f2937' : 'white'
-                  const tooltipBorder = isDarkMode ? '#374151' : '#e5e7eb'
-                  const tooltipText = isDarkMode ? '#f3f4f6' : '#111827'
-
-                  return chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-                      <LineChart data={chartData}>
-                        <XAxis
-                          dataKey="date"
-                          stroke={axisColor}
-                          fontSize={10}
-                          tick={{ fontSize: 10, fill: axisColor }}
-                        />
-                        <YAxis
-                          stroke={axisColor}
-                          fontSize={10}
-                          tick={{ fontSize: 10, fill: axisColor }}
-                          tickFormatter={(value) => {
-                            if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
-                            if (value >= 1000) return `$${(value / 1000).toFixed(0)}k`
-                            return `$${value}`
-                          }}
-                        />
-                        <Tooltip
-                          formatter={(value: number) => [
-                            new Intl.NumberFormat('es-CO', {
-                              style: 'currency',
-                              currency: 'COP',
-                              minimumFractionDigits: 0
-                            }).format(value),
-                            'Ingresos'
-                          ]}
-                          contentStyle={{
-                            backgroundColor: tooltipBg,
-                            border: `1px solid ${tooltipBorder}`,
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                            color: tooltipText
-                          }}
-                          labelStyle={{ color: tooltipText }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="amount"
-                          stroke={lineStroke}
-                          strokeWidth={2.5}
-                          dot={{ fill: dotFill, r: 4, strokeWidth: 2, stroke: dotStrokeColor }}
-                          activeDot={{ r: 6, fill: dotFill }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">No hay datos disponibles</p>
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-            </div>
+            <ReportStat
+              label="Stock (inversión)"
+              value={formatCurrency(metrics.totalStockInvestment > 0 ? metrics.totalStockInvestment : metrics.potentialInvestment)}
+              hint={metrics.totalStockInvestment > 0 ? 'Inversión en stock' : 'Inversión potencial'}
+              onClick={() => router.push('/inventory/products')}
+            />
+          )}
+          {isSuperAdmin ? (
+            <ReportStat
+              label="Créditos por cobrar"
+              value={formatCurrency(metrics.totalDebt || 0)}
+              hint={`${metrics.pendingCreditsCount || 0} créditos abiertos`}
+              onClick={goToCredits}
+            />
+          ) : (
+            <ReportStat
+              label="Facturas anuladas"
+              value={metrics.cancelledSales}
+              hint={metrics.cancelledSales > 0 ? `Valor anulado ${formatCurrency(metrics.lostValue)}` : 'Sin anulaciones'}
+              tone={metrics.cancelledSales > 0 ? 'danger' : 'neutral'}
+              onClick={() => setShowCancelledModal(true)}
+            />
           )}
         </div>
+
+        {isSuperAdmin ? (
+          <div className="mb-8 space-y-10">
+            <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
+              {trendBlock}
+              <div className="min-w-0 space-y-6">
+                <div className="flex flex-col items-center py-2 text-center">
+                  <span className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                    {formatCurrency(metrics.totalSales > 0 ? Math.round(metrics.salesRevenue / metrics.totalSales) : 0)}
+                  </span>
+                  <span className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                    Ticket promedio por venta · {metrics.totalSales} ventas
+                  </span>
+                </div>
+                {alertsBlock}
+              </div>
+            </div>
+            <div className="grid gap-8 lg:grid-cols-2">
+              {methodBlock}
+              {topProductsBlock}
+            </div>
+            {creditsBlock}
+          </div>
+        ) : (
+          <div className="mb-8 space-y-10">
+            <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+              {methodBlock}
+              {alertsBlock}
+            </div>
+            <div className={cn('grid gap-8', creditsBlock && 'lg:grid-cols-2')}>
+              {topProductsBlock}
+              {creditsBlock}
+            </div>
+          </div>
+        )}
 
         {showRevenueBreakdown &&
           revenuePopoverPos &&

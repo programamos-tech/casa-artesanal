@@ -104,7 +104,7 @@ export default function EgresosPage() {
 
   return (
     <RoleProtectedRoute module="egresos" requiredAction="view">
-      <div className="min-h-screen space-y-4 bg-white py-4 dark:bg-neutral-950 md:space-y-6 md:py-6">
+      <div className="py-4 max-xl:pb-1 md:py-6">
         <EgresosTable
           egresos={egresos}
           loading={loading}

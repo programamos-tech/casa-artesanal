@@ -1,13 +1,18 @@
 'use client'
 
-import { Lock, Wallet, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Lock, LockOpen, X } from 'lucide-react'
 import {
-  appModalBodyClass,
-  appModalFooterClass,
-  appModalHeaderClass,
-  appModalPanelClass,
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalPanelClass,
+  modalPrimaryButtonClass,
+  modalSecondaryButtonClass,
+  modalTitleClass,
 } from '@/lib/app-modal'
+import { StatusDot } from '@/components/dashboard/report-ui'
 import {
   getCashGateBody,
   getCashGateTitle,
@@ -36,61 +41,48 @@ export function CashRequiredModal({
   const isClose = status === 'must_close'
 
   return (
-    <div
-      className="casa-artesanal-modal-backdrop fixed inset-0 z-[110] flex items-center justify-center overflow-hidden overscroll-none bg-zinc-950/25 p-3 backdrop-blur-[2px] dark:bg-black/40 sm:p-5 xl:left-60"
-      role="presentation"
-    >
+    <div className={cn(modalOverlayClass, 'z-[110]')} role="presentation">
       <div
-        className={cn(appModalPanelClass, 'max-w-md')}
+        className={cn(modalPanelClass, 'max-w-md')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cash-required-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={appModalHeaderClass}>
-          <div className="flex min-w-0 items-center gap-2">
-            {isClose ? (
-              <Lock className="h-5 w-5 shrink-0 text-amber-600" strokeWidth={1.75} />
-            ) : (
-              <Wallet className="h-5 w-5 shrink-0 text-emerald-600" strokeWidth={1.75} />
-            )}
-            <h2
-              id="cash-required-title"
-              className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-            >
+        <div className={modalHeaderClass}>
+          <div className="min-w-0">
+            <h2 id="cash-required-title" className={cn(modalTitleClass, 'truncate')}>
               {getCashGateTitle(status)}
             </h2>
+            <p className="mt-1 flex items-center gap-1.5 text-[13px] text-zinc-500 dark:text-white/50">
+              <StatusDot tone={isClose ? 'warning' : 'neutral'} />
+              {isClose ? 'Turno de ayer sin cerrar' : 'Caja cerrada'}
+            </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 rounded-md p-0"
-            onClick={onDismiss}
-            aria-label="Cerrar"
-          >
+          <button type="button" className={modalCloseButtonClass} onClick={onDismiss} aria-label="Cerrar">
             <X className="h-4 w-4" strokeWidth={1.75} />
-          </Button>
+          </button>
         </div>
 
-        <div className={appModalBodyClass}>
-          <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+        <div className={modalBodyClass}>
+          <p className="text-[13px] leading-relaxed text-zinc-700 dark:text-white/80">
             {getCashGateBody(status, action)}
           </p>
-          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mt-2 text-[13px] text-zinc-500 dark:text-white/50">
             {isClose
               ? 'Cierra el turno de ayer en Caja. Después abre la caja de hoy para seguir.'
               : 'Abre la caja del día y luego vuelve a intentar.'}
           </p>
         </div>
 
-        <div className={appModalFooterClass}>
-          <Button type="button" variant="outline" onClick={onDismiss}>
+        <div className={modalFooterClass}>
+          <button type="button" className={modalSecondaryButtonClass} onClick={onDismiss}>
             Cancelar
-          </Button>
-          <Button type="button" onClick={onGoToCaja}>
+          </button>
+          <button type="button" className={modalPrimaryButtonClass} onClick={onGoToCaja}>
+            {isClose ? <Lock className="h-3.5 w-3.5" strokeWidth={1.75} /> : <LockOpen className="h-3.5 w-3.5" strokeWidth={1.75} />}
             {isClose ? 'Ir a cerrar caja' : 'Ir a abrir caja'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

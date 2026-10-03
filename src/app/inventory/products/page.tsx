@@ -166,7 +166,7 @@ export default function ProductsPage() {
 
   return (
     <RoleProtectedRoute module="products" requiredAction="view">
-      <div className="space-y-4 bg-gray-50 py-4 dark:bg-neutral-950 max-xl:pb-1 md:space-y-6 md:py-6">
+      <div className="py-4 max-xl:pb-1 md:py-6">
       <ProductTable
         products={products}
         categories={categories}
@@ -181,6 +181,7 @@ export default function ProductsPage() {
         categoryFilter={categoryFilter}
         onFilterChange={setStockFilter}
         onCategoryFilterChange={setCategoryFilter}
+        onView={(product) => router.push(`/inventory/products/${product.id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreate={handleCreate}
@@ -231,7 +232,7 @@ export default function ProductsPage() {
                   setProductToDelete(null)
                 }}
                 onConfirm={confirmDelete}
-                title="Eliminar Producto"
+                title="Eliminar producto"
                 message={`¿Estás seguro de que quieres eliminar el producto "${productToDelete?.name}"? Esta acción no se puede deshacer.`}
                 confirmText="Eliminar"
                 cancelText="Cancelar"
