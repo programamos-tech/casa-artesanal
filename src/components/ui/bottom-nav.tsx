@@ -3,7 +3,30 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Receipt, Package, Users, CreditCard, Wallet, Activity, UserCog, UserCircle, Truck, CheckCircle, Store, FileText, Banknote } from 'lucide-react'
+import {
+  BarChart3,
+  Receipt,
+  Package,
+  Users,
+  CreditCard,
+  Wallet,
+  Activity,
+  UserCog,
+  UserCircle,
+  Truck,
+  CheckCircle,
+  Store,
+  FileText,
+  Banknote,
+  LayoutDashboard,
+  ClipboardList,
+  Workflow,
+  HardHat,
+  Boxes,
+  BookOpen,
+  TrendingDown,
+  CalendarRange,
+} from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/auth-context'
 import { canAccessAllStores } from '@/lib/store-helper'
@@ -30,6 +53,17 @@ const items = [
   { href: '/profile', label: 'Perfil', icon: UserCircle, module: 'dashboard', alwaysVisible: true },
 ]
 
+const factoryItems = [
+  { href: '/fabrica', label: 'Resumen', icon: LayoutDashboard },
+  { href: '/fabrica/ordenes', label: 'Órdenes', icon: ClipboardList },
+  { href: '/fabrica/procesos', label: 'Procesos', icon: Workflow },
+  { href: '/fabrica/operario', label: 'Operario', icon: HardHat },
+  { href: '/fabrica/materiales', label: 'Materiales', icon: Boxes },
+  { href: '/fabrica/recetas', label: 'Recetas', icon: BookOpen },
+  { href: '/fabrica/mermas', label: 'Mermas', icon: TrendingDown },
+  { href: '/fabrica/planeacion', label: 'Qué producir', icon: CalendarRange },
+]
+
 export function BottomNav() {
   const pathname = usePathname()
   const [isMounted, setIsMounted] = useState(false)
@@ -47,8 +81,10 @@ export function BottomNav() {
   // Durante el render inicial, usar pathname vacío para evitar mismatch
   const currentPathname = isMounted ? pathname : ''
 
+  const isFactory = canAccessAllStores(user) && (currentPathname?.startsWith('/fabrica') ?? false)
+
   // Filtrar items basado en permisos, pero siempre mostrar Reportes y Perfil si el usuario está autenticado
-  const visibleItems = items
+  const storeItems = items
     .filter(item => {
       if (item.alwaysVisible && user) {
         return true
@@ -73,6 +109,7 @@ export function BottomNav() {
       // Mantener el orden original para los demás
       return 0
     })
+  const visibleItems = isFactory ? factoryItems : storeItems
 
   // Función para verificar si hay scroll disponible
   const checkScrollButtons = () => {
@@ -130,7 +167,7 @@ export function BottomNav() {
             const canAccessStores = isStoresModule ? canAccessAllStores(user) : true
             
             const active = currentPathname === href || 
-              (href !== '/dashboard' && currentPathname?.startsWith(href)) ||
+              (href !== '/dashboard' && href !== '/fabrica' && currentPathname?.startsWith(href)) ||
               (href === '/payments' && currentPathname?.startsWith('/payments')) ||
               (href === '/purchases/invoices' && currentPathname?.startsWith('/purchases')) ||
               (href === '/inventory/products' && currentPathname?.startsWith('/inventory/products')) ||

@@ -9,6 +9,7 @@ import {
   Bell,
   Check,
   ChevronDown,
+  Factory,
   Store as StoreIcon,
   Truck,
   CircleHelp,
@@ -59,33 +60,54 @@ const menuIcon = 'h-4 w-4 shrink-0 text-zinc-400 dark:text-white/40'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
-function StoreMenuItems({
+const menuSectionLabel =
+  'px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-white/40'
+const menuItemActive = 'font-semibold text-zinc-900 dark:text-white'
+const menuCheck = <Check className="h-3.5 w-3.5 shrink-0 text-zinc-900 dark:text-white" strokeWidth={2} />
+
+function WorkspaceMenuItems({
   stores,
   activeStoreId,
-  onSelect,
+  isFactory,
+  onSelectStore,
+  onSelectFactory,
 }: {
   stores: Store[]
   activeStoreId: string
-  onSelect: (store: Store) => void
+  isFactory: boolean
+  onSelectStore: (store: Store) => void
+  onSelectFactory: () => void
 }) {
   return (
     <>
+      <p className={menuSectionLabel}>Tiendas</p>
       {stores.map((store) => {
-        const active = store.id === activeStoreId
+        const active = !isFactory && store.id === activeStoreId
         return (
           <button
             key={store.id}
             type="button"
-            onClick={() => onSelect(store)}
-            className={cn(menuItem, active && 'font-semibold text-zinc-900 dark:text-white')}
+            onClick={() => onSelectStore(store)}
+            className={cn(menuItem, active && menuItemActive)}
             aria-current={active ? 'true' : undefined}
           >
             <StoreIcon className={menuIcon} strokeWidth={1.5} />
             <span className="min-w-0 flex-1 truncate">{storeLabel(store.name)}</span>
-            {active ? <Check className="h-3.5 w-3.5 shrink-0 text-zinc-900 dark:text-white" strokeWidth={2} /> : null}
+            {active ? menuCheck : null}
           </button>
         )
       })}
+      <p className={cn(menuSectionLabel, 'mt-1 border-t border-zinc-100 pt-2.5 dark:border-white/[0.06]')}>Fábrica</p>
+      <button
+        type="button"
+        onClick={onSelectFactory}
+        className={cn(menuItem, isFactory && menuItemActive)}
+        aria-current={isFactory ? 'true' : undefined}
+      >
+        <Factory className={menuIcon} strokeWidth={1.5} />
+        <span className="min-w-0 flex-1 truncate">Planta de producción</span>
+        {isFactory ? menuCheck : null}
+      </button>
     </>
   )
 }
@@ -133,7 +155,8 @@ export function AppTopNav() {
   const [stores, setStores] = useState<Store[]>([])
   const [storeOpen, setStoreOpen] = useState(false)
   const canSwitchStores = canAccessAllStores(user)
-  const showStoreSwitcher = canSwitchStores && stores.length > 1 && !pathname?.startsWith('/fabrica')
+  const showStoreSwitcher = canSwitchStores && stores.length > 0
+  const isFactory = canSwitchStores && (pathname?.startsWith('/fabrica') ?? false)
   const activeStoreId = user?.storeId || MAIN_STORE_ID
   const activeStore = stores.find((store) => store.id === activeStoreId)
 
@@ -158,9 +181,15 @@ export function AppTopNav() {
   const handleStoreSelect = (store: Store) => {
     setStoreOpen(false)
     setUserOpen(false)
-    if (store.id === activeStoreId) return
-    switchStore(store.id)
+    if (store.id === activeStoreId && !isFactory) return
+    if (store.id !== activeStoreId) switchStore(store.id)
     router.replace(storeSwitchHref(pathname, store), { scroll: false })
+  }
+
+  const handleFactorySelect = () => {
+    setStoreOpen(false)
+    setUserOpen(false)
+    if (!isFactory) router.push('/fabrica')
   }
 
   // Campana de traslados/recepciones (módulo apagado → no mostrar)
@@ -304,12 +333,18 @@ export function AppTopNav() {
               type="button"
               onClick={() => setStoreOpen((v) => !v)}
               className="casa-artesanal-preserve-surface inline-flex h-8 items-center gap-2 rounded-md border border-zinc-200 px-2.5 text-[13px] font-medium text-zinc-800 transition-colors hover:bg-zinc-50 dark:border-white/[0.1] dark:text-white/85 dark:hover:bg-white/[0.05]"
-              aria-label="Cambiar de tienda"
+              aria-label="Cambiar de tienda o fábrica"
               aria-expanded={storeOpen}
               aria-haspopup="menu"
             >
-              <StoreIcon className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} />
-              <span className="max-w-[10rem] truncate">{activeStore ? storeLabel(activeStore.name) : 'Tienda'}</span>
+              {isFactory ? (
+                <Factory className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} />
+              ) : (
+                <StoreIcon className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40" strokeWidth={1.75} />
+              )}
+              <span className="max-w-[10rem] truncate">
+                {isFactory ? 'Fábrica' : activeStore ? storeLabel(activeStore.name) : 'Tienda'}
+              </span>
               <ChevronDown
                 className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', storeOpen && 'rotate-180')}
                 strokeWidth={2}
@@ -317,7 +352,13 @@ export function AppTopNav() {
             </button>
             {storeOpen && (
               <div className={cn(menuPanel, 'left-0 top-[calc(100%+6px)] min-w-[13rem]')}>
-                <StoreMenuItems stores={stores} activeStoreId={activeStoreId} onSelect={handleStoreSelect} />
+                <WorkspaceMenuItems
+                  stores={stores}
+                  activeStoreId={activeStoreId}
+                  isFactory={isFactory}
+                  onSelectStore={handleStoreSelect}
+                  onSelectFactory={handleFactorySelect}
+                />
               </div>
             )}
           </div>
@@ -550,10 +591,13 @@ export function AppTopNav() {
                 </div>
                 {showStoreSwitcher ? (
                   <div className="border-b border-zinc-100 py-1 dark:border-white/[0.06] md:hidden">
-                    <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-white/40">
-                      Tienda
-                    </p>
-                    <StoreMenuItems stores={stores} activeStoreId={activeStoreId} onSelect={handleStoreSelect} />
+                    <WorkspaceMenuItems
+                      stores={stores}
+                      activeStoreId={activeStoreId}
+                      isFactory={isFactory}
+                      onSelectStore={handleStoreSelect}
+                      onSelectFactory={handleFactorySelect}
+                    />
                   </div>
                 ) : null}
                 <div className="py-1">
