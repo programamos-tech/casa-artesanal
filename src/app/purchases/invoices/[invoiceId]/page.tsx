@@ -143,7 +143,12 @@ export default function SupplierInvoiceDetailPage() {
               </div>
             </div>
 
-            <SupplierInvoiceDetailView invoice={invoice} canEdit={canEdit('supplier_invoices')} />
+            <SupplierInvoiceDetailView
+              invoice={invoice}
+              canEdit={canEdit('supplier_invoices')}
+              canCancelPayments={canCancel('supplier_invoices') || canCancel('supplier_payments')}
+              onPaymentCancelled={loadInvoice}
+            />
           </>
         )}
 

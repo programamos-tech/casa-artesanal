@@ -11,6 +11,7 @@ import { getCurrentUserStoreId } from './store-helper'
 import { EgresosService } from './egresos-service'
 import { firstDayOfMonthISO } from './egreso-concepts'
 import { assertCashReadyForOperation } from './cash-operation-gate'
+import { AuthService } from './auth-service'
 
 const MAIN_STORE_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -721,5 +722,69 @@ export class SupplierInvoicesService {
     }
 
     return payment
+  }
+
+  /** Anula un abono: el saldo de la factura se recalcula por trigger y se anula el egreso ligado. */
+  static async cancelPayment(
+    paymentId: string,
+    userId: string,
+    userName: string
+  ): Promise<{ refundedAmount: number }> {
+    const { data: row, error: rowErr } = await supabase
+      .from('supplier_payment_records')
+      .select('*')
+      .eq('id', paymentId)
+      .maybeSingle()
+    if (rowErr) throw new Error(supabaseErrorMessage(rowErr))
+    if (!row) throw new Error('Abono no encontrado')
+    const payment = mapPayment(row as Record<string, unknown>)
+    if (payment.status === 'cancelled') throw new Error('El abono ya está anulado')
+
+    const inv = await this.getInvoiceById(payment.invoiceId)
+    if (!inv) throw new Error('Factura no encontrada')
+    if (inv.status === 'cancelled') throw new Error('La factura está anulada')
+    await assertCashReadyForOperation(
+      'supplier',
+      payment.storeId || inv.storeId || getCurrentUserStoreId() || MAIN_STORE_ID
+    )
+
+    const { data: updated, error: updErr } = await supabase
+      .from('supplier_payment_records')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', paymentId)
+      .eq('status', 'active')
+      .select('id')
+    if (updErr) throw new Error(supabaseErrorMessage(updErr))
+    if (!updated || updated.length === 0) throw new Error('El abono ya está anulado')
+
+    if (payment.linkedEgresoId) {
+      const egresoRes = await EgresosService.cancelEgreso(
+        payment.linkedEgresoId,
+        userId,
+        userName,
+        `Abono a proveedor anulado · factura ${inv.invoiceNumber}`
+      )
+      if (!egresoRes.success) {
+        await supabase
+          .from('supplier_payment_records')
+          .update({ status: 'active', updated_at: new Date().toISOString() })
+          .eq('id', paymentId)
+        throw new Error(egresoRes.error || 'No se pudo anular el egreso ligado al abono')
+      }
+    }
+
+    await AuthService.logActivity(userId, 'supplier_payment_cancel', 'supplier_invoices', {
+      description: `Abono a proveedor anulado: ${inv.supplierName || 'Proveedor'} - Factura: ${inv.invoiceNumber} - Monto: $${payment.amount.toLocaleString('es-CO')}`,
+      invoiceId: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      supplierName: inv.supplierName,
+      paymentId,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      linkedEgresoId: payment.linkedEgresoId,
+      cancelledByName: userName,
+    })
+
+    return { refundedAmount: payment.amount }
   }
 }

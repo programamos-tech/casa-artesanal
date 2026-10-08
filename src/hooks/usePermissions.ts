@@ -87,8 +87,8 @@ export function usePermissions() {
         return ALL_ACTIONS.includes(action)
       }
 
-      // Anular abonos de créditos siempre habilitado para vendedores
-      if (module === 'payments' && action === 'cancel') {
+      // Anular abonos de créditos y de proveedores siempre habilitado para vendedores
+      if ((module === 'payments' || module === 'supplier_payments') && action === 'cancel') {
         return true
       }
       

@@ -80,6 +80,10 @@ export function resolveLogType(log: ActivityLogRecord): string {
     if (log.action === 'credit_payment_cancel') return 'credit_payment_cancel'
     return 'credit_create'
   }
+  if (log.module === 'supplier_invoices') {
+    if (log.action === 'supplier_payment_cancel') return 'supplier_payment_cancel'
+    return log.action
+  }
   if (log.module === 'auth') return 'login'
   if (log.module === 'transfers') {
     if (log.action === 'transfer_created') return 'transfer'
@@ -150,6 +154,8 @@ export function labelForLogType(type: string): string {
       return 'Crédito Cancelado'
     case 'credit_payment_cancel':
       return 'Abono Eliminado'
+    case 'supplier_payment_cancel':
+      return 'Abono a Proveedor Anulado'
     case 'roles':
       return 'Gestión de Usuarios'
     case 'transfers':
@@ -204,6 +210,8 @@ export function getModuleBadgeLabel(log: ActivityLogRecord): string {
       return 'Acceso'
     case 'categories':
       return 'Categorías'
+    case 'supplier_invoices':
+      return 'Proveedores'
     default:
       return log.module || 'Sistema'
   }
@@ -264,6 +272,10 @@ export function getLogActionLabel(log: ActivityLogRecord): string {
     if (log.action === 'credit_completed') return 'Completar Crédito'
     if (log.action === 'credit_cancelled') return 'Cancelar Crédito'
     if (log.action === 'credit_payment_cancel') return 'Eliminar Abono'
+    return log.action
+  }
+  if (log.module === 'supplier_invoices') {
+    if (log.action === 'supplier_payment_cancel') return 'Anular Abono'
     return log.action
   }
   return log.action
@@ -362,6 +374,7 @@ export function getLogDescriptionText(log: ActivityLogRecord): string {
       }
       return log.details.description || log.action
     }
+    if (log.module === 'supplier_invoices') return log.details.description || log.action
     if (log.module === 'auth') return 'Ingresó al sistema'
     return log.action
   }
