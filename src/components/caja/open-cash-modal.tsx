@@ -20,6 +20,7 @@ import {
   modalTitleClass,
 } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 import { toast } from 'sonner'
 
 interface OpenCashModalProps {
@@ -33,6 +34,7 @@ export function OpenCashModal({ isOpen, onClose, onOpened }: OpenCashModalProps)
   const [openingCash, setOpeningCash] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const { locked: submitLocked, run: runSubmit } = useSubmitLock()
 
   useEffect(() => {
     if (isOpen) {
@@ -128,17 +130,17 @@ export function OpenCashModal({ isOpen, onClose, onOpened }: OpenCashModalProps)
           </div>
         </div>
         <div className={modalFooterClass}>
-          <button type="button" className={modalSecondaryButtonClass} onClick={onClose} disabled={saving}>
+          <button type="button" className={modalSecondaryButtonClass} onClick={onClose} disabled={saving || submitLocked}>
             Cancelar
           </button>
           <button
             type="button"
             className={modalPrimaryButtonClass}
-            onClick={() => void handleSubmit()}
-            disabled={saving}
+            onClick={() => void runSubmit(handleSubmit)}
+            disabled={saving || submitLocked}
           >
             <LockOpen className="h-3.5 w-3.5" strokeWidth={1.75} />
-            {saving ? 'Abriendo…' : 'Abrir caja'}
+            {saving || submitLocked ? 'Abriendo…' : 'Abrir caja'}
           </button>
         </div>
       </div>

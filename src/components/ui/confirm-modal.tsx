@@ -21,6 +21,7 @@ interface ConfirmModalProps {
   confirmText?: string
   cancelText?: string
   type?: 'danger' | 'warning' | 'info'
+  confirmDisabled?: boolean
 }
 
 export function ConfirmModal({
@@ -32,6 +33,7 @@ export function ConfirmModal({
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
   type = 'danger',
+  confirmDisabled = false,
 }: ConfirmModalProps) {
   if (!isOpen) return null
 
@@ -66,10 +68,10 @@ export function ConfirmModal({
         </p>
 
         <div className="flex items-center justify-end gap-2 px-6 pb-5 pt-6">
-          <button type="button" onClick={onClose} className={modalSecondaryButtonClass} autoFocus>
+          <button type="button" onClick={onClose} className={modalSecondaryButtonClass} disabled={confirmDisabled} autoFocus>
             {cancelText}
           </button>
-          <button type="button" onClick={onConfirm} className={confirmClass}>
+          <button type="button" onClick={onConfirm} className={confirmClass} disabled={confirmDisabled}>
             {confirmText}
           </button>
         </div>

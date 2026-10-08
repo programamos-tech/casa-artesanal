@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, CalendarClock, HandCoins, Receipt, User } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, HandCoins, Receipt, Trash2, User } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuth } from '@/contexts/auth-context'
+import { usePermissions } from '@/hooks/usePermissions'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { StatusDot } from '@/components/dashboard/report-ui'
 import { REPORT_CHART_COLORS } from '@/components/dashboard/report-bar-chart'
 import { PaymentMethodLabel } from '@/components/sales/payment-method-label'
@@ -38,6 +42,12 @@ const detailPrimaryClass = cn(
 
 const metaIconClass = 'h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-white/40'
 
+const rowDangerIconBtnClass =
+  'flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-rose-600 disabled:opacity-40 dark:text-white/40 dark:hover:text-rose-400'
+
+const cancelledTagClass =
+  'casa-artesanal-preserve-surface rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+
 const thClass = 'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200'
 const tdClass = 'px-4 py-2.5 text-zinc-800 dark:text-zinc-200'
 
@@ -58,12 +68,17 @@ export default function CreditDetailPage() {
   const clientId = params.clientId as string
   const creditId = params.creditId as string
   const { ensureCashReady } = useCashOperationGate()
+  const { user } = useAuth()
+  const { canCancel, canDelete } = usePermissions()
 
   const [credit, setCredit] = useState<Credit | null>(null)
   const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<PaymentRecord | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const isDeletingRef = useRef(false)
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -124,8 +139,9 @@ export default function CreditDetailPage() {
     if (creditId && clientId) loadCredit()
   }, [creditId, clientId, loadCredit])
 
-  const handleAddPayment = async (paymentData: Partial<PaymentRecord>) => {
-    if (!credit) return
+  const handleAddPayment = async (paymentData: Partial<PaymentRecord>): Promise<boolean> => {
+    if (!credit) return false
+    let recordCreated = false
     try {
       const paymentRecord = await CreditsService.createPaymentRecord({
         creditId: credit.id,
@@ -140,6 +156,7 @@ export default function CreditDetailPage() {
         userId: paymentData.userId,
         userName: paymentData.userName
       })
+      recordCreated = true
 
       const paymentAmount = paymentData.amount!
       const newPaidAmount = credit.paidAmount + paymentAmount
@@ -157,16 +174,62 @@ export default function CreditDetailPage() {
 
       setIsPaymentModalOpen(false)
       await loadCredit()
+      return true
+    } catch (error) {
+      if (recordCreated) {
+        setIsPaymentModalOpen(false)
+        await loadCredit()
+        return true
+      }
+      if (isCashOperationBlockedError(error)) {
+        await ensureCashReady('payment')
+        return false
+      }
+      alert('Error al agregar el pago. Por favor intenta de nuevo.')
+      return false
+    }
+  }
+
+  const requestDeletePayment = (payment: PaymentRecord) => {
+    void (async () => {
+      if (!(await ensureCashReady('payment'))) return
+      setDeleteTarget(payment)
+    })()
+  }
+
+  const handleDeletePayment = async () => {
+    if (!credit || !deleteTarget || !user?.id || isDeletingRef.current) return
+    isDeletingRef.current = true
+    setIsDeleting(true)
+    try {
+      const { refundedAmount } = await CreditsService.cancelPaymentRecord(
+        credit.id,
+        deleteTarget.id,
+        user.id,
+        user.name || 'Usuario'
+      )
+      toast.success(`Abono de ${formatCurrency(refundedAmount)} eliminado`)
+      setDeleteTarget(null)
+      await loadCredit()
     } catch (error) {
       if (isCashOperationBlockedError(error)) {
+        setDeleteTarget(null)
         await ensureCashReady('payment')
         return
       }
-      alert('Error al agregar el pago. Por favor intenta de nuevo.')
+      toast.error(error instanceof Error ? error.message : 'No se pudo eliminar el abono')
+    } finally {
+      isDeletingRef.current = false
+      setIsDeleting(false)
     }
   }
 
   const creditDisplayStatus = credit ? getEffectiveCreditStatus(credit) : 'pending'
+  const activePayments = paymentHistory.filter(payment => payment.status !== 'cancelled')
+  const canDeletePayments =
+    (canCancel('payments') || canDelete('payments')) && Boolean(credit) && !isCreditCancelled(credit!)
+  const isPaymentCancelled = (payment: PaymentRecord) => payment.status === 'cancelled'
+  const isMixedPart = (payment: PaymentRecord) => /pago mixto|\(parte /i.test(payment.description ?? '')
   const canPay = Boolean(
     credit && credit.pendingAmount > 0 && !isCreditCancelled(credit) && credit.status !== 'cancelled'
   )
@@ -298,9 +361,9 @@ export default function CreditDetailPage() {
                   <p className="text-xs font-medium text-zinc-500 dark:text-white/50">Abonos</p>
                   <p
                     className="mt-1 text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white"
-                    style={paymentHistory.length > 0 ? { color: REPORT_CHART_COLORS.abono } : undefined}
+                    style={activePayments.length > 0 ? { color: REPORT_CHART_COLORS.abono } : undefined}
                   >
-                    {paymentHistory.length}
+                    {activePayments.length}
                   </p>
                 </div>
               </div>
@@ -355,12 +418,33 @@ export default function CreditDetailPage() {
                           <th className="w-14 px-2 py-2.5">
                             <span className="sr-only">Comprobante</span>
                           </th>
+                          {canDeletePayments ? (
+                            <th className="w-12 px-2 py-2.5">
+                              <span className="sr-only">Acciones</span>
+                            </th>
+                          ) : null}
                         </tr>
                       </thead>
                       <tbody>
                         {paymentHistory.map(payment => (
-                          <tr key={payment.id} className="border-b border-zinc-100 last:border-0 dark:border-white/[0.05]">
-                            <td className={cn(tdClass, 'whitespace-nowrap tabular-nums')}>{formatDateTime(payment.paymentDate)}</td>
+                          <tr
+                            key={payment.id}
+                            className={cn(
+                              'border-b border-zinc-100 last:border-0 dark:border-white/[0.05]',
+                              isPaymentCancelled(payment) && 'opacity-55'
+                            )}
+                            title={
+                              isPaymentCancelled(payment)
+                                ? `Anulado${payment.cancelledByName ? ` por ${payment.cancelledByName}` : ''}${payment.cancelledAt ? ` · ${formatDateTime(payment.cancelledAt)}` : ''}`
+                                : undefined
+                            }
+                          >
+                            <td className={cn(tdClass, 'whitespace-nowrap tabular-nums')}>
+                              <span className="inline-flex items-center gap-2">
+                                {formatDateTime(payment.paymentDate)}
+                                {isPaymentCancelled(payment) ? <span className={cancelledTagClass}>Anulado</span> : null}
+                              </span>
+                            </td>
                             <td className={cn(tdClass, 'whitespace-nowrap')}>
                               <PaymentMethodLabel method={payment.paymentMethod} />
                             </td>
@@ -371,7 +455,11 @@ export default function CreditDetailPage() {
                               {payment.description?.trim() || '—'}
                             </td>
                             <td
-                              className={cn(tdClass, 'whitespace-nowrap text-right font-medium tabular-nums')}
+                              className={cn(
+                                tdClass,
+                                'whitespace-nowrap text-right font-medium tabular-nums',
+                                isPaymentCancelled(payment) && 'line-through'
+                              )}
                               style={{ color: REPORT_CHART_COLORS.abono }}
                             >
                               {formatCurrency(payment.amount)}
@@ -394,6 +482,21 @@ export default function CreditDetailPage() {
                                 </a>
                               ) : null}
                             </td>
+                            {canDeletePayments ? (
+                              <td className="px-2 py-1.5 text-right">
+                                {!isPaymentCancelled(payment) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => requestDeletePayment(payment)}
+                                    className={cn(rowDangerIconBtnClass, 'ml-auto')}
+                                    title="Eliminar abono"
+                                    aria-label="Eliminar abono"
+                                  >
+                                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                                  </button>
+                                ) : null}
+                              </td>
+                            ) : null}
                           </tr>
                         ))}
                       </tbody>
@@ -402,10 +505,19 @@ export default function CreditDetailPage() {
 
                   <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-white/[0.07] dark:border-white/[0.08] md:hidden">
                     {paymentHistory.map(payment => (
-                      <li key={payment.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                      <li
+                        key={payment.id}
+                        className={cn('flex items-start justify-between gap-3 px-4 py-3', isPaymentCancelled(payment) && 'opacity-55')}
+                      >
                         <div className="min-w-0">
-                          <p className="text-[13px] font-medium tabular-nums" style={{ color: REPORT_CHART_COLORS.abono }}>
-                            {formatCurrency(payment.amount)}
+                          <p className="flex items-center gap-2 text-[13px] font-medium tabular-nums">
+                            <span
+                              className={cn(isPaymentCancelled(payment) && 'line-through')}
+                              style={{ color: REPORT_CHART_COLORS.abono }}
+                            >
+                              {formatCurrency(payment.amount)}
+                            </span>
+                            {isPaymentCancelled(payment) ? <span className={cancelledTagClass}>Anulado</span> : null}
                           </p>
                           <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-zinc-600 dark:text-white/70">
                             <PaymentMethodLabel method={payment.paymentMethod} className="gap-1.5" />
@@ -416,9 +528,22 @@ export default function CreditDetailPage() {
                             <p className="mt-0.5 text-xs text-zinc-500 dark:text-white/45">{payment.description.trim()}</p>
                           ) : null}
                         </div>
-                        {payment.imageUrl ? (
-                          <PaymentReceiptThumb url={payment.imageUrl} amountLabel={formatCurrency(payment.amount)} />
-                        ) : null}
+                        <div className="flex shrink-0 items-center gap-1">
+                          {payment.imageUrl ? (
+                            <PaymentReceiptThumb url={payment.imageUrl} amountLabel={formatCurrency(payment.amount)} />
+                          ) : null}
+                          {canDeletePayments && !isPaymentCancelled(payment) ? (
+                            <button
+                              type="button"
+                              onClick={() => requestDeletePayment(payment)}
+                              className={rowDangerIconBtnClass}
+                              title="Eliminar abono"
+                              aria-label="Eliminar abono"
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
+                          ) : null}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -431,6 +556,20 @@ export default function CreditDetailPage() {
               onClose={() => setIsPaymentModalOpen(false)}
               onAddPayment={handleAddPayment}
               credit={credit}
+            />
+
+            <ConfirmModal
+              isOpen={!!deleteTarget}
+              onClose={() => (isDeleting ? undefined : setDeleteTarget(null))}
+              onConfirm={() => void handleDeletePayment()}
+              confirmDisabled={isDeleting}
+              title="Eliminar abono"
+              message={
+                deleteTarget
+                  ? `¿Eliminar el abono de ${formatCurrency(deleteTarget.amount)} del ${formatDateTime(deleteTarget.paymentDate)}? El monto vuelve al saldo pendiente y se descuenta de la caja${isMixedPart(deleteTarget) ? '. Se eliminan las dos partes del pago mixto' : ''}.`
+                  : ''
+              }
+              confirmText={isDeleting ? 'Eliminando…' : 'Eliminar'}
             />
           </>
         )}

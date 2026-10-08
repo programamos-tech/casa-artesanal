@@ -14,6 +14,7 @@ import {
 import type { CashSession, CashSessionLiveSummary } from '@/types'
 import { appModalOverlayClass, appModalPanelClass } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 import { toast } from 'sonner'
 
 interface CloseCashModalProps {
@@ -38,6 +39,7 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
   const [countedCash, setCountedCash] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const { locked: submitLocked, run: runSubmit } = useSubmitLock()
   const [summary, setSummary] = useState<CashSessionLiveSummary | null>(live)
   /** Conteo ciego: no revelar esperado hasta que digiten lo contado y verifiquen. */
   const [revealed, setRevealed] = useState(false)
@@ -86,7 +88,8 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
     hasCountedInput &&
     notesOk &&
     cuentaOk &&
-    !saving
+    !saving &&
+    !submitLocked
 
   const notifyWhatsApp = async (sessionId: string, previewWindows: Window[]) => {
     const closePreviews = () => {
@@ -553,11 +556,11 @@ export function CloseCashModal({ isOpen, session, live, onClose, onClosed }: Clo
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-          <Button type="button" variant="destructive" onClick={onClose} disabled={saving}>
+          <Button type="button" variant="destructive" onClick={onClose} disabled={saving || submitLocked}>
             Cancelar
           </Button>
-          <Button type="button" onClick={() => void handleSubmit()} disabled={!canConfirm}>
-            {saving ? 'Cerrando y enviando…' : 'Confirmar cierre'}
+          <Button type="button" onClick={() => void runSubmit(handleSubmit)} disabled={!canConfirm}>
+            {saving || submitLocked ? 'Cerrando y enviando…' : 'Confirmar cierre'}
           </Button>
         </div>
       </div>

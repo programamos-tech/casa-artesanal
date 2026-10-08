@@ -77,6 +77,7 @@ export function resolveLogType(log: ActivityLogRecord): string {
     }
     if (log.action === 'credit_completed') return 'credit_completed'
     if (log.action === 'credit_cancelled') return 'credit_cancelled'
+    if (log.action === 'credit_payment_cancel') return 'credit_payment_cancel'
     return 'credit_create'
   }
   if (log.module === 'auth') return 'login'
@@ -147,6 +148,8 @@ export function labelForLogType(type: string): string {
       return 'Pago Completado'
     case 'credit_cancelled':
       return 'Crédito Cancelado'
+    case 'credit_payment_cancel':
+      return 'Abono Eliminado'
     case 'roles':
       return 'Gestión de Usuarios'
     case 'transfers':
@@ -260,6 +263,7 @@ export function getLogActionLabel(log: ActivityLogRecord): string {
     }
     if (log.action === 'credit_completed') return 'Completar Crédito'
     if (log.action === 'credit_cancelled') return 'Cancelar Crédito'
+    if (log.action === 'credit_payment_cancel') return 'Eliminar Abono'
     return log.action
   }
   return log.action

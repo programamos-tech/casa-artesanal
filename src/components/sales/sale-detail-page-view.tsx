@@ -92,6 +92,7 @@ export function SaleDetailPageView({
   const [showCancelForm, setShowCancelForm] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
+  const isCancellingRef = useRef(false)
   const [isFinalizing, setIsFinalizing] = useState(false)
   const isFinalizingRef = useRef(false)
   const [cancelSuccessMessage, setCancelSuccessMessage] = useState<string | null>(null)
@@ -186,12 +187,14 @@ export function SaleDetailPageView({
 
   const handleCancel = async () => {
     if (!cancelReason.trim() || !onCancel) return
+    if (isCancellingRef.current || sale.status === 'cancelled') return
     if (cancelReason.trim().length < 10) {
       setCancelSuccessMessage(
         '⚠️ El motivo de anulación debe tener al menos 10 caracteres para mayor claridad. Por favor, proporciona una descripción más detallada.'
       )
       return
     }
+    isCancellingRef.current = true
     setIsCancelling(true)
     setCancelSuccessMessage(null)
     try {
@@ -211,6 +214,7 @@ export function SaleDetailPageView({
     } catch {
       setCancelSuccessMessage('Error al anular la venta. Por favor, inténtalo de nuevo.')
     } finally {
+      isCancellingRef.current = false
       setIsCancelling(false)
     }
   }
@@ -521,7 +525,7 @@ export function SaleDetailPageView({
               <button
                 type="button"
                 onClick={() => void handleCancel()}
-                disabled={cancelReason.trim().length < 10 || isCancelling}
+                disabled={cancelReason.trim().length < 10 || isCancelling || sale.status === 'cancelled'}
                 className={detailDangerClass}
               >
                 {isCancelling ? 'Anulando…' : 'Confirmar anulación'}

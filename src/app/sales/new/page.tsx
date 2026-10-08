@@ -865,18 +865,22 @@ export default function NewSalePage() {
     setSavingAction(action)
     const previousInvoice = invoiceNumber
     if (!editingDraftId && !isDraft) setInvoiceNumber('Generando...')
+    let saved = false
     try {
       if (editingDraftId) {
         // Guardar contenido del borrador; si se factura, luego finalizar (descuenta stock)
         await updateSale(editingDraftId, { ...saleData, status: 'draft' })
         if (!isDraft) {
           await finalizeDraftSale(editingDraftId)
+          saved = true
           router.replace(`/sales/${editingDraftId}`)
         } else {
+          saved = true
           router.replace('/sales?status=draft')
         }
       } else {
         await createSale(saleData)
+        saved = true
         router.replace(isDraft ? '/sales?status=draft' : '/sales')
       }
     } catch (error) {
@@ -895,9 +899,11 @@ export default function NewSalePage() {
             : 'Error al crear la venta. Por favor intenta de nuevo.'
       )
     } finally {
-      isSubmittingRef.current = false
-      setIsCreating(false)
-      setSavingAction(null)
+      if (!saved) {
+        isSubmittingRef.current = false
+        setIsCreating(false)
+        setSavingAction(null)
+      }
     }
   }
 

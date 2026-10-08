@@ -1037,6 +1037,89 @@ export class CreditsService {
     return data.map(payment => mapPaymentRecordFromRow(payment, creditId))
   }
 
+  /** Anula un abono (en mixto, ambas partes) y devuelve su monto al saldo pendiente del crédito. */
+  static async cancelPaymentRecord(
+    creditId: string,
+    paymentRecordId: string,
+    userId: string,
+    userName: string,
+    reason = 'Abono eliminado'
+  ): Promise<{ refundedAmount: number; credit: Credit }> {
+    const credit = await this.getCreditById(creditId)
+    if (!credit) throw new Error('Crédito no encontrado')
+    if (credit.status === 'cancelled') throw new Error('El crédito está anulado')
+    await assertCashReadyForOperation('payment', credit.storeId || getCurrentUserStoreId())
+
+    const { data: record, error: recordError } = await supabaseAdmin
+      .from('payment_records')
+      .select('id, payment_id, status')
+      .eq('id', paymentRecordId)
+      .single()
+    if (recordError || !record) throw new Error('Abono no encontrado')
+    if (record.status === 'cancelled') throw new Error('El abono ya está anulado')
+
+    // En abonos mixtos se crean dos filas con el mismo payment_id: se anulan juntas.
+    let siblingsQuery = supabaseAdmin.from('payment_records').select('id, amount, status')
+    siblingsQuery = record.payment_id
+      ? siblingsQuery.eq('payment_id', record.payment_id)
+      : siblingsQuery.eq('id', record.id)
+    const { data: siblings, error: siblingsError } = await siblingsQuery
+    if (siblingsError) throw siblingsError
+
+    const toCancel = (siblings || []).filter((row) => row.status !== 'cancelled')
+    const refundedAmount = toCancel.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+    if (toCancel.length === 0 || refundedAmount <= 0) throw new Error('El abono ya está anulado')
+
+    const { error: cancelError } = await supabaseAdmin
+      .from('payment_records')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: userId,
+        cancelled_by_name: userName,
+        cancellation_reason: reason,
+      })
+      .in(
+        'id',
+        toCancel.map((row) => row.id)
+      )
+    if (cancelError) throw new Error(`Error al anular el abono: ${cancelError.message}`)
+
+    const previousPaidAmount = credit.paidAmount
+    const previousPendingAmount = credit.pendingAmount
+    const newPaidAmount = Math.max(0, credit.paidAmount - refundedAmount)
+    const newPendingAmount = credit.pendingAmount + refundedAmount
+    const newStatus: Credit['status'] = newPendingAmount <= 0 ? 'completed' : newPaidAmount > 0 ? 'partial' : 'pending'
+
+    const remaining = (await this.getPaymentHistory(creditId)).filter((p) => p.status !== 'cancelled')
+    const latest = remaining.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))[0]
+
+    const updatedCredit = await this.updateCredit(creditId, {
+      paidAmount: newPaidAmount,
+      pendingAmount: newPendingAmount,
+      status: newStatus,
+      ...(latest
+        ? { lastPaymentAmount: latest.amount, lastPaymentDate: latest.paymentDate, lastPaymentUser: latest.userId }
+        : {}),
+    })
+
+    await AuthService.logActivity(userId, 'credit_payment_cancel', 'credits', {
+      description: `Abono eliminado: ${credit.clientName} - Factura: ${credit.invoiceNumber} - Monto: $${refundedAmount.toLocaleString('es-CO')}`,
+      creditId: credit.id,
+      invoiceNumber: credit.invoiceNumber,
+      clientName: credit.clientName,
+      paymentAmount: refundedAmount,
+      paymentRecordIds: toCancel.map((row) => row.id),
+      previousPaidAmount,
+      newPaidAmount,
+      previousPendingAmount,
+      newPendingAmount,
+      reason,
+    })
+
+    return { refundedAmount, credit: updatedCredit }
+  }
+
   // Anular un crédito y todos sus abonos
   static async cancelCredit(creditId: string, reason: string, userId: string, userName: string): Promise<{ success: boolean, totalRefund: number }> {
     try {

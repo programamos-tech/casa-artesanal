@@ -38,6 +38,7 @@ import {
   modalTitleClass,
 } from '@/lib/app-modal'
 import { cn } from '@/lib/utils'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 
 interface EgresoModalProps {
   isOpen: boolean
@@ -112,6 +113,7 @@ export function EgresoModal({
   const [periodMonth, setPeriodMonth] = useState<Date | null>(todayDate())
   const [paymentMethod, setPaymentMethod] = useState<EgresoPaymentMethod>('cash')
   const [saving, setSaving] = useState(false)
+  const { locked: submitLocked, run: runSubmit } = useSubmitLock()
   const [mounted, setMounted] = useState(false)
   const [cuentaAckNotTill, setCuentaAckNotTill] = useState(false)
   const [cuentaAckFromAccount, setCuentaAckFromAccount] = useState(false)
@@ -273,8 +275,12 @@ export function EgresoModal({
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void runSubmit(submitEgreso)
+  }
+
+  const submitEgreso = async () => {
     if (!expenseDate) {
       toast.error('Selecciona la fecha del egreso')
       return
@@ -589,13 +595,13 @@ export function EgresoModal({
           </div>
 
           <div className={modalFooterClass}>
-            <button type="button" className={modalSecondaryButtonClass} onClick={onClose} disabled={saving}>
+            <button type="button" className={modalSecondaryButtonClass} onClick={onClose} disabled={saving || submitLocked}>
               Cancelar
             </button>
             <button
               type="submit"
               className={modalPrimaryButtonClass}
-              disabled={saving || amountValue <= 0 || !!exceedsChannel || cuentaCashConflict || !cuentaDoubleCheckOk}
+              disabled={saving || submitLocked || amountValue <= 0 || !!exceedsChannel || cuentaCashConflict || !cuentaDoubleCheckOk}
             >
               {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar egreso'}
             </button>

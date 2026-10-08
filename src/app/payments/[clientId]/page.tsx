@@ -190,8 +190,9 @@ export default function ClientCreditsPage() {
     setIsPaymentModalOpen(true)
   }
 
-  const handleAddPayment = async (paymentData: Partial<PaymentRecord>) => {
-    if (!selectedCredit) return
+  const handleAddPayment = async (paymentData: Partial<PaymentRecord>): Promise<boolean> => {
+    if (!selectedCredit) return false
+    let recordCreated = false
 
     try {
       const paymentRecord = await CreditsService.createPaymentRecord({
@@ -207,6 +208,7 @@ export default function ClientCreditsPage() {
         userId: paymentData.userId,
         userName: paymentData.userName
       })
+      recordCreated = true
 
       const paymentAmount = paymentData.amount!
       const newPaidAmount = selectedCredit.paidAmount + paymentAmount
@@ -225,12 +227,20 @@ export default function ClientCreditsPage() {
       setIsPaymentModalOpen(false)
       setSelectedCredit(null)
       await loadCredits()
+      return true
     } catch (error) {
+      if (recordCreated) {
+        setIsPaymentModalOpen(false)
+        setSelectedCredit(null)
+        await loadCredits()
+        return true
+      }
       if (isCashOperationBlockedError(error)) {
         await ensureCashReady('payment')
-        return
+        return false
       }
       alert('Error al agregar el pago. Por favor intenta de nuevo.')
+      return false
     }
   }
 

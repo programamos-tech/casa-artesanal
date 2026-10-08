@@ -61,6 +61,7 @@ function getLogTypeTone(type: string): ReportTone {
     case 'sale_cancel':
     case 'credit_sale_cancel':
     case 'credit_cancelled':
+    case 'credit_payment_cancel':
     case 'product_delete':
     case 'category_delete':
     case 'client_delete':

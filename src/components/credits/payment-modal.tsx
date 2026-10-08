@@ -32,11 +32,13 @@ import {
   appModalPanelClass,
 } from '@/lib/app-modal'
 import { cardShell } from '@/lib/card-shell'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 
 interface PaymentModalProps {
   isOpen: boolean
   onClose: () => void
-  onAddPayment: (paymentData: Partial<PaymentRecord>) => void
+  /** Devolver `false` deja el modal abierto (p. ej. si falló el registro). */
+  onAddPayment: (paymentData: Partial<PaymentRecord>) => Promise<boolean | void> | boolean | void
   credit: Credit | null
 }
 
@@ -150,9 +152,14 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
     }
   }
 
+  const { locked: submitting, run: runSubmit } = useSubmitLock()
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void runSubmit(submitPayment)
+  }
 
+  const submitPayment = async () => {
     if (!credit) return
 
     const nextErrors: { [key: string]: string } = {}
@@ -245,7 +252,8 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
       paymentData.digitalTransferMethod = formData.digitalChannel
     }
 
-    onAddPayment(paymentData)
+    const ok = await onAddPayment(paymentData)
+    if (ok === false) return
     onClose()
     resetForm()
   }
@@ -266,6 +274,7 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
   }
 
   const handleClose = () => {
+    if (submitting) return
     onClose()
     resetForm()
   }
@@ -583,11 +592,11 @@ export function PaymentModal({ isOpen, onClose, onAddPayment, credit }: PaymentM
           </div>
 
           <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={handleClose}>
+            <Button type="button" variant="destructive" onClick={handleClose} disabled={submitting}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={uploading}>
-              {uploading ? 'Subiendo…' : 'Registrar abono'}
+            <Button type="submit" disabled={uploading || submitting}>
+              {submitting ? 'Registrando…' : uploading ? 'Subiendo…' : 'Registrar abono'}
             </Button>
           </div>
         </form>

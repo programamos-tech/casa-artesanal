@@ -29,6 +29,7 @@ import {
   appModalPanelClass,
 } from '@/lib/app-modal'
 import { cardShell } from '@/lib/card-shell'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 
 /** Valor guardado en BD: URL absoluta o ruta `invoices/...` dentro del bucket. */
 function supplierInvoiceStoredToPublicUrl(stored: string): string {
@@ -88,6 +89,7 @@ export function SupplierInvoiceModal({
   const [dueDate, setDueDate] = useState<Date | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const { locked: submitLocked, run: runSubmit } = useSubmitLock()
   const [showNewSupplier, setShowNewSupplier] = useState(false)
   const [newSupplierName, setNewSupplierName] = useState('')
   const [mounted, setMounted] = useState(false)
@@ -253,8 +255,12 @@ export function SupplierInvoiceModal({
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void runSubmit(submitInvoice)
+  }
+
+  const submitInvoice = async () => {
     if (!supplierId) {
       toast.error('Selecciona un proveedor')
       return
@@ -566,11 +572,11 @@ export function SupplierInvoiceModal({
           </div>
 
           <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={onClose}>
+            <Button type="button" variant="destructive" onClick={onClose} disabled={submitLocked}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving || blocked || uploading}>
-              {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar'}
+            <Button type="submit" disabled={submitLocked || saving || blocked || uploading}>
+              {submitLocked || saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Registrar'}
             </Button>
           </div>
         </form>

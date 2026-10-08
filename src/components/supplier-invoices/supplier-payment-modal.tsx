@@ -35,6 +35,7 @@ import {
   appModalPanelClass,
 } from '@/lib/app-modal'
 import { cardShell } from '@/lib/card-shell'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 
 function paymentReceiptStoredToPublicUrl(stored: string): string {
   const s = stored.trim()
@@ -85,6 +86,7 @@ export function SupplierPaymentModal({
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const { locked: submitLocked, run: runSubmit } = useSubmitLock()
   const [mounted, setMounted] = useState(false)
   const [moneyOrigin, setMoneyOrigin] = useState<'manual' | 'sale'>('manual')
   const [saleSearch, setSaleSearch] = useState('')
@@ -207,8 +209,12 @@ export function SupplierPaymentModal({
     setError('')
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void runSubmit(submitPayment)
+  }
+
+  const submitPayment = async () => {
     setError('')
     const amount = parseAmount(amountStr)
     if (amount <= 0) {
@@ -730,11 +736,11 @@ export function SupplierPaymentModal({
           </div>
 
           <div className={appModalFooterClass}>
-            <Button type="button" variant="destructive" onClick={onClose}>
+            <Button type="button" variant="destructive" onClick={onClose} disabled={submitLocked}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting || uploading}>
-              {submitting ? 'Guardando…' : 'Registrar abono'}
+            <Button type="submit" disabled={submitLocked || submitting || uploading}>
+              {submitLocked || submitting ? 'Guardando…' : 'Registrar abono'}
             </Button>
           </div>
         </form>

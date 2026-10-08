@@ -682,14 +682,14 @@ export class CashSessionsService {
         }
       }
 
-      // Abonos a créditos en la ventana (mismo filtro created_at que ventas).
+      // Abonos a créditos: entran al turno en que se registran (created_at) aunque luego se anulen,
+      // y se descuentan del turno en que se anulan (cancelled_at). Así un cierre ya hecho no cambia.
       // Nota: payment_records NO tiene cash_amount/transfer_amount; en mixto se crean 2 filas.
       let abonosQuery = supabaseAdmin
         .from('payment_records')
         .select('amount, payment_method, status, created_at, store_id')
         .gte('created_at', from)
         .lte('created_at', to)
-        .neq('status', 'cancelled')
 
       abonosQuery = applySalesStoreFilter(abonosQuery, storeId)
       const { data: abonos, error: abonosError } = await abonosQuery
@@ -697,14 +697,31 @@ export class CashSessionsService {
         console.error('cash summary abonos:', abonosError)
       }
 
-      for (const a of abonos || []) {
-        const method = String(a.payment_method || '')
-        const amount = Number(a.amount) || 0
+      let abonosAnuladosQuery = supabaseAdmin
+        .from('payment_records')
+        .select('amount, payment_method, status, cancelled_at, store_id')
+        .eq('status', 'cancelled')
+        .gte('cancelled_at', from)
+        .lte('cancelled_at', to)
+
+      abonosAnuladosQuery = applySalesStoreFilter(abonosAnuladosQuery, storeId)
+      const { data: abonosAnulados, error: abonosAnuladosError } = await abonosAnuladosQuery
+      if (abonosAnuladosError) {
+        console.error('cash summary abonos anulados:', abonosAnuladosError)
+      }
+
+      const addAbono = (method: string, amount: number) => {
         if (method === 'cash' || method === 'efectivo') {
           summary.creditAbonosCash += amount
         } else {
           summary.creditAbonosOther += amount
         }
+      }
+      for (const a of abonos || []) {
+        addAbono(String(a.payment_method || ''), Number(a.amount) || 0)
+      }
+      for (const a of abonosAnulados || []) {
+        addAbono(String(a.payment_method || ''), -(Number(a.amount) || 0))
       }
 
       // Solo egresos de caja del turno (los de cuenta/mensuales no afectan cierre)

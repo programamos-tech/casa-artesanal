@@ -462,6 +462,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
     if (loading || isSubmittingRef.current) return
     isSubmittingRef.current = true
     setLoading(true)
+    let saleCreated = false
 
     try {
       if (!isDraft) {
@@ -540,6 +541,7 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
       }
 
       const newSale = await SalesService.createSale(saleData, user?.id || '')
+      saleCreated = true
 
       if (!isDraft) {
         const newCredit = await CreditsService.getCreditBySaleId(newSale.id, {
@@ -559,6 +561,11 @@ export function CreditModal({ isOpen, onClose, onCreateCredit }: CreditModalProp
         }, 500)
       }
     } catch (error) {
+      if (saleCreated) {
+        handleClose()
+        window.location.reload()
+        return
+      }
       alert('❌ Error al crear el crédito. Por favor intenta de nuevo.')
     } finally {
       isSubmittingRef.current = false

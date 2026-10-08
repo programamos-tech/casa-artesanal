@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { getCurrentUser } from '@/lib/store-helper'
 import { cn } from '@/lib/utils'
 import { PaymentReceiptField } from '@/components/credits/payment-receipt-field'
+import { useSubmitLock } from '@/hooks/use-submit-lock'
 
 export type BulkPaymentSubmitPayload = {
   paymentMethod: 'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'mixed'
@@ -56,9 +57,11 @@ export function BulkPaymentModal({
   clientName,
   creditCount,
   totalPending,
-  submitting = false,
+  submitting: submittingProp = false,
 }: BulkPaymentModalProps) {
   const { user } = useAuth()
+  const { locked: submitLocked, run: runSubmit } = useSubmitLock()
+  const submitting = submittingProp || submitLocked
   const [formData, setFormData] = useState({
     paymentMethod: 'cash' as 'cash' | 'transfer' | 'nequi' | 'bancolombia' | 'card' | 'mixed',
     digitalChannel: 'nequi' as 'nequi' | 'bancolombia',
@@ -144,8 +147,12 @@ export function BulkPaymentModal({
     return receivedValue > cashValue ? receivedValue - cashValue : 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void runSubmit(submitBulk)
+  }
+
+  const submitBulk = async () => {
     if (totalPending <= 0 || creditCount < 1) return
 
     const nextErrors: Record<string, string> = {}

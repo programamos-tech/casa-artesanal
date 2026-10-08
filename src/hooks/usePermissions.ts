@@ -86,6 +86,11 @@ export function usePermissions() {
       if (module === 'transfers' || module === 'receptions' || module === 'egresos' || module === 'cash_register') {
         return ALL_ACTIONS.includes(action)
       }
+
+      // Anular abonos de créditos siempre habilitado para vendedores
+      if (module === 'payments' && action === 'cancel') {
+        return true
+      }
       
       const hasExplicitPermissions = currentUser.permissions && Array.isArray(currentUser.permissions) && currentUser.permissions.length > 0
       if (!hasExplicitPermissions) {
@@ -117,6 +122,10 @@ export function usePermissions() {
       // Caja siempre habilitada para cajeros
       if (module === 'cash_register') {
         return ALL_ACTIONS.includes(action)
+      }
+
+      if (module === 'payments' && action === 'cancel') {
+        return true
       }
 
       const hasExplicitPermissions =

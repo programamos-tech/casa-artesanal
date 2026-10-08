@@ -142,8 +142,9 @@ export default function CreditsPage() {
     setIsCreditModalOpen(false)
   }
 
-  const handleAddPayment = async (paymentData: Partial<PaymentRecord>) => {
-    if (!selectedCredit) return
+  const handleAddPayment = async (paymentData: Partial<PaymentRecord>): Promise<boolean> => {
+    if (!selectedCredit) return false
+    let recordCreated = false
 
     try {
       // Crear el registro de pago
@@ -160,6 +161,7 @@ export default function CreditsPage() {
         userId: paymentData.userId,
         userName: paymentData.userName
       })
+      recordCreated = true
 
       // Actualizar el crédito
       const paymentAmount = paymentData.amount!
@@ -186,9 +188,14 @@ export default function CreditsPage() {
       
       // Recargar créditos para actualizar la vista
       await loadCredits()
+      return true
     } catch (error) {
-      // Error silencioso en producción
-      // Error silencioso en producción
+      if (recordCreated) {
+        setIsPaymentModalOpen(false)
+        setSelectedCredit(null)
+        await loadCredits()
+        return true
+      }
       let errorMessage = 'Error al agregar el pago. Por favor intenta de nuevo.'
       
       if (error instanceof Error) {
@@ -202,6 +209,7 @@ export default function CreditsPage() {
       }
       
       alert(errorMessage)
+      return false
     }
   }
 
